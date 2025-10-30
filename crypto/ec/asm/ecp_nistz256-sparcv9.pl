@@ -1429,91 +1429,171 @@ ecp_nistz256_scatter_w5:
 ecp_nistz256_gather_w5:
 	save	%sp,-STACK_FRAME,%sp
 
-	neg	$index,$mask
-	srax	$mask,63,$mask
+	! Constant-time implementation: scan all table entries
+	! Initialize output to zero (96 bytes = 24 words for X,Y,Z coordinates)
+	mov	24,%l7			! word counter (8 words * 3 coordinates)
+	mov	$out,%o1		! save output pointer
+.Loop_zero_w5:
+	st	%g0,[$out]
+	subcc	%l7,1,%l7
+	bne	.Loop_zero_w5
+	add	$out,4,$out
+	mov	%o1,$out		! restore output pointer
 
-	add	$index,$mask,$index
-	sll	$index,2,$index
-	add	$inp,$index,$inp
+	! Scan all 16 table entries (w5 uses 4-bit windows, so 2^4 = 16 entries)
+	mov	0,%o2			! loop counter (table index)
+	mov	16,%o3			! table size
 
-	ld	[$inp+64*0],%l0
-	ld	[$inp+64*1],%l1
-	ld	[$inp+64*2],%l2
-	ld	[$inp+64*3],%l3
-	ld	[$inp+64*4],%l4
-	ld	[$inp+64*5],%l5
-	ld	[$inp+64*6],%l6
-	ld	[$inp+64*7],%l7
-	add	$inp,64*8,$inp
+.Loop_scan_w5:
+	! Compute equality mask: (loop_counter == target_index) ? -1 : 0
+	subcc	%o2,$index,%g0
+	mov	0,$mask
+	move	%icc,-1,$mask		! mask = (loop_counter == index) ? -1 : 0
+
+	! Load candidate entry from current table position
+	mov	$inp,%o5		! current input position
+	sll	%o2,2,%o4		! loop_counter * 4 (word offset)
+	add	%o5,%o4,%o5		! inp + (loop_counter * 4)
+
+	! Load X coordinate (8 words)
+	ld	[%o5+64*0],%l0
+	ld	[%o5+64*1],%l1
+	ld	[%o5+64*2],%l2
+	ld	[%o5+64*3],%l3
+	ld	[%o5+64*4],%l4
+	ld	[%o5+64*5],%l5
+	ld	[%o5+64*6],%l6
+	ld	[%o5+64*7],%l7
+	add	%o5,64*8,%o5
+	
+	! Conditionally accumulate X coordinate
 	and	%l0,$mask,%l0
+	ld	[$out],%g1
+	or	%g1,%l0,%g1
+	st	%g1,[$out]
 	and	%l1,$mask,%l1
-	st	%l0,[$out]		! X
+	ld	[$out+4],%g1
+	or	%g1,%l1,%g1
+	st	%g1,[$out+4]
 	and	%l2,$mask,%l2
-	st	%l1,[$out+4]
+	ld	[$out+8],%g1
+	or	%g1,%l2,%g1
+	st	%g1,[$out+8]
 	and	%l3,$mask,%l3
-	st	%l2,[$out+8]
+	ld	[$out+12],%g1
+	or	%g1,%l3,%g1
+	st	%g1,[$out+12]
 	and	%l4,$mask,%l4
-	st	%l3,[$out+12]
+	ld	[$out+16],%g1
+	or	%g1,%l4,%g1
+	st	%g1,[$out+16]
 	and	%l5,$mask,%l5
-	st	%l4,[$out+16]
+	ld	[$out+20],%g1
+	or	%g1,%l5,%g1
+	st	%g1,[$out+20]
 	and	%l6,$mask,%l6
-	st	%l5,[$out+20]
+	ld	[$out+24],%g1
+	or	%g1,%l6,%g1
+	st	%g1,[$out+24]
 	and	%l7,$mask,%l7
-	st	%l6,[$out+24]
-	st	%l7,[$out+28]
-	add	$out,32,$out
+	ld	[$out+28],%g1
+	or	%g1,%l7,%g1
+	st	%g1,[$out+28]
 
-	ld	[$inp+64*0],%l0
-	ld	[$inp+64*1],%l1
-	ld	[$inp+64*2],%l2
-	ld	[$inp+64*3],%l3
-	ld	[$inp+64*4],%l4
-	ld	[$inp+64*5],%l5
-	ld	[$inp+64*6],%l6
-	ld	[$inp+64*7],%l7
-	add	$inp,64*8,$inp
+	! Load Y coordinate (8 words)
+	ld	[%o5+64*0],%l0
+	ld	[%o5+64*1],%l1
+	ld	[%o5+64*2],%l2
+	ld	[%o5+64*3],%l3
+	ld	[%o5+64*4],%l4
+	ld	[%o5+64*5],%l5
+	ld	[%o5+64*6],%l6
+	ld	[%o5+64*7],%l7
+	add	%o5,64*8,%o5
+	
+	! Conditionally accumulate Y coordinate
 	and	%l0,$mask,%l0
+	ld	[$out+32],%g1
+	or	%g1,%l0,%g1
+	st	%g1,[$out+32]
 	and	%l1,$mask,%l1
-	st	%l0,[$out]		! Y
+	ld	[$out+36],%g1
+	or	%g1,%l1,%g1
+	st	%g1,[$out+36]
 	and	%l2,$mask,%l2
-	st	%l1,[$out+4]
+	ld	[$out+40],%g1
+	or	%g1,%l2,%g1
+	st	%g1,[$out+40]
 	and	%l3,$mask,%l3
-	st	%l2,[$out+8]
+	ld	[$out+44],%g1
+	or	%g1,%l3,%g1
+	st	%g1,[$out+44]
 	and	%l4,$mask,%l4
-	st	%l3,[$out+12]
+	ld	[$out+48],%g1
+	or	%g1,%l4,%g1
+	st	%g1,[$out+48]
 	and	%l5,$mask,%l5
-	st	%l4,[$out+16]
+	ld	[$out+52],%g1
+	or	%g1,%l5,%g1
+	st	%g1,[$out+52]
 	and	%l6,$mask,%l6
-	st	%l5,[$out+20]
+	ld	[$out+56],%g1
+	or	%g1,%l6,%g1
+	st	%g1,[$out+56]
 	and	%l7,$mask,%l7
-	st	%l6,[$out+24]
-	st	%l7,[$out+28]
-	add	$out,32,$out
+	ld	[$out+60],%g1
+	or	%g1,%l7,%g1
+	st	%g1,[$out+60]
 
-	ld	[$inp+64*0],%l0
-	ld	[$inp+64*1],%l1
-	ld	[$inp+64*2],%l2
-	ld	[$inp+64*3],%l3
-	ld	[$inp+64*4],%l4
-	ld	[$inp+64*5],%l5
-	ld	[$inp+64*6],%l6
-	ld	[$inp+64*7],%l7
+	! Load Z coordinate (8 words)
+	ld	[%o5+64*0],%l0
+	ld	[%o5+64*1],%l1
+	ld	[%o5+64*2],%l2
+	ld	[%o5+64*3],%l3
+	ld	[%o5+64*4],%l4
+	ld	[%o5+64*5],%l5
+	ld	[%o5+64*6],%l6
+	ld	[%o5+64*7],%l7
+	
+	! Conditionally accumulate Z coordinate
 	and	%l0,$mask,%l0
+	ld	[$out+64],%g1
+	or	%g1,%l0,%g1
+	st	%g1,[$out+64]
 	and	%l1,$mask,%l1
-	st	%l0,[$out]		! Z
+	ld	[$out+68],%g1
+	or	%g1,%l1,%g1
+	st	%g1,[$out+68]
 	and	%l2,$mask,%l2
-	st	%l1,[$out+4]
+	ld	[$out+72],%g1
+	or	%g1,%l2,%g1
+	st	%g1,[$out+72]
 	and	%l3,$mask,%l3
-	st	%l2,[$out+8]
+	ld	[$out+76],%g1
+	or	%g1,%l3,%g1
+	st	%g1,[$out+76]
 	and	%l4,$mask,%l4
-	st	%l3,[$out+12]
+	ld	[$out+80],%g1
+	or	%g1,%l4,%g1
+	st	%g1,[$out+80]
 	and	%l5,$mask,%l5
-	st	%l4,[$out+16]
+	ld	[$out+84],%g1
+	or	%g1,%l5,%g1
+	st	%g1,[$out+84]
 	and	%l6,$mask,%l6
-	st	%l5,[$out+20]
+	ld	[$out+88],%g1
+	or	%g1,%l6,%g1
+	st	%g1,[$out+88]
 	and	%l7,$mask,%l7
-	st	%l6,[$out+24]
-	st	%l7,[$out+28]
+	ld	[$out+92],%g1
+	or	%g1,%l7,%g1
+	st	%g1,[$out+92]
+
+	! Next table entry
+	add	%o2,1,%o2
+	subcc	%o2,%o3,%g0
+	bne	.Loop_scan_w5
+	nop
 
 	ret
 	restore
@@ -1555,34 +1635,61 @@ ecp_nistz256_scatter_w7:
 ecp_nistz256_gather_w7:
 	save	%sp,-STACK_FRAME,%sp
 
-	neg	$index,$mask
-	srax	$mask,63,$mask
+	! Constant-time implementation: scan all table entries
+	! Initialize output to zero
+	mov	64/4,%l7		! word counter
+	mov	$out,%o1		! save output pointer
+.Loop_zero_w7:
+	st	%g0,[$out]
+	subcc	%l7,1,%l7
+	bne	.Loop_zero_w7
+	add	$out,4,$out
+	mov	%o1,$out		! restore output pointer
 
-	add	$index,$mask,$index
-	add	$inp,$index,$inp
-	mov	64/4,$index
+	! Scan all 64 table entries
+	mov	0,%o2			! loop counter (table index)
+	mov	64,%o3			! table size
 
-.Loop_gather_w7:
-	ldub	[$inp+64*0],%l0
-	prefetch [$inp+3840+64*0],1
-	subcc	$index,1,$index
-	ldub	[$inp+64*1],%l1
-	prefetch [$inp+3840+64*1],1
-	ldub	[$inp+64*2],%l2
-	prefetch [$inp+3840+64*2],1
-	ldub	[$inp+64*3],%l3
-	prefetch [$inp+3840+64*3],1
-	add	$inp,64*4,$inp
+.Loop_scan_w7:
+	! Compute equality mask: (loop_counter == target_index) ? -1 : 0
+	subcc	%o2,$index,%g0
+	mov	0,$mask
+	move	%icc,-1,$mask		! mask = (loop_counter == index) ? -1 : 0
+
+	! Load candidate entry from current table position
+	mov	64/4,%l7		! word counter
+	mov	$out,%o4		! current output position
+	mov	$inp,%o5		! current input position
+	add	%o5,%o2,%o5		! inp + loop_counter
+
+.Loop_word_w7:
+	ldub	[%o5+64*0],%l0
+	ldub	[%o5+64*1],%l1
+	ldub	[%o5+64*2],%l2
+	ldub	[%o5+64*3],%l3
+	add	%o5,64*4,%o5
 	sll	%l1,8,%l1
 	sll	%l2,16,%l2
 	or	%l0,%l1,%l0
 	sll	%l3,24,%l3
 	or	%l0,%l2,%l0
 	or	%l0,%l3,%l0
-	and	%l0,$mask,%l0
-	st	%l0,[$out]
-	bne	.Loop_gather_w7
-	add	$out,4,$out
+	
+	! Conditionally accumulate: result |= (candidate & mask)
+	and	%l0,$mask,%l0		! candidate & mask
+	ld	[%o4],%l1		! current result
+	or	%l1,%l0,%l1		! result |= (candidate & mask)
+	st	%l1,[%o4]		! store back
+	
+	subcc	%l7,1,%l7
+	bne	.Loop_word_w7
+	add	%o4,4,%o4
+
+	! Next table entry
+	add	%o2,1,%o2
+	subcc	%o2,%o3,%g0
+	bne	.Loop_scan_w7
+	nop
 
 	ret
 	restore

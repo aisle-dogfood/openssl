@@ -1147,27 +1147,55 @@ for ($i=0;$i<7;$i++) {
 &function_begin("ecp_nistz256_gather_w5");
 	&mov	("esi",&wparam(1));
 	&mov	("ebp",&wparam(2));
-
-	&lea	("esi",&DWP(0,"esi","ebp",4));
-	&neg	("ebp");
-	&sar	("ebp",31);
 	&mov	("edi",&wparam(0));
-	&lea	("esi",&DWP(0,"esi","ebp",4));
+
+	# Constant-time implementation: scan all table entries
+	# Initialize output to zero (96 bytes = 24 words for X,Y,Z coordinates)
+	&xor	("eax","eax");
+    for($i=0;$i<24;$i+=4) {
+	&mov	(&DWP(4*($i+0),"edi"),"eax");
+	&mov	(&DWP(4*($i+1),"edi"),"eax");
+	&mov	(&DWP(4*($i+2),"edi"),"eax");
+	&mov	(&DWP(4*($i+3),"edi"),"eax");
+    }
+
+	# Scan all 16 table entries (w5 uses 4-bit windows, so 2^4 = 16 entries)
+	&xor	("ecx","ecx");		# loop counter (table index)
+
+&set_label("gather_w5_loop");
+	# Compute equality mask: (loop_counter == target_index) ? -1 : 0
+	&xor	("edx","edx");
+	&cmp	("ecx","ebp");
+	&sete	("dl");
+	&neg	("edx");		# edx = (ecx == ebp) ? -1 : 0
+
+	# Load candidate entry from current table position
+	&mov	("eax","esi");
+	&lea	("eax",&DWP(0,"eax","ecx",4));	# esi + (loop_counter * 4)
 
     for($i=0;$i<24;$i+=4) {
-	&mov	("eax",&DWP(64*($i+0),"esi"));
-	&mov	("ebx",&DWP(64*($i+1),"esi"));
-	&mov	("ecx",&DWP(64*($i+2),"esi"));
-	&mov	("edx",&DWP(64*($i+3),"esi"));
-	&and	("eax","ebp");
-	&and	("ebx","ebp");
-	&and	("ecx","ebp");
-	&and	("edx","ebp");
-	&mov	(&DWP(4*($i+0),"edi"),"eax");
-	&mov	(&DWP(4*($i+1),"edi"),"ebx");
-	&mov	(&DWP(4*($i+2),"edi"),"ecx");
-	&mov	(&DWP(4*($i+3),"edi"),"edx");
+	&mov	("ebx",&DWP(64*($i+0),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&DWP(4*($i+0),"edi"),"ebx");	# result |= (candidate & mask)
+	
+	&mov	("ebx",&DWP(64*($i+1),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&DWP(4*($i+1),"edi"),"ebx");	# result |= (candidate & mask)
+	
+	&mov	("ebx",&DWP(64*($i+2),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&DWP(4*($i+2),"edi"),"ebx");	# result |= (candidate & mask)
+	
+	&mov	("ebx",&DWP(64*($i+3),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&DWP(4*($i+3),"edi"),"ebx");	# result |= (candidate & mask)
     }
+
+	# Next table entry
+	&inc	("ecx");
+	&cmp	("ecx",16);
+	&jb	(&label("gather_w5_loop"));
+
 &function_end("ecp_nistz256_gather_w5");
 
 ########################################################################
@@ -1199,27 +1227,55 @@ for ($i=0;$i<7;$i++) {
 &function_begin("ecp_nistz256_gather_w7");
 	&mov	("esi",&wparam(1));
 	&mov	("ebp",&wparam(2));
-
-	&add	("esi","ebp");
-	&neg	("ebp"),
-	&sar	("ebp",31);
 	&mov	("edi",&wparam(0));
-	&lea	("esi",&DWP(0,"esi","ebp"));
+
+	# Constant-time implementation: scan all table entries
+	# Initialize output to zero
+	&xor	("eax","eax");
+    for($i=0;$i<64;$i+=4) {
+	&mov	(&BP($i+0,"edi"),"al");
+	&mov	(&BP($i+1,"edi"),"al");
+	&mov	(&BP($i+2,"edi"),"al");
+	&mov	(&BP($i+3,"edi"),"al");
+    }
+
+	# Scan all 64 table entries
+	&xor	("ecx","ecx");		# loop counter (table index)
+
+&set_label("gather_w7_loop");
+	# Compute equality mask: (loop_counter == target_index) ? -1 : 0
+	&xor	("edx","edx");
+	&cmp	("ecx","ebp");
+	&sete	("dl");
+	&neg	("edx");		# edx = (ecx == ebp) ? -1 : 0
+
+	# Load candidate entry from current table position
+	&mov	("eax","esi");
+	&add	("eax","ecx");		# esi + loop_counter
 
     for($i=0;$i<64;$i+=4) {
-	&movz	("eax",&BP(64*($i+0),"esi"));
-	&movz	("ebx",&BP(64*($i+1),"esi"));
-	&movz	("ecx",&BP(64*($i+2),"esi"));
-	&and	("eax","ebp");
-	&movz	("edx",&BP(64*($i+3),"esi"));
-	&and	("ebx","ebp");
-	&mov	(&BP($i+0,"edi"),"al");
-	&and	("ecx","ebp");
-	&mov	(&BP($i+1,"edi"),"bl");
-	&and	("edx","ebp");
-	&mov	(&BP($i+2,"edi"),"cl");
-	&mov	(&BP($i+3,"edi"),"dl");
+	&movz	("ebx",&BP(64*($i+0),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&BP($i+0,"edi"),"bl");	# result |= (candidate & mask)
+	
+	&movz	("ebx",&BP(64*($i+1),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&BP($i+1,"edi"),"bl");	# result |= (candidate & mask)
+	
+	&movz	("ebx",&BP(64*($i+2),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&BP($i+2,"edi"),"bl");	# result |= (candidate & mask)
+	
+	&movz	("ebx",&BP(64*($i+3),"eax"));
+	&and	("ebx","edx");		# candidate & mask
+	&or	(&BP($i+3,"edi"),"bl");	# result |= (candidate & mask)
     }
+
+	# Next table entry
+	&inc	("ecx");
+	&cmp	("ecx",64);
+	&jb	(&label("gather_w7_loop"));
+
 &function_end("ecp_nistz256_gather_w7");
 
 ########################################################################
