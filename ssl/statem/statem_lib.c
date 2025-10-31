@@ -2917,6 +2917,12 @@ MSG_PROCESS_RETURN tls13_process_compressed_certificate(SSL_CONNECTION *sc,
         goto err;
     }
 
+    /* Validate expected_length against configured limits */
+    if (expected_length == 0 || expected_length > sc->max_cert_list) {
+        SSLfatal(sc, SSL_AD_DECODE_ERROR, SSL_R_BAD_DECOMPRESSION);
+        goto err;
+    }
+
     if (!BUF_MEM_grow(buf, expected_length)
         || !PACKET_buf_init(tmppkt, (unsigned char *)buf->data, expected_length)
         || COMP_expand_block(comp, (unsigned char *)buf->data, expected_length,
