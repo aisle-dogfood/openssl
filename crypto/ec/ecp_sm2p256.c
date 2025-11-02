@@ -346,29 +346,50 @@ static void ecp_sm2p256_point_G_mul_by_scalar(P256_POINT *R, const BN_ULONG *k)
 {
     unsigned int i, index, mask = 0xff;
     P256_POINT_AFFINE Q;
+    BN_ULONG is_zero_k, is_zero_index;
+    P256_POINT temp_R;
 
     memset(R, 0, sizeof(P256_POINT));
 
-    if (is_zeros(k))
+    is_zero_k = is_zeros(k);
+    if (is_zero_k)
         return;
 
+    /* Process first byte - constant time table lookup */
     index = k[0] & mask;
-    if (index) {
-        index = index * 8;
-        memcpy(R->X, ecp_sm2p256_precomputed + index, 32);
-        memcpy(R->Y, ecp_sm2p256_precomputed + index + P256_LIMBS, 32);
-        R->Z[0] = 1;
+    is_zero_index = constant_time_is_zero_64(index);
+    
+    /* Always perform table lookup, but conditionally use result */
+    constant_time_lookup(Q.X, ecp_sm2p256_precomputed, 32, 256 * 8, index * 8);
+    constant_time_lookup(Q.Y, ecp_sm2p256_precomputed + P256_LIMBS, 32, 256 * 8, index * 8);
+    
+    /* Conditionally copy Q to R if index != 0 */
+    for (i = 0; i < P256_LIMBS; i++) {
+        R->X[i] = constant_time_select_64(~is_zero_index, Q.X[i], 0);
+        R->Y[i] = constant_time_select_64(~is_zero_index, Q.Y[i], 0);
     }
+    R->Z[0] = constant_time_select_64(~is_zero_index, 1, 0);
+    R->Z[1] = 0;
+    R->Z[2] = 0;
+    R->Z[3] = 0;
 
     for (i = 1; i < 32; ++i) {
         index = (k[i / 8] >> (8 * (i % 8))) & mask;
+        is_zero_index = constant_time_is_zero_64(index);
 
-        if (index) {
-            index = index + i * 256;
-            index = index * 8;
-            memcpy(Q.X, ecp_sm2p256_precomputed + index, 32);
-            memcpy(Q.Y, ecp_sm2p256_precomputed + index + P256_LIMBS, 32);
-            ecp_sm2p256_point_add_affine(R, R, &Q);
+        /* Always perform table lookup, but conditionally use result */
+        constant_time_lookup(Q.X, ecp_sm2p256_precomputed, 32, 256 * 8, (index + i * 256) * 8);
+        constant_time_lookup(Q.Y, ecp_sm2p256_precomputed + P256_LIMBS, 32, 256 * 8, (index + i * 256) * 8);
+
+        /* Always perform point addition, but conditionally use result */
+        memcpy(&temp_R, R, sizeof(P256_POINT));
+        ecp_sm2p256_point_add_affine(&temp_R, &temp_R, &Q);
+        
+        /* Conditionally update R if index != 0 */
+        for (unsigned int j = 0; j < P256_LIMBS; j++) {
+            R->X[j] = constant_time_select_64(~is_zero_index, temp_R.X[j], R->X[j]);
+            R->Y[j] = constant_time_select_64(~is_zero_index, temp_R.Y[j], R->Y[j]);
+            R->Z[j] = constant_time_select_64(~is_zero_index, temp_R.Z[j], R->Z[j]);
         }
     }
 }
@@ -383,11 +404,16 @@ static void ecp_sm2p256_point_P_mul_by_scalar(P256_POINT *R, const BN_ULONG *k,
     int i, init = 0;
     unsigned int index, mask = 0x0f;
     ALIGN64 P256_POINT precomputed[16];
+    P256_POINT temp_point, temp_R;
+    BN_ULONG is_zero_index, is_init_zero;
 
     memset(R, 0, sizeof(P256_POINT));
 
     if (is_zeros(k))
         return;
+
+    /* Initialize precomputed table with point at infinity at index 0 */
+    memset(&precomputed[0], 0, sizeof(P256_POINT));
 
     /* The first value of the precomputed table is P. */
     memcpy(precomputed[1].X, P.X, 32);
@@ -406,19 +432,38 @@ static void ecp_sm2p256_point_P_mul_by_scalar(P256_POINT *R, const BN_ULONG *k,
 
     for (i = 64 - 1; i >= 0; --i) {
         index = (k[i / 16] >> (4 * (i % 16))) & mask;
+        is_zero_index = constant_time_is_zero_64(index);
+        is_init_zero = constant_time_is_zero_64(init);
+
+        /* Always perform constant-time table lookup */
+        constant_time_lookup(&temp_point, precomputed, sizeof(P256_POINT), 16, index);
 
         if (init == 0) {
-            if (index) {
-                memcpy(R, &precomputed[index], sizeof(P256_POINT));
-                init = 1;
+            /* Conditionally initialize R with temp_point if index != 0 */
+            for (unsigned int j = 0; j < P256_LIMBS; j++) {
+                R->X[j] = constant_time_select_64(~is_zero_index, temp_point.X[j], R->X[j]);
+                R->Y[j] = constant_time_select_64(~is_zero_index, temp_point.Y[j], R->Y[j]);
+                R->Z[j] = constant_time_select_64(~is_zero_index, temp_point.Z[j], R->Z[j]);
             }
+            /* Update init flag if index != 0 */
+            init = constant_time_select_64(~is_zero_index, 1, init);
         } else {
+            /* Always perform 4 doublings */
             ecp_sm2p256_point_double(R, R);
             ecp_sm2p256_point_double(R, R);
             ecp_sm2p256_point_double(R, R);
             ecp_sm2p256_point_double(R, R);
-            if (index)
-                ecp_sm2p256_point_add(R, R, &precomputed[index]);
+            
+            /* Always perform point addition, but conditionally use result */
+            memcpy(&temp_R, R, sizeof(P256_POINT));
+            ecp_sm2p256_point_add(&temp_R, &temp_R, &temp_point);
+            
+            /* Conditionally update R if index != 0 */
+            for (unsigned int j = 0; j < P256_LIMBS; j++) {
+                R->X[j] = constant_time_select_64(~is_zero_index, temp_R.X[j], R->X[j]);
+                R->Y[j] = constant_time_select_64(~is_zero_index, temp_R.Y[j], R->Y[j]);
+                R->Z[j] = constant_time_select_64(~is_zero_index, temp_R.Z[j], R->Z[j]);
+            }
         }
     }
 }
