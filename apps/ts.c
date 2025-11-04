@@ -766,82 +766,65 @@ static TS_RESP *create_response(CONF *conf, const char *section, const char *eng
 static ASN1_INTEGER *serial_cb(TS_RESP_CTX *ctx, void *data)
 {
     const char *serial_file = (const char *)data;
-    ASN1_INTEGER *serial = next_serial(serial_file);
+    ASN1_INTEGER *serial = NULL;
+    BIGNUM *bn = NULL;
+    int exists = 0;
 
-    if (serial == NULL) {
+    /* Load current serial number atomically */
+    bn = load_serial(serial_file, &exists, 1, NULL);
+    if (bn == NULL) {
         TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
                                     "Error during serial number "
                                     "generation.");
         TS_RESP_CTX_add_failure_info(ctx, TS_INFO_ADD_INFO_NOT_AVAILABLE);
-    } else {
-        save_ts_serial(serial_file, serial);
+        return NULL;
     }
 
-    return serial;
-}
+    /* Increment the serial number */
+    if (!BN_add_word(bn, 1)) {
+        BN_free(bn);
+        TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
+                                    "Error during serial number "
+                                    "generation.");
+        TS_RESP_CTX_add_failure_info(ctx, TS_INFO_ADD_INFO_NOT_AVAILABLE);
+        return NULL;
+    }
 
-static ASN1_INTEGER *next_serial(const char *serialfile)
-{
-    int ret = 0;
-    BIO *in = NULL;
-    ASN1_INTEGER *serial = NULL;
-    BIGNUM *bn = NULL;
+    /* Convert to ASN1_INTEGER for return value */
+    serial = BN_to_ASN1_INTEGER(bn, NULL);
+    if (serial == NULL) {
+        BN_free(bn);
+        TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
+                                    "Error during serial number "
+                                    "generation.");
+        TS_RESP_CTX_add_failure_info(ctx, TS_INFO_ADD_INFO_NOT_AVAILABLE);
+        return NULL;
+    }
 
-    if ((serial = ASN1_INTEGER_new()) == NULL)
-        goto err;
-
-    if ((in = BIO_new_file(serialfile, "r")) == NULL) {
-        ERR_clear_error();
-        BIO_printf(bio_err, "Warning: could not open file %s for "
-                   "reading, using serial number: 1\n", serialfile);
-        if (!ASN1_INTEGER_set(serial, 1))
-            goto err;
-    } else {
-        char buf[1024];
-        if (!a2i_ASN1_INTEGER(in, serial, buf, sizeof(buf))) {
-            BIO_printf(bio_err, "unable to load number from %s\n",
-                       serialfile);
-            goto err;
-        }
-        if ((bn = ASN1_INTEGER_to_BN(serial, NULL)) == NULL)
-            goto err;
+    /* Save the new serial number atomically using temporary file + rename */
+    if (!save_serial(serial_file, "new", bn, NULL)) {
         ASN1_INTEGER_free(serial);
-        serial = NULL;
-        if (!BN_add_word(bn, 1))
-            goto err;
-        if ((serial = BN_to_ASN1_INTEGER(bn, NULL)) == NULL)
-            goto err;
+        BN_free(bn);
+        TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
+                                    "Error during serial number "
+                                    "generation.");
+        TS_RESP_CTX_add_failure_info(ctx, TS_INFO_ADD_INFO_NOT_AVAILABLE);
+        return NULL;
     }
-    ret = 1;
 
- err:
-    if (!ret) {
+    /* Atomically replace the serial file */
+    if (!rotate_serial(serial_file, "new", "old")) {
         ASN1_INTEGER_free(serial);
-        serial = NULL;
+        BN_free(bn);
+        TS_RESP_CTX_set_status_info(ctx, TS_STATUS_REJECTION,
+                                    "Error during serial number "
+                                    "generation.");
+        TS_RESP_CTX_add_failure_info(ctx, TS_INFO_ADD_INFO_NOT_AVAILABLE);
+        return NULL;
     }
-    BIO_free_all(in);
+
     BN_free(bn);
     return serial;
-}
-
-static int save_ts_serial(const char *serialfile, ASN1_INTEGER *serial)
-{
-    int ret = 0;
-    BIO *out = NULL;
-
-    if ((out = BIO_new_file(serialfile, "w")) == NULL)
-        goto err;
-    if (i2a_ASN1_INTEGER(out, serial) <= 0)
-        goto err;
-    if (BIO_puts(out, "\n") <= 0)
-        goto err;
-    ret = 1;
- err:
-    if (!ret)
-        BIO_printf(bio_err, "could not save serial number to %s\n",
-                   serialfile);
-    BIO_free_all(out);
-    return ret;
 }
 
 
