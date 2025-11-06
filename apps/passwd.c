@@ -218,8 +218,8 @@ int passwd_main(int argc, char **argv)
             goto end;
     }
 
-    if (passwds == NULL) {
-        /* no passwords on the command line */
+    if (passwds == NULL || in != NULL) {
+        /* no passwords on the command line OR reading from input file */
 
         passwd_malloc_size = pw_maxlen + 2;
         /* longer than necessary so that we can warn about truncation */
