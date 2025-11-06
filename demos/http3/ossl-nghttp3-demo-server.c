@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <string.h>
 
 #ifndef PATH_MAX
 # define PATH_MAX 255
@@ -764,10 +765,50 @@ static void handle_events_from_ids(struct h3ssl *h3ssl)
     }
 }
 
+/*
+ * Validate and sanitize URL to prevent path traversal attacks
+ * Returns 1 if URL is safe, 0 if it contains dangerous patterns
+ */
+static int validate_url(const char *url)
+{
+    const char *p;
+    
+    if (url == NULL || strlen(url) == 0)
+        return 0;
+    
+    /* Check for path traversal patterns */
+    if (strstr(url, "..") != NULL)
+        return 0;
+    
+    /* Check for absolute paths */
+    if (url[0] == '/')
+        return 0;
+    
+    /* Check for null bytes */
+    if (strlen(url) != strcspn(url, "\0"))
+        return 0;
+    
+    /* Only allow alphanumeric characters, dots, hyphens, underscores, and forward slashes */
+    for (p = url; *p != '\0'; p++) {
+        if (!(((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
+               (*p >= '0' && *p <= '9') || *p == '.' || *p == '-' || 
+               *p == '_' || *p == '/')))
+            return 0;
+    }
+    
+    return 1;
+}
+
 static size_t get_file_length(struct h3ssl *h3ssl)
 {
     char filename[PATH_MAX];
     struct stat st;
+
+    /* Validate URL to prevent path traversal */
+    if (!validate_url(h3ssl->url)) {
+        printf("Invalid URL detected: %s\n", h3ssl->url);
+        return 0;
+    }
 
     memset(filename, 0, PATH_MAX);
     if (h3ssl->fileprefix != NULL)
@@ -798,6 +839,12 @@ static char *get_file_data(struct h3ssl *h3ssl)
 
     if (size == 0)
         return NULL;
+
+    /* Validate URL to prevent path traversal */
+    if (!validate_url(h3ssl->url)) {
+        printf("Invalid URL detected: %s\n", h3ssl->url);
+        return NULL;
+    }
 
     memset(filename, 0, PATH_MAX);
     if (h3ssl->fileprefix != NULL)
