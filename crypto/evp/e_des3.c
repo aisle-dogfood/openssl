@@ -225,55 +225,17 @@ BLOCK_CIPHER_defs(des_ede, DES_EDE_KEY, NID_des_ede, 8, 16, 8, 64,
 static int des_ede_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                             const unsigned char *iv, int enc)
 {
-    DES_cblock *deskey = (DES_cblock *)key;
-    DES_EDE_KEY *dat = data(ctx);
-
-    dat->stream.cbc = NULL;
-# if defined(SPARC_DES_CAPABLE)
-    if (SPARC_DES_CAPABLE) {
-        int mode = EVP_CIPHER_CTX_get_mode(ctx);
-
-        if (mode == EVP_CIPH_CBC_MODE) {
-            des_t4_key_expand(&deskey[0], &dat->ks1);
-            des_t4_key_expand(&deskey[1], &dat->ks2);
-            memcpy(&dat->ks3, &dat->ks1, sizeof(dat->ks1));
-            dat->stream.cbc = enc ? des_t4_ede3_cbc_encrypt :
-                des_t4_ede3_cbc_decrypt;
-            return 1;
-        }
-    }
-# endif
-    DES_set_key_unchecked(&deskey[0], &dat->ks1);
-    DES_set_key_unchecked(&deskey[1], &dat->ks2);
-    memcpy(&dat->ks3, &dat->ks1, sizeof(dat->ks1));
-    return 1;
+    /* DES3 (Triple DES) is considered cryptographically weak and is no longer supported */
+    ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_CIPHER);
+    return 0;
 }
 
 static int des_ede3_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                              const unsigned char *iv, int enc)
 {
-    DES_cblock *deskey = (DES_cblock *)key;
-    DES_EDE_KEY *dat = data(ctx);
-
-    dat->stream.cbc = NULL;
-# if defined(SPARC_DES_CAPABLE)
-    if (SPARC_DES_CAPABLE) {
-        int mode = EVP_CIPHER_CTX_get_mode(ctx);
-
-        if (mode == EVP_CIPH_CBC_MODE) {
-            des_t4_key_expand(&deskey[0], &dat->ks1);
-            des_t4_key_expand(&deskey[1], &dat->ks2);
-            des_t4_key_expand(&deskey[2], &dat->ks3);
-            dat->stream.cbc = enc ? des_t4_ede3_cbc_encrypt :
-                des_t4_ede3_cbc_decrypt;
-            return 1;
-        }
-    }
-# endif
-    DES_set_key_unchecked(&deskey[0], &dat->ks1);
-    DES_set_key_unchecked(&deskey[1], &dat->ks2);
-    DES_set_key_unchecked(&deskey[2], &dat->ks3);
-    return 1;
+    /* DES3 (Triple DES) is considered cryptographically weak and is no longer supported */
+    ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_CIPHER);
+    return 0;
 }
 
 static int des3_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
