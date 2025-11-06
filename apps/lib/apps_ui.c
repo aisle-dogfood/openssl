@@ -34,8 +34,11 @@ static int ui_read(UI *ui, UI_STRING *uis)
         case UIT_PROMPT:
         case UIT_VERIFY:
             {
-                const char *password =
-                    ((PW_CB_DATA *)UI_get0_user_data(ui))->password;
+                PW_CB_DATA *cb_data = (PW_CB_DATA *)UI_get0_user_data(ui);
+                const char *password = NULL;
+
+                if (cb_data != NULL)
+                    password = cb_data->password;
 
                 if (password != NULL) {
                     UI_set_result(ui, uis, password);
@@ -69,8 +72,11 @@ static int ui_write(UI *ui, UI_STRING *uis)
         case UIT_PROMPT:
         case UIT_VERIFY:
             {
-                const char *password =
-                    ((PW_CB_DATA *)UI_get0_user_data(ui))->password;
+                PW_CB_DATA *cb_data = (PW_CB_DATA *)UI_get0_user_data(ui);
+                const char *password = NULL;
+
+                if (cb_data != NULL)
+                    password = cb_data->password;
 
                 if (password != NULL)
                     return 1;
