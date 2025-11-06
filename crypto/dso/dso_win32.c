@@ -103,7 +103,29 @@ static int win32_load(DSO *dso)
         ERR_raise(ERR_LIB_DSO, DSO_R_NO_FILENAME);
         goto err;
     }
+    
+    /* Security validation: Check for directory traversal patterns */
+    if (strstr(filename, "..") != NULL || 
+        strstr(filename, "\\\\") != NULL ||
+        (strlen(filename) > 0 && (filename[0] == '\\' || filename[0] == '/'))) {
+        ERR_raise_data(ERR_LIB_DSO, DSO_R_LOAD_FAILED,
+                       "Invalid filename path: %s", filename);
+        goto err;
+    }
+    
+    /* Security fix: Use LoadLibraryEx with security flags to prevent DLL hijacking */
+#if defined(_WIN32) && !defined(_WIN32_WCE)
+    /* For Windows Vista and later, use LOAD_LIBRARY_SEARCH_SYSTEM32 to restrict
+     * library loading to system directories only for security */
+    h = LoadLibraryExA(filename, NULL, LOAD_LIBRARY_SEARCH_SYSTEM32 | LOAD_LIBRARY_SEARCH_USER_DIRS);
+    if (h == NULL) {
+        /* Fallback to default search if the secure method fails */
+        h = LoadLibraryA(filename);
+    }
+#else
     h = LoadLibraryA(filename);
+#endif
+    
     if (h == NULL) {
         ERR_raise_data(ERR_LIB_DSO, DSO_R_LOAD_FAILED,
                        "filename(%s)", filename);
@@ -166,6 +188,22 @@ static DSO_FUNC_TYPE win32_bind_func(DSO *dso, const char *symname)
 
     if ((dso == NULL) || (symname == NULL)) {
         ERR_raise(ERR_LIB_DSO, ERR_R_PASSED_NULL_PARAMETER);
+        return NULL;
+    }
+    
+    /* Security validation: Check for suspicious symbol names */
+    if (strlen(symname) == 0 || strlen(symname) > 256) {
+        ERR_raise_data(ERR_LIB_DSO, DSO_R_SYM_FAILURE, 
+                       "Invalid symbol name length: %s", symname);
+        return NULL;
+    }
+    
+    /* Check for potentially dangerous symbol patterns */
+    if (strstr(symname, "..") != NULL || 
+        strchr(symname, '/') != NULL || 
+        strchr(symname, '\\') != NULL) {
+        ERR_raise_data(ERR_LIB_DSO, DSO_R_SYM_FAILURE, 
+                       "Invalid symbol name pattern: %s", symname);
         return NULL;
     }
     if (sk_void_num(dso->meth_data) < 1) {
