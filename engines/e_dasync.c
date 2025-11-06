@@ -186,31 +186,17 @@ static const EVP_CIPHER *dasync_aes_256_ctr(void)
 }
 
 /*
- * Holds the EVP_CIPHER object for aes_128_cbc_hmac_sha1 in this engine. Set up
- * once only during engine bind and can then be reused many times.
- *
- * This 'stitched' cipher depends on the EVP_aes_128_cbc_hmac_sha1() cipher,
- * which is implemented only if the AES-NI instruction set extension is available
- * (see OPENSSL_IA32CAP(3)). If that's not the case, then this cipher will not
- * be available either.
- *
- * Note: Since it is a legacy mac-then-encrypt cipher, modern TLS peers (which
- * negotiate the encrypt-then-mac extension) won't negotiate it anyway.
+ * Note: AES-128-CBC-HMAC-SHA1 cipher has been removed due to inadequate
+ * encryption strength. This legacy mac-then-encrypt cipher is vulnerable
+ * and should not be used in modern applications.
  */
-static EVP_CIPHER *_hidden_aes_128_cbc_hmac_sha1 = NULL;
-static const EVP_CIPHER *dasync_aes_128_cbc_hmac_sha1(void)
-{
-    return _hidden_aes_128_cbc_hmac_sha1;
-}
 
 static void destroy_ciphers(void)
 {
     EVP_CIPHER_meth_free(_hidden_aes_128_cbc);
     EVP_CIPHER_meth_free(_hidden_aes_256_ctr);
-    EVP_CIPHER_meth_free(_hidden_aes_128_cbc_hmac_sha1);
     _hidden_aes_128_cbc = NULL;
     _hidden_aes_256_ctr = NULL;
-    _hidden_aes_128_cbc_hmac_sha1 = NULL;
 }
 
 static int dasync_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
@@ -219,7 +205,6 @@ static int dasync_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
 static int dasync_cipher_nids[] = {
     NID_aes_128_cbc,
     NID_aes_256_ctr,
-    NID_aes_128_cbc_hmac_sha1,
     0
 };
 
@@ -324,31 +309,11 @@ static int bind_dasync(ENGINE *e)
         _hidden_aes_256_ctr = NULL;
     }
 
-    _hidden_aes_128_cbc_hmac_sha1 = EVP_CIPHER_meth_new(
-                                                NID_aes_128_cbc_hmac_sha1,
-                                                16 /* block size */,
-                                                16 /* key len */);
-    if (_hidden_aes_128_cbc_hmac_sha1 == NULL
-            || !EVP_CIPHER_meth_set_iv_length(_hidden_aes_128_cbc_hmac_sha1,16)
-            || !EVP_CIPHER_meth_set_flags(_hidden_aes_128_cbc_hmac_sha1,
-                                            EVP_CIPH_CBC_MODE
-                                          | EVP_CIPH_FLAG_DEFAULT_ASN1
-                                          | EVP_CIPH_FLAG_AEAD_CIPHER
-                                          | EVP_CIPH_FLAG_PIPELINE
-                                          | EVP_CIPH_CUSTOM_COPY)
-            || !EVP_CIPHER_meth_set_init(_hidden_aes_128_cbc_hmac_sha1,
-                                         dasync_aes128_cbc_hmac_sha1_init_key)
-            || !EVP_CIPHER_meth_set_do_cipher(_hidden_aes_128_cbc_hmac_sha1,
-                                            dasync_aes128_cbc_hmac_sha1_cipher)
-            || !EVP_CIPHER_meth_set_cleanup(_hidden_aes_128_cbc_hmac_sha1,
-                                            dasync_aes128_cbc_hmac_sha1_cleanup)
-            || !EVP_CIPHER_meth_set_ctrl(_hidden_aes_128_cbc_hmac_sha1,
-                                         dasync_aes128_cbc_hmac_sha1_ctrl)
-            || !EVP_CIPHER_meth_set_impl_ctx_size(_hidden_aes_128_cbc_hmac_sha1,
-                                sizeof(struct dasync_pipeline_ctx))) {
-        EVP_CIPHER_meth_free(_hidden_aes_128_cbc_hmac_sha1);
-        _hidden_aes_128_cbc_hmac_sha1 = NULL;
-    }
+    /* 
+     * AES-128-CBC-HMAC-SHA1 cipher initialization removed due to inadequate
+     * encryption strength. This legacy cipher is vulnerable and should not
+     * be used in modern applications.
+     */
 
     return 1;
 }
@@ -487,9 +452,6 @@ static int dasync_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
         break;
     case NID_aes_256_ctr:
         *cipher = dasync_aes_256_ctr();
-        break;
-    case NID_aes_128_cbc_hmac_sha1:
-        *cipher = dasync_aes_128_cbc_hmac_sha1();
         break;
     default:
         ok = 0;
@@ -664,13 +626,11 @@ static int dasync_cipher_ctrl_helper(EVP_CIPHER_CTX *ctx, int type, int arg,
             break;
 
         case EVP_CTRL_AEAD_SET_MAC_KEY:
-            if (!aeadcapable)
-                return -1;
-            EVP_CIPHER_CTX_set_cipher_data(ctx, pipe_ctx->inner_cipher_data);
-            ret = EVP_CIPHER_meth_get_ctrl(EVP_aes_128_cbc_hmac_sha1())
-                                          (ctx, type, arg, ptr);
-            EVP_CIPHER_CTX_set_cipher_data(ctx, pipe_ctx);
-            return ret;
+            /* 
+             * AES-128-CBC-HMAC-SHA1 support removed due to inadequate encryption strength.
+             * This legacy cipher is vulnerable and should not be used.
+             */
+            return -1;
 
         case EVP_CTRL_AEAD_TLS1_AAD:
         {
@@ -844,44 +804,13 @@ static int dasync_aes256_ctr_cleanup(EVP_CIPHER_CTX *ctx)
 
 
 /*
- * AES128 CBC HMAC SHA1 Implementation
+ * AES128 CBC HMAC SHA1 Implementation - REMOVED
+ * 
+ * This implementation has been removed due to inadequate encryption strength.
+ * AES-128-CBC-HMAC-SHA1 is considered vulnerable and should not be used in
+ * modern applications. Use stronger encryption algorithms like AES-256-GCM
+ * or AES-256-CTR instead.
  */
-
-static int dasync_aes128_cbc_hmac_sha1_ctrl(EVP_CIPHER_CTX *ctx, int type,
-                                             int arg, void *ptr)
-{
-    return dasync_cipher_ctrl_helper(ctx, type, arg, ptr, 1, EVP_aes_128_cbc_hmac_sha1());
-}
-
-static int dasync_aes128_cbc_hmac_sha1_init_key(EVP_CIPHER_CTX *ctx,
-                                                const unsigned char *key,
-                                                const unsigned char *iv,
-                                                int enc)
-{
-    /*
-     * We can safely assume that EVP_aes_128_cbc_hmac_sha1() != NULL,
-     * see comment before the definition of dasync_aes_128_cbc_hmac_sha1().
-     */
-    return dasync_cipher_init_key_helper(ctx, key, iv, enc,
-                                         EVP_aes_128_cbc_hmac_sha1());
-}
-
-static int dasync_aes128_cbc_hmac_sha1_cipher(EVP_CIPHER_CTX *ctx,
-                                               unsigned char *out,
-                                               const unsigned char *in,
-                                               size_t inl)
-{
-    return dasync_cipher_helper(ctx, out, in, inl, EVP_aes_128_cbc_hmac_sha1());
-}
-
-static int dasync_aes128_cbc_hmac_sha1_cleanup(EVP_CIPHER_CTX *ctx)
-{
-    /*
-     * We can safely assume that EVP_aes_128_cbc_hmac_sha1() != NULL,
-     * see comment before the definition of dasync_aes_128_cbc_hmac_sha1().
-     */
-    return dasync_cipher_cleanup_helper(ctx, EVP_aes_128_cbc_hmac_sha1());
-}
 
 
 /*
