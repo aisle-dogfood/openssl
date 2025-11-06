@@ -18,17 +18,19 @@ void openssl_add_all_ciphers_int(void)
 {
 
 #ifndef OPENSSL_NO_DES
+    /* 
+     * Single DES and DES-EDE ciphers are cryptographically weak (56-bit security)
+     * and should only be enabled when explicitly requested for legacy compatibility.
+     * Only register them if OPENSSL_ENABLE_WEAK_DES is defined.
+     */
+# ifdef OPENSSL_ENABLE_WEAK_DES
     EVP_add_cipher(EVP_des_cfb());
     EVP_add_cipher(EVP_des_cfb1());
     EVP_add_cipher(EVP_des_cfb8());
     EVP_add_cipher(EVP_des_ede_cfb());
-    EVP_add_cipher(EVP_des_ede3_cfb());
-    EVP_add_cipher(EVP_des_ede3_cfb1());
-    EVP_add_cipher(EVP_des_ede3_cfb8());
 
     EVP_add_cipher(EVP_des_ofb());
     EVP_add_cipher(EVP_des_ede_ofb());
-    EVP_add_cipher(EVP_des_ede3_ofb());
 
     EVP_add_cipher(EVP_desx_cbc());
     EVP_add_cipher_alias(SN_desx_cbc, "DESX");
@@ -38,14 +40,21 @@ void openssl_add_all_ciphers_int(void)
     EVP_add_cipher_alias(SN_des_cbc, "DES");
     EVP_add_cipher_alias(SN_des_cbc, "des");
     EVP_add_cipher(EVP_des_ede_cbc());
-    EVP_add_cipher(EVP_des_ede3_cbc());
-    EVP_add_cipher_alias(SN_des_ede3_cbc, "DES3");
-    EVP_add_cipher_alias(SN_des_ede3_cbc, "des3");
 
     EVP_add_cipher(EVP_des_ecb());
     EVP_add_cipher(EVP_des_ede());
     EVP_add_cipher_alias(SN_des_ede_ecb, "DES-EDE-ECB");
     EVP_add_cipher_alias(SN_des_ede_ecb, "des-ede-ecb");
+# endif
+
+    /* 3DES ciphers provide 112-bit security and are still acceptable for some use cases */
+    EVP_add_cipher(EVP_des_ede3_cfb());
+    EVP_add_cipher(EVP_des_ede3_cfb1());
+    EVP_add_cipher(EVP_des_ede3_cfb8());
+    EVP_add_cipher(EVP_des_ede3_ofb());
+    EVP_add_cipher(EVP_des_ede3_cbc());
+    EVP_add_cipher_alias(SN_des_ede3_cbc, "DES3");
+    EVP_add_cipher_alias(SN_des_ede3_cbc, "des3");
     EVP_add_cipher(EVP_des_ede3());
     EVP_add_cipher_alias(SN_des_ede3_ecb, "DES-EDE3-ECB");
     EVP_add_cipher_alias(SN_des_ede3_ecb, "des-ede3-ecb");
