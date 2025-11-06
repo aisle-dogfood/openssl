@@ -113,7 +113,9 @@ const OSSL_DISPATCH ossl_##alg##kbits##_functions[] = {                        \
     OSSL_DISPATCH_END                                                          \
 };
 
+#ifndef OPENSSL_NO_WEAK_CIPHERS
 /* ossl_rc440_functions */
 IMPLEMENT_cipher(rc4, RC4, RC4_FLAGS, 40, 8, 0, stream)
+#endif /* OPENSSL_NO_WEAK_CIPHERS */
 /* ossl_rc4128_functions */
 IMPLEMENT_cipher(rc4, RC4, RC4_FLAGS, 128, 8, 0, stream)
