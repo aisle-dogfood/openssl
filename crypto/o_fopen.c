@@ -27,6 +27,7 @@
 
 #include "internal/e_os.h"
 #include "internal/cryptlib.h"
+#include "internal/common.h"
 
 #if !defined(OPENSSL_NO_STDIO)
 
@@ -34,6 +35,64 @@
 # ifdef __DJGPP__
 #  include <unistd.h>
 # endif
+
+/*
+ * Validate filename to prevent path traversal attacks
+ * Returns 1 if filename is safe, 0 if potentially dangerous
+ */
+static int validate_filename(const char *filename)
+{
+    const char *p;
+    int dotdot_count = 0;
+    
+    if (filename == NULL)
+        return 0;
+    
+    /* 
+     * Check for excessive path traversal sequences that could escape
+     * reasonable directory boundaries. Allow some ".." for legitimate
+     * relative paths but block excessive traversal.
+     */
+    p = filename;
+    while ((p = strstr(p, "..")) != NULL) {
+        /* Check if ".." is a complete path component */
+        if ((p == filename || p[-1] == '/' || p[-1] == '\\') &&
+            (p[2] == '\0' || p[2] == '/' || p[2] == '\\')) {
+            dotdot_count++;
+            /* Allow reasonable number of parent directory references */
+            if (dotdot_count > 10) {
+                return 0; /* Excessive path traversal detected */
+            }
+        }
+        p += 2;
+    }
+    
+    /* 
+     * For security, reject absolute paths that point to sensitive system directories
+     */
+    if (ossl_is_absolute_path(filename)) {
+        const char *sensitive_dirs[] = {
+            "/etc/", "/proc/", "/sys/", "/dev/", "/boot/", "/root/",
+            "C:\\Windows\\", "C:\\Program Files\\", "C:\\Users\\",
+            NULL
+        };
+        int i;
+        
+        for (i = 0; sensitive_dirs[i] != NULL; i++) {
+            size_t len = strlen(sensitive_dirs[i]);
+            if (strncmp(filename, sensitive_dirs[i], len) == 0) {
+                return 0; /* Access to sensitive directory blocked */
+            }
+        }
+    }
+    
+    /* Block null bytes and other dangerous characters */
+    if (strchr(filename, '\0') != filename + strlen(filename)) {
+        return 0; /* Null byte in filename */
+    }
+    
+    return 1; /* Filename appears safe */
+}
 
 FILE *openssl_fopen(const char *filename, const char *mode)
 {
@@ -45,6 +104,13 @@ FILE *openssl_fopen(const char *filename, const char *mode)
 
     if (filename == NULL)
         return NULL;
+    
+    /* Validate filename to prevent path traversal attacks */
+    if (!validate_filename(filename)) {
+        ERR_raise_data(ERR_LIB_SYS, EACCES,
+                       "filename validation failed for security: %s", filename);
+        return NULL;
+    }
 # if defined(_WIN32) && defined(CP_UTF8)
     len_0 = (int)strlen(filename) + 1;
 
