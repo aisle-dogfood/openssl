@@ -127,38 +127,7 @@ static int cipher_hw_des_cfb64_cipher(PROV_CIPHER_CTX *ctx, unsigned char *out,
     return 1;
 }
 
-/*
- * Although we have a CFB-r implementation for DES, it doesn't pack the right
- * way, so wrap it here
- */
-static int cipher_hw_des_cfb1_cipher(PROV_CIPHER_CTX *ctx, unsigned char *out,
-                                     const unsigned char *in, size_t inl)
-{
-    size_t n, chunk = MAXCHUNK / 8;
-    DES_key_schedule *key = &(((PROV_DES_CTX *)ctx)->dks.ks);
-    unsigned char c[1];
-    unsigned char d[1] = { 0 };
 
-    if (inl < chunk)
-        chunk = inl;
-
-    while (inl && inl >= chunk) {
-        for (n = 0; n < chunk * 8; ++n) {
-            c[0] = (in[n / 8] & (1 << (7 - n % 8))) ? 0x80 : 0;
-            DES_cfb_encrypt(c, d, 1, 1, key, (DES_cblock *)ctx->iv, ctx->enc);
-            out[n / 8] =
-                (out[n / 8] & ~(0x80 >> (unsigned int)(n % 8))) |
-                ((d[0] & 0x80) >> (unsigned int)(n % 8));
-        }
-        inl -= chunk;
-        in += chunk;
-        out += chunk;
-        if (inl < chunk)
-            chunk = inl;
-    }
-
-    return 1;
-}
 
 static int cipher_hw_des_cfb8_cipher(PROV_CIPHER_CTX *ctx, unsigned char *out,
                                      const unsigned char *in, size_t inl)
@@ -193,5 +162,4 @@ PROV_CIPHER_HW_des_mode(ecb)
 PROV_CIPHER_HW_des_mode(cbc)
 PROV_CIPHER_HW_des_mode(ofb64)
 PROV_CIPHER_HW_des_mode(cfb64)
-PROV_CIPHER_HW_des_mode(cfb1)
 PROV_CIPHER_HW_des_mode(cfb8)
