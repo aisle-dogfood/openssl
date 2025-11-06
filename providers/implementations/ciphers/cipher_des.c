@@ -27,6 +27,8 @@ static OSSL_FUNC_cipher_encrypt_init_fn des_einit;
 static OSSL_FUNC_cipher_decrypt_init_fn des_dinit;
 static OSSL_FUNC_cipher_get_ctx_params_fn des_get_ctx_params;
 static OSSL_FUNC_cipher_gettable_ctx_params_fn des_gettable_ctx_params;
+static OSSL_FUNC_cipher_set_ctx_params_fn des_set_ctx_params;
+static OSSL_FUNC_cipher_settable_ctx_params_fn des_settable_ctx_params;
 
 static void *des_newctx(void *provctx, size_t kbits, size_t blkbits,
                         size_t ivbits, unsigned int mode, uint64_t flags,
@@ -38,9 +40,11 @@ static void *des_newctx(void *provctx, size_t kbits, size_t blkbits,
         return NULL;
 
     ctx = OPENSSL_zalloc(sizeof(*ctx));
-    if (ctx != NULL)
+    if (ctx != NULL) {
         ossl_cipher_generic_initkey(ctx, kbits, blkbits, ivbits, mode, flags,
                                     hw, provctx);
+        OSSL_FIPS_IND_INIT(ctx)
+    }
     return ctx;
 }
 
@@ -73,6 +77,7 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
                     const OSSL_PARAM params[], int enc)
 {
     PROV_CIPHER_CTX *ctx = (PROV_CIPHER_CTX *)vctx;
+    PROV_DES_CTX *dctx = (PROV_DES_CTX *)vctx;
 
     if (!ossl_prov_is_running())
         return 0;
@@ -80,6 +85,10 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
     ctx->num = 0;
     ctx->bufsz = 0;
     ctx->enc = enc;
+
+    /* Mark DES as unapproved due to inadequate encryption strength */
+    OSSL_FIPS_IND_ON_UNAPPROVED(dctx, OSSL_FIPS_IND_SETTABLE0, ctx->libctx,
+                                "DES", "Cipher", ossl_fips_config_securitycheck_enabled);
 
     if (iv != NULL) {
         if (!ossl_cipher_generic_initiv(ctx, iv, ivlen))
@@ -129,11 +138,13 @@ static int des_generatekey(PROV_CIPHER_CTX *ctx, void *ptr)
 
 CIPHER_DEFAULT_GETTABLE_CTX_PARAMS_START(des)
     OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_RANDOM_KEY, NULL, 0),
+    OSSL_FIPS_IND_GETTABLE_CTX_PARAM()
 CIPHER_DEFAULT_GETTABLE_CTX_PARAMS_END(des)
 
 static int des_get_ctx_params(void *vctx, OSSL_PARAM params[])
 {
     PROV_CIPHER_CTX  *ctx = (PROV_CIPHER_CTX *)vctx;
+    PROV_DES_CTX *dctx = (PROV_DES_CTX *)vctx;
     OSSL_PARAM *p;
 
     if (!ossl_cipher_generic_get_ctx_params(vctx, params))
@@ -144,8 +155,31 @@ static int des_get_ctx_params(void *vctx, OSSL_PARAM params[])
         ERR_raise(ERR_LIB_PROV, PROV_R_FAILED_TO_GENERATE_KEY);
         return 0;
     }
+
+    if (!OSSL_FIPS_IND_GET_CTX_PARAM(dctx, params))
+        return 0;
+
     return 1;
 }
+
+static int des_set_ctx_params(void *vctx, const OSSL_PARAM params[])
+{
+    PROV_CIPHER_CTX *ctx = (PROV_CIPHER_CTX *)vctx;
+    PROV_DES_CTX *dctx = (PROV_DES_CTX *)vctx;
+
+    if (!ossl_cipher_generic_set_ctx_params(ctx, params))
+        return 0;
+
+    if (!OSSL_FIPS_IND_SET_CTX_PARAM(dctx, OSSL_FIPS_IND_SETTABLE0, params,
+                                     OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR))
+        return 0;
+
+    return 1;
+}
+
+CIPHER_DEFAULT_SETTABLE_CTX_PARAMS_START(des)
+    OSSL_FIPS_IND_SETTABLE_CTX_PARAM(OSSL_ALG_PARAM_FIPS_APPROVED_INDICATOR)
+CIPHER_DEFAULT_SETTABLE_CTX_PARAMS_END(des)
 
 #define IMPLEMENT_des_cipher(type, lcmode, UCMODE, flags,                      \
                              kbits, blkbits, ivbits, block)                    \
@@ -181,9 +215,9 @@ const OSSL_DISPATCH ossl_##des_##lcmode##_functions[] = {                      \
     { OSSL_FUNC_CIPHER_GETTABLE_CTX_PARAMS,                                    \
       (void (*)(void))des_gettable_ctx_params },                               \
     { OSSL_FUNC_CIPHER_SET_CTX_PARAMS,                                         \
-     (void (*)(void))ossl_cipher_generic_set_ctx_params },                     \
+     (void (*)(void))des_set_ctx_params },                                     \
     { OSSL_FUNC_CIPHER_SETTABLE_CTX_PARAMS,                                    \
-     (void (*)(void))ossl_cipher_generic_settable_ctx_params },                \
+     (void (*)(void))des_settable_ctx_params },                                \
     OSSL_DISPATCH_END                                                          \
 }
 
