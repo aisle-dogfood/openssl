@@ -724,6 +724,13 @@ void ossl_cipher_generic_initkey(void *vctx, size_t kbits, size_t blkbits,
         ctx->inverse_cipher = 1;
     if ((flags & PROV_CIPHER_FLAG_VARIABLE_LENGTH) != 0)
         ctx->variable_keylength = 1;
+    if ((flags & PROV_CIPHER_FLAG_WEAK_CIPHER) != 0) {
+        /* 
+         * This cipher is marked as weak and should not be used for 
+         * security-sensitive applications. Consider using stronger 
+         * alternatives like AES.
+         */
+    }
 
     ctx->pad = 1;
     ctx->keylen = ((kbits) / 8);

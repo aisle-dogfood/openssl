@@ -44,6 +44,7 @@ typedef int (PROV_CIPHER_HW_FN)(PROV_CIPHER_CTX *dat, unsigned char *out,
 /* Internal flags that are only used within the provider */
 # define PROV_CIPHER_FLAG_VARIABLE_LENGTH  0x0100
 # define PROV_CIPHER_FLAG_INVERSE_CIPHER   0x0200
+# define PROV_CIPHER_FLAG_WEAK_CIPHER      0x0400
 
 struct prov_cipher_ctx_st {
     /* place buffer at the beginning for memory alignment */
