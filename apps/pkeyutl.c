@@ -388,7 +388,7 @@ int pkeyutl_main(int argc, char **argv)
         for (i = 0; i < num; i++) {
             char *opt = sk_OPENSSL_STRING_value(pkeyopts_passin, i);
             char *passin = strchr(opt, ':');
-            char *passwd;
+            char *passwd = NULL;
 
             if (passin == NULL) {
                 /* Get password interactively */
