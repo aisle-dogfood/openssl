@@ -197,8 +197,10 @@ extern const OSSL_DISPATCH ossl_rc5128cfb64_functions[];
 #ifndef OPENSSL_NO_RC2
 extern const OSSL_DISPATCH ossl_rc2128ecb_functions[];
 extern const OSSL_DISPATCH ossl_rc2128cbc_functions[];
+#ifndef OPENSSL_NO_WEAK_CIPHERS
 extern const OSSL_DISPATCH ossl_rc240cbc_functions[];
 extern const OSSL_DISPATCH ossl_rc264cbc_functions[];
+#endif /* OPENSSL_NO_WEAK_CIPHERS */
 extern const OSSL_DISPATCH ossl_rc2128cfb128_functions[];
 extern const OSSL_DISPATCH ossl_rc2128ofb128_functions[];
 #endif /* OPENSSL_NO_RC2 */
@@ -229,7 +231,9 @@ extern const OSSL_DISPATCH ossl_des_cfb8_functions[];
 #endif /* OPENSSL_NO_DES */
 
 #ifndef OPENSSL_NO_RC4
+#ifndef OPENSSL_NO_WEAK_CIPHERS
 extern const OSSL_DISPATCH ossl_rc440_functions[];
+#endif /* OPENSSL_NO_WEAK_CIPHERS */
 extern const OSSL_DISPATCH ossl_rc4128_functions[];
 # ifndef OPENSSL_NO_MD5
 extern const OSSL_DISPATCH ossl_rc4_hmac_ossl_md5_functions[];
