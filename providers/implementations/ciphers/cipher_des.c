@@ -20,7 +20,7 @@
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
 
-#define DES_FLAGS PROV_CIPHER_FLAG_RAND_KEY
+#define DES_FLAGS (PROV_CIPHER_FLAG_RAND_KEY | PROV_CIPHER_FLAG_WEAK_CIPHER)
 
 static OSSL_FUNC_cipher_freectx_fn des_freectx;
 static OSSL_FUNC_cipher_encrypt_init_fn des_einit;
@@ -94,6 +94,16 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
             ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_KEY_LENGTH);
             return 0;
         }
+        
+        /*
+         * WARNING: DES has an effective key strength of only 56 bits, which is 
+         * considered cryptographically weak by modern standards. DES is vulnerable 
+         * to brute force attacks and should not be used for security-sensitive
+         * applications. Consider using AES or other modern ciphers instead.
+         * 
+         * This cipher is deprecated and may be removed in future versions.
+         */
+        
         if (!ctx->hw->init(ctx, key, keylen))
             return 0;
         ctx->key_set = 1;
