@@ -113,7 +113,5 @@ const OSSL_DISPATCH ossl_##alg##kbits##_functions[] = {                        \
     OSSL_DISPATCH_END                                                          \
 };
 
-/* ossl_rc440_functions */
-IMPLEMENT_cipher(rc4, RC4, RC4_FLAGS, 40, 8, 0, stream)
 /* ossl_rc4128_functions */
 IMPLEMENT_cipher(rc4, RC4, RC4_FLAGS, 128, 8, 0, stream)
