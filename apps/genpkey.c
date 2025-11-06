@@ -110,7 +110,7 @@ int genpkey_main(int argc, char **argv)
     ENGINE *e = NULL;
     EVP_PKEY *pkey = NULL;
     EVP_PKEY_CTX *ctx = NULL;
-    char *outfile = NULL, *passarg = NULL, *pass = NULL, *prog, *p;
+    char *outfile = NULL, *passarg = NULL, *pass = NULL, *prog = NULL, *p = NULL;
     char *outpubkeyfile = NULL;
     const char *ciphername = NULL, *paramfile = NULL, *algname = NULL;
     EVP_CIPHER *cipher = NULL;
