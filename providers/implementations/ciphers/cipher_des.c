@@ -15,12 +15,14 @@
 
 #include <openssl/rand.h>
 #include <openssl/proverr.h>
+#include <openssl/crypto.h>
 #include "prov/ciphercommon.h"
 #include "cipher_des.h"
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
 
 #define DES_FLAGS PROV_CIPHER_FLAG_RAND_KEY
+#define DES_SECURITY_BITS 56
 
 static OSSL_FUNC_cipher_freectx_fn des_freectx;
 static OSSL_FUNC_cipher_encrypt_init_fn des_einit;
@@ -76,6 +78,23 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
 
     if (!ossl_prov_is_running())
         return 0;
+
+    /* 
+     * Security check: DES provides only 56 bits of security, which is 
+     * considered inadequate by modern cryptographic standards.
+     * 
+     * Check if DES usage should be restricted based on environment variable.
+     * This allows applications to enforce stronger security policies while
+     * maintaining backward compatibility when needed.
+     */
+    if (getenv("OPENSSL_ENFORCE_STRONG_CIPHERS") != NULL) {
+        /* 
+         * DES provides inadequate encryption strength (56 bits).
+         * When strong cipher enforcement is enabled, reject DES usage.
+         */
+        ERR_raise(ERR_LIB_PROV, PROV_R_ENTROPY_SOURCE_STRENGTH_TOO_WEAK);
+        return 0;
+    }
 
     ctx->num = 0;
     ctx->bufsz = 0;
