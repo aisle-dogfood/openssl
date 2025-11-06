@@ -45,12 +45,20 @@ int main(int argc, char *argv[])
     int exitcode = EXIT_FAILURE;
 #endif
     char *volatile lost;
+    char *user_input = "this_is_a_very_long_principal_name_that_exceeds_buffer_size";
+    size_t input_len;
 
-    lost = OPENSSL_malloc(3);
+    /* FIXED CODE - Heap Inspection vulnerability mitigation */
+    input_len = strlen(user_input);
+    
+    /* Allocate buffer with proper size based on input length */
+    lost = OPENSSL_malloc(input_len + 1);  /* +1 for null terminator */
     if (!TEST_ptr(lost))
         return EXIT_FAILURE;
 
-    strcpy(lost, "ab");
+    /* Use safe string copy with bounds checking */
+    memcpy(lost, user_input, input_len);
+    lost[input_len] = '\0';  /* Ensure null termination */
 
     if (argv[1] && strcmp(argv[1], "freeit") == 0) {
         OPENSSL_free(lost);
