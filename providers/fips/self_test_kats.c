@@ -757,9 +757,15 @@ static int self_test_kem_decapsulate(const ST_KAT_KEM *t, OSSL_SELF_TEST *st,
 
     /* Compare output */
     OSSL_SELF_TEST_oncorrupt_byte(st, secret);
-    if (secretlen != t->secret_len
-            || memcmp(secret, test_secret, t->secret_len) != 0)
-        goto err;
+    if (reject) {
+        if (secretlen != t->reject_secret_len
+                || memcmp(secret, test_secret, t->reject_secret_len) != 0)
+            goto err;
+    } else {
+        if (secretlen != t->secret_len
+                || memcmp(secret, test_secret, t->secret_len) != 0)
+            goto err;
+    }
 
     ret = 1;
  err:

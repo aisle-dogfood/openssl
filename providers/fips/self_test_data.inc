@@ -166,6 +166,7 @@ typedef struct st_kat_kem_st {
     const unsigned char *secret;
     size_t secret_len;
     const unsigned char *reject_secret;
+    size_t reject_secret_len;
 } ST_KAT_KEM;
 
 /*- DIGEST SELF TEST DATA */
@@ -3460,7 +3461,7 @@ static const ST_KAT_KEM st_kat_kem_tests[] = {
         ITM(ml_kem_512_cipher_text),
         ITM(ml_kem_512_entropy),
         ITM(ml_kem_512_secret),
-        ml_kem_512_reject_secret    /* No length because same as _secret's */
+        ITM(ml_kem_512_reject_secret)
     },
 };
 #endif /* OPENSSL_NO_ML_KEM */
