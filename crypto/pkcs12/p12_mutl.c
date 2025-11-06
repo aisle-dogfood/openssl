@@ -138,6 +138,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
         goto err;
     }
 
+    /* Validate salt length to prevent weak salt vulnerability */
+    if (pbkdf2_salt->length < PKCS5_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        goto err;
+    }
+
     if (PKCS5_PBKDF2_HMAC(pass, passlen, pbkdf2_salt->data, pbkdf2_salt->length,
                           ASN1_INTEGER_get(pbkdf2_param->iter), kdf_md, keylen, key) <= 0) {
         ERR_raise(ERR_LIB_PKCS12, ERR_R_INTERNAL_ERROR);
