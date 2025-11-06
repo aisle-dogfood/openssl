@@ -197,8 +197,6 @@ extern const OSSL_DISPATCH ossl_rc5128cfb64_functions[];
 #ifndef OPENSSL_NO_RC2
 extern const OSSL_DISPATCH ossl_rc2128ecb_functions[];
 extern const OSSL_DISPATCH ossl_rc2128cbc_functions[];
-extern const OSSL_DISPATCH ossl_rc240cbc_functions[];
-extern const OSSL_DISPATCH ossl_rc264cbc_functions[];
 extern const OSSL_DISPATCH ossl_rc2128cfb128_functions[];
 extern const OSSL_DISPATCH ossl_rc2128ofb128_functions[];
 #endif /* OPENSSL_NO_RC2 */
