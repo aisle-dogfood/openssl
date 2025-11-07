@@ -227,13 +227,18 @@ extern const OSSL_DISPATCH ossl_des_cfb8_functions[];
 # endif /* FIPS_MODULE */
 #endif /* OPENSSL_NO_DES */
 
-#ifndef OPENSSL_NO_RC4
+/*
+ * RC4 cipher functions are disabled by default due to inadequate encryption strength.
+ * RC4 has known cryptographic weaknesses and should not be used in modern applications.
+ * To enable RC4 for legacy compatibility, define OPENSSL_ENABLE_RC4_LEGACY.
+ */
+#if !defined(OPENSSL_NO_RC4) && defined(OPENSSL_ENABLE_RC4_LEGACY)
 extern const OSSL_DISPATCH ossl_rc440_functions[];
 extern const OSSL_DISPATCH ossl_rc4128_functions[];
 # ifndef OPENSSL_NO_MD5
 extern const OSSL_DISPATCH ossl_rc4_hmac_ossl_md5_functions[];
 # endif /* OPENSSL_NO_MD5 */
-#endif /* OPENSSL_NO_RC4 */
+#endif /* !OPENSSL_NO_RC4 && OPENSSL_ENABLE_RC4_LEGACY */
 #ifndef OPENSSL_NO_CHACHA
 extern const OSSL_DISPATCH ossl_chacha20_functions[];
 # ifndef OPENSSL_NO_POLY1305

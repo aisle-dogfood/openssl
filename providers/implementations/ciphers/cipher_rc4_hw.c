@@ -20,6 +20,11 @@ static int cipher_hw_rc4_initkey(PROV_CIPHER_CTX *ctx,
 {
     PROV_RC4_CTX *rctx =  (PROV_RC4_CTX *)ctx;
 
+    /*
+     * WARNING: RC4 cipher has inadequate encryption strength and known
+     * cryptographic weaknesses. It should not be used in modern applications.
+     * This implementation is provided only for legacy compatibility.
+     */
     RC4_set_key(&rctx->ks.ks, keylen, key);
     return 1;
 }
@@ -29,6 +34,11 @@ static int cipher_hw_rc4_cipher(PROV_CIPHER_CTX *ctx, unsigned char *out,
 {
     PROV_RC4_CTX *rctx =  (PROV_RC4_CTX *)ctx;
 
+    /*
+     * WARNING: RC4 cipher has inadequate encryption strength and known
+     * cryptographic weaknesses. It should not be used in modern applications.
+     * This implementation is provided only for legacy compatibility.
+     */
     RC4(&rctx->ks.ks, len, in, out);
     return 1;
 }

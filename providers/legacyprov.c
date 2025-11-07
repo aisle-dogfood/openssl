@@ -135,13 +135,18 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_RC2_CFB, ossl_rc2128cfb128_functions),
     ALG(PROV_NAMES_RC2_OFB, ossl_rc2128ofb128_functions),
 #endif /* OPENSSL_NO_RC2 */
-#ifndef OPENSSL_NO_RC4
+/*
+ * RC4 cipher is disabled by default due to inadequate encryption strength.
+ * RC4 has known cryptographic weaknesses and should not be used in modern applications.
+ * To enable RC4 for legacy compatibility, define OPENSSL_ENABLE_RC4_LEGACY.
+ */
+#if !defined(OPENSSL_NO_RC4) && defined(OPENSSL_ENABLE_RC4_LEGACY)
     ALG(PROV_NAMES_RC4, ossl_rc4128_functions),
     ALG(PROV_NAMES_RC4_40, ossl_rc440_functions),
 # ifndef OPENSSL_NO_MD5
     ALG(PROV_NAMES_RC4_HMAC_MD5, ossl_rc4_hmac_ossl_md5_functions),
 # endif /* OPENSSL_NO_MD5 */
-#endif /* OPENSSL_NO_RC4 */
+#endif /* !OPENSSL_NO_RC4 && OPENSSL_ENABLE_RC4_LEGACY */
 #ifndef OPENSSL_NO_RC5
     ALG(PROV_NAMES_RC5_ECB, ossl_rc5128ecb_functions),
     ALG(PROV_NAMES_RC5_CBC, ossl_rc5128cbc_functions),
