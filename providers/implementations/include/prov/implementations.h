@@ -193,6 +193,10 @@ extern const OSSL_DISPATCH ossl_rc5128ecb_functions[];
 extern const OSSL_DISPATCH ossl_rc5128cbc_functions[];
 extern const OSSL_DISPATCH ossl_rc5128ofb64_functions[];
 extern const OSSL_DISPATCH ossl_rc5128cfb64_functions[];
+extern const OSSL_DISPATCH ossl_rc5256ecb_functions[];
+extern const OSSL_DISPATCH ossl_rc5256cbc_functions[];
+extern const OSSL_DISPATCH ossl_rc5256ofb64_functions[];
+extern const OSSL_DISPATCH ossl_rc5256cfb64_functions[];
 #endif /* OPENSSL_NO_RC5 */
 #ifndef OPENSSL_NO_RC2
 extern const OSSL_DISPATCH ossl_rc2128ecb_functions[];

@@ -152,6 +152,10 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_RC5_CBC, ossl_rc5128cbc_functions),
     ALG(PROV_NAMES_RC5_OFB, ossl_rc5128ofb64_functions),
     ALG(PROV_NAMES_RC5_CFB, ossl_rc5128cfb64_functions),
+    ALG("RC5-256-ECB", ossl_rc5256ecb_functions),
+    ALG("RC5-256-CBC", ossl_rc5256cbc_functions),
+    ALG("RC5-256-OFB", ossl_rc5256ofb64_functions),
+    ALG("RC5-256-CFB", ossl_rc5256cfb64_functions),
 #endif /* OPENSSL_NO_RC5 */
 #ifndef OPENSSL_NO_DES
     ALG(PROV_NAMES_DESX_CBC, ossl_tdes_desx_cbc_functions),
