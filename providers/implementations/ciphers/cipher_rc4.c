@@ -54,6 +54,11 @@ static int rc4_einit(void *ctx, const unsigned char *key, size_t keylen,
                           const unsigned char *iv, size_t ivlen,
                           const OSSL_PARAM params[])
 {
+    /*
+     * WARNING: RC4 cipher has inadequate encryption strength and known
+     * cryptographic weaknesses. It should not be used in modern applications.
+     * This implementation is provided only for legacy compatibility.
+     */
     if (!ossl_cipher_generic_einit(ctx, key, keylen, iv, ivlen, NULL))
         return 0;
     return ossl_cipher_var_keylen_set_ctx_params(ctx, params);
@@ -63,6 +68,11 @@ static int rc4_dinit(void *ctx, const unsigned char *key, size_t keylen,
                           const unsigned char *iv, size_t ivlen,
                           const OSSL_PARAM params[])
 {
+    /*
+     * WARNING: RC4 cipher has inadequate encryption strength and known
+     * cryptographic weaknesses. It should not be used in modern applications.
+     * This implementation is provided only for legacy compatibility.
+     */
     if (!ossl_cipher_generic_dinit(ctx, key, keylen, iv, ivlen, NULL))
         return 0;
     return ossl_cipher_var_keylen_set_ctx_params(ctx, params);
