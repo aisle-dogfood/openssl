@@ -62,10 +62,6 @@ static int rc2_keybits_to_magic(int keybits)
     switch (keybits) {
     case 128:
         return RC2_128_MAGIC;
-    case 64:
-        return RC2_64_MAGIC;
-    case 40:
-        return RC2_40_MAGIC;
     }
     ERR_raise(ERR_LIB_PROV, PROV_R_UNSUPPORTED_KEY_SIZE);
     return 0;
@@ -76,10 +72,6 @@ static int rc2_magic_to_keybits(int magic)
     switch (magic) {
     case RC2_128_MAGIC:
         return 128;
-    case RC2_64_MAGIC:
-        return 64;
-    case RC2_40_MAGIC:
-        return 40;
     }
     ERR_raise(ERR_LIB_PROV, PROV_R_UNSUPPORTED_KEY_SIZE);
     return 0;
@@ -284,10 +276,6 @@ const OSSL_DISPATCH ossl_##alg##kbits##lcmode##_functions[] = {                \
 IMPLEMENT_cipher(rc2, RC2, ecb, ECB, RC2_FLAGS, 128, 64, 0, block)
 /* ossl_rc2128cbc_functions */
 IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 128, 64, 64, block)
-/* ossl_rc240cbc_functions */
-IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 40, 64, 64, block)
-/* ossl_rc264cbc_functions */
-IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 64, 64, 64, block)
 
 /* ossl_rc2128ofb128_functions */
 IMPLEMENT_cipher(rc2, RC2, ofb128, OFB, RC2_FLAGS, 128, 8, 64, stream)
