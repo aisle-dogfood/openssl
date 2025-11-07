@@ -70,6 +70,25 @@ static int pkcs12_gen_gost_mac_key(const char *pass, int passlen,
         return 0;
     }
 
+    /* Validate salt strength to prevent weak salt vulnerabilities */
+    if (salt == NULL || saltlen < 8) {
+        return 0;
+    }
+
+    /* Check for all-zero salt which is considered weak */
+    if (saltlen > 0) {
+        int i, all_zeros = 1;
+        for (i = 0; i < saltlen; i++) {
+            if (salt[i] != 0) {
+                all_zeros = 0;
+                break;
+            }
+        }
+        if (all_zeros) {
+            return 0;
+        }
+    }
+
     if (!PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                            digest, sizeof(out), out)) {
         return 0;
@@ -124,6 +143,27 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
     }
     keylen = ASN1_INTEGER_get(pbkdf2_param->keylength);
     pbkdf2_salt = pbkdf2_param->salt->value.octet_string;
+
+    /* Validate salt strength to prevent weak salt vulnerabilities */
+    if (pbkdf2_salt == NULL || pbkdf2_salt->length < 8) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        goto err;
+    }
+
+    /* Check for all-zero salt which is considered weak */
+    if (pbkdf2_salt->length > 0) {
+        int i, all_zeros = 1;
+        for (i = 0; i < pbkdf2_salt->length; i++) {
+            if (pbkdf2_salt->data[i] != 0) {
+                all_zeros = 0;
+                break;
+            }
+        }
+        if (all_zeros) {
+            ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+            goto err;
+        }
+    }
 
     if (pbkdf2_param->prf == NULL) {
         kdf_hmac_nid = NID_hmacWithSHA1;
@@ -379,6 +419,27 @@ static int pkcs12_pbmac1_pbkdf2_key_gen(const char *pass, int passlen,
                                         unsigned char *out,
                                         const EVP_MD *md_type)
 {
+    /* Validate salt strength to prevent weak salt vulnerabilities */
+    if (salt == NULL || saltlen < 8) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        return 0;
+    }
+
+    /* Check for all-zero salt which is considered weak */
+    if (saltlen > 0) {
+        int i, all_zeros = 1;
+        for (i = 0; i < saltlen; i++) {
+            if (salt[i] != 0) {
+                all_zeros = 0;
+                break;
+            }
+        }
+        if (all_zeros) {
+            ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+            return 0;
+        }
+    }
+
     return PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                              md_type, keylen, out);
 }
