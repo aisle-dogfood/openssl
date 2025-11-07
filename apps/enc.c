@@ -30,7 +30,7 @@
 #define SIZE    (512)
 #define BSIZE   (8*1024)
 
-#define PBKDF2_ITER_DEFAULT     10000
+#define PBKDF2_ITER_DEFAULT     100000
 #define STR(a) XSTR(a)
 #define XSTR(a) #a
 
@@ -365,7 +365,7 @@ int enc_main(int argc, char **argv)
         dgst = (EVP_MD *)EVP_sha256();
 
     if (iter == 0)
-        iter = 1;
+        iter = PBKDF2_ITER_DEFAULT;
 
     /* It must be large enough for a base64 encoded line */
     if (base64 && bsize < 80)
