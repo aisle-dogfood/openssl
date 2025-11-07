@@ -227,10 +227,17 @@ static int test_rc4_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     return 1;
 }
 
-static EVP_CIPHER *r4_cipher = NULL;
+static EVP_CIPHER **get_r4_cipher_ptr(void)
+{
+    static EVP_CIPHER *r4_cipher = NULL;
+    return &r4_cipher;
+}
+
 static const EVP_CIPHER *test_r4_cipher(void)
 {
-    if (r4_cipher == NULL) {
+    EVP_CIPHER **r4_cipher_ptr = get_r4_cipher_ptr();
+    
+    if (*r4_cipher_ptr == NULL) {
         EVP_CIPHER *cipher;
 
         if ((cipher = EVP_CIPHER_meth_new(NID_rc4, 1, TEST_RC4_KEY_SIZE)) == NULL
@@ -242,20 +249,28 @@ static const EVP_CIPHER *test_r4_cipher(void)
             EVP_CIPHER_meth_free(cipher);
             cipher = NULL;
         }
-        r4_cipher = cipher;
+        *r4_cipher_ptr = cipher;
     }
-    return r4_cipher;
+    return *r4_cipher_ptr;
 }
 static void test_r4_cipher_destroy(void)
 {
-    EVP_CIPHER_meth_free(r4_cipher);
-    r4_cipher = NULL;
+    EVP_CIPHER **r4_cipher_ptr = get_r4_cipher_ptr();
+    EVP_CIPHER_meth_free(*r4_cipher_ptr);
+    *r4_cipher_ptr = NULL;
 }
 
-static EVP_CIPHER *r4_40_cipher = NULL;
+static EVP_CIPHER **get_r4_40_cipher_ptr(void)
+{
+    static EVP_CIPHER *r4_40_cipher = NULL;
+    return &r4_40_cipher;
+}
+
 static const EVP_CIPHER *test_r4_40_cipher(void)
 {
-    if (r4_40_cipher == NULL) {
+    EVP_CIPHER **r4_40_cipher_ptr = get_r4_40_cipher_ptr();
+    
+    if (*r4_40_cipher_ptr == NULL) {
         EVP_CIPHER *cipher;
 
         if ((cipher = EVP_CIPHER_meth_new(NID_rc4, 1, 5 /* 40 bits */)) == NULL
@@ -267,14 +282,15 @@ static const EVP_CIPHER *test_r4_40_cipher(void)
             EVP_CIPHER_meth_free(cipher);
             cipher = NULL;
         }
-        r4_40_cipher = cipher;
+        *r4_40_cipher_ptr = cipher;
     }
-    return r4_40_cipher;
+    return *r4_40_cipher_ptr;
 }
 static void test_r4_40_cipher_destroy(void)
 {
-    EVP_CIPHER_meth_free(r4_40_cipher);
-    r4_40_cipher = NULL;
+    EVP_CIPHER **r4_40_cipher_ptr = get_r4_40_cipher_ptr();
+    EVP_CIPHER_meth_free(*r4_40_cipher_ptr);
+    *r4_40_cipher_ptr = NULL;
 }
 static int test_cipher_nids(const int **nids)
 {
@@ -347,10 +363,17 @@ static int test_sha1_final(EVP_MD_CTX *ctx, unsigned char *md)
     return SHA1_Final(md, EVP_MD_CTX_get0_md_data(ctx));
 }
 
-static EVP_MD *sha1_md = NULL;
+static EVP_MD **get_sha1_md_ptr(void)
+{
+    static EVP_MD *sha1_md = NULL;
+    return &sha1_md;
+}
+
 static const EVP_MD *test_sha_md(void)
 {
-    if (sha1_md == NULL) {
+    EVP_MD **sha1_md_ptr = get_sha1_md_ptr();
+    
+    if (*sha1_md_ptr == NULL) {
         EVP_MD *md;
 
         if ((md = EVP_MD_meth_new(NID_sha1, NID_sha1WithRSAEncryption)) == NULL
@@ -365,14 +388,15 @@ static const EVP_MD *test_sha_md(void)
             EVP_MD_meth_free(md);
             md = NULL;
         }
-        sha1_md = md;
+        *sha1_md_ptr = md;
     }
-    return sha1_md;
+    return *sha1_md_ptr;
 }
 static void test_sha_md_destroy(void)
 {
-    EVP_MD_meth_free(sha1_md);
-    sha1_md = NULL;
+    EVP_MD **sha1_md_ptr = get_sha1_md_ptr();
+    EVP_MD_meth_free(*sha1_md_ptr);
+    *sha1_md_ptr = NULL;
 }
 static int test_digest_nids(const int **nids)
 {
