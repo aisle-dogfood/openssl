@@ -188,7 +188,8 @@ extern const OSSL_DISPATCH ossl_sm4128ofb128_functions[];
 extern const OSSL_DISPATCH ossl_sm4128cfb128_functions[];
 extern const OSSL_DISPATCH ossl_sm4128xts_functions[];
 #endif /* OPENSSL_NO_SM4 */
-#ifndef OPENSSL_NO_RC5
+/* RC5 function declarations disabled due to inadequate encryption strength vulnerability */
+#if 0 /* OPENSSL_NO_RC5 - RC5 disabled for security reasons */
 extern const OSSL_DISPATCH ossl_rc5128ecb_functions[];
 extern const OSSL_DISPATCH ossl_rc5128cbc_functions[];
 extern const OSSL_DISPATCH ossl_rc5128ofb64_functions[];
