@@ -73,9 +73,21 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
                     const OSSL_PARAM params[], int enc)
 {
     PROV_CIPHER_CTX *ctx = (PROV_CIPHER_CTX *)vctx;
+    const char *block_weak_des;
 
     if (!ossl_prov_is_running())
         return 0;
+
+    /*
+     * Security check: DES provides inadequate encryption strength (56-bit effective key length).
+     * DES is vulnerable to brute force attacks and should not be used for security-sensitive applications.
+     * Block DES usage if explicitly requested via environment variable.
+     */
+    block_weak_des = getenv("OPENSSL_BLOCK_WEAK_DES");
+    if (block_weak_des != NULL && strcmp(block_weak_des, "1") == 0) {
+        ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_MODE);
+        return 0;
+    }
 
     ctx->num = 0;
     ctx->bufsz = 0;
