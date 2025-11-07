@@ -18,34 +18,39 @@ void openssl_add_all_ciphers_int(void)
 {
 
 #ifndef OPENSSL_NO_DES
+# ifndef OPENSSL_NO_WEAK_CIPHERS
+    /* Single DES - 56-bit effective key strength, considered weak */
     EVP_add_cipher(EVP_des_cfb());
     EVP_add_cipher(EVP_des_cfb1());
     EVP_add_cipher(EVP_des_cfb8());
-    EVP_add_cipher(EVP_des_ede_cfb());
-    EVP_add_cipher(EVP_des_ede3_cfb());
-    EVP_add_cipher(EVP_des_ede3_cfb1());
-    EVP_add_cipher(EVP_des_ede3_cfb8());
-
     EVP_add_cipher(EVP_des_ofb());
-    EVP_add_cipher(EVP_des_ede_ofb());
-    EVP_add_cipher(EVP_des_ede3_ofb());
-
-    EVP_add_cipher(EVP_desx_cbc());
-    EVP_add_cipher_alias(SN_desx_cbc, "DESX");
-    EVP_add_cipher_alias(SN_desx_cbc, "desx");
-
     EVP_add_cipher(EVP_des_cbc());
     EVP_add_cipher_alias(SN_des_cbc, "DES");
     EVP_add_cipher_alias(SN_des_cbc, "des");
-    EVP_add_cipher(EVP_des_ede_cbc());
-    EVP_add_cipher(EVP_des_ede3_cbc());
-    EVP_add_cipher_alias(SN_des_ede3_cbc, "DES3");
-    EVP_add_cipher_alias(SN_des_ede3_cbc, "des3");
-
     EVP_add_cipher(EVP_des_ecb());
+
+    /* Double DES (DES-EDE) - 112-bit effective key strength, considered weak */
+    EVP_add_cipher(EVP_des_ede_cfb());
+    EVP_add_cipher(EVP_des_ede_ofb());
+    EVP_add_cipher(EVP_des_ede_cbc());
     EVP_add_cipher(EVP_des_ede());
     EVP_add_cipher_alias(SN_des_ede_ecb, "DES-EDE-ECB");
     EVP_add_cipher_alias(SN_des_ede_ecb, "des-ede-ecb");
+
+    /* DESX - DES with extended key, still based on DES */
+    EVP_add_cipher(EVP_desx_cbc());
+    EVP_add_cipher_alias(SN_desx_cbc, "DESX");
+    EVP_add_cipher_alias(SN_desx_cbc, "desx");
+# endif /* OPENSSL_NO_WEAK_CIPHERS */
+
+    /* Triple DES (3DES) - 168-bit nominal (112-bit effective), still supported for compatibility */
+    EVP_add_cipher(EVP_des_ede3_cfb());
+    EVP_add_cipher(EVP_des_ede3_cfb1());
+    EVP_add_cipher(EVP_des_ede3_cfb8());
+    EVP_add_cipher(EVP_des_ede3_ofb());
+    EVP_add_cipher(EVP_des_ede3_cbc());
+    EVP_add_cipher_alias(SN_des_ede3_cbc, "DES3");
+    EVP_add_cipher_alias(SN_des_ede3_cbc, "des3");
     EVP_add_cipher(EVP_des_ede3());
     EVP_add_cipher_alias(SN_des_ede3_ecb, "DES-EDE3-ECB");
     EVP_add_cipher_alias(SN_des_ede3_ecb, "des-ede3-ecb");
@@ -54,11 +59,15 @@ void openssl_add_all_ciphers_int(void)
 #endif
 
 #ifndef OPENSSL_NO_RC4
+# ifndef OPENSSL_NO_WEAK_CIPHERS
+    /* RC4 - considered weak due to statistical biases */
     EVP_add_cipher(EVP_rc4());
+    /* RC4-40 - very weak with 40-bit key */
     EVP_add_cipher(EVP_rc4_40());
-# ifndef OPENSSL_NO_MD5
+#  ifndef OPENSSL_NO_MD5
     EVP_add_cipher(EVP_rc4_hmac_md5());
-# endif
+#  endif
+# endif /* OPENSSL_NO_WEAK_CIPHERS */
 #endif
 
 #ifndef OPENSSL_NO_IDEA
@@ -90,17 +99,22 @@ void openssl_add_all_ciphers_int(void)
 #endif
 
 #ifndef OPENSSL_NO_RC2
+# ifndef OPENSSL_NO_WEAK_CIPHERS
+    /* RC2-40 and RC2-64 - weak due to small key sizes */
+    EVP_add_cipher(EVP_rc2_40_cbc());
+    EVP_add_cipher(EVP_rc2_64_cbc());
+    EVP_add_cipher_alias(SN_rc2_64_cbc, "rc2-64");
+    EVP_add_cipher_alias(SN_rc2_40_cbc, "rc2-40");
+# endif /* OPENSSL_NO_WEAK_CIPHERS */
+
+    /* RC2-128 - still supported for compatibility */
     EVP_add_cipher(EVP_rc2_ecb());
     EVP_add_cipher(EVP_rc2_cfb());
     EVP_add_cipher(EVP_rc2_ofb());
     EVP_add_cipher(EVP_rc2_cbc());
-    EVP_add_cipher(EVP_rc2_40_cbc());
-    EVP_add_cipher(EVP_rc2_64_cbc());
     EVP_add_cipher_alias(SN_rc2_cbc, "RC2");
     EVP_add_cipher_alias(SN_rc2_cbc, "rc2");
     EVP_add_cipher_alias(SN_rc2_cbc, "rc2-128");
-    EVP_add_cipher_alias(SN_rc2_64_cbc, "rc2-64");
-    EVP_add_cipher_alias(SN_rc2_40_cbc, "rc2-40");
 #endif
 
 #ifndef OPENSSL_NO_BF

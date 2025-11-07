@@ -616,6 +616,7 @@ our %disabled = ( # "what"         => "comment"
                   "trace"               => "default",
                   "ubsan"               => "default",
                   "unit-test"           => "default",
+                  "weak-ciphers"        => "default",
                   "weak-ssl-ciphers"    => "default",
                   "zlib"                => "default",
                   "zlib-dynamic"        => "default",
