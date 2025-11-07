@@ -184,3 +184,12 @@ IMPLEMENT_cipher(rc5, RC5, cbc, CBC, RC5_FLAGS, 128, 64, 64, block)
 IMPLEMENT_cipher(rc5, RC5, ofb64, OFB, RC5_FLAGS, 128, 8, 64, stream)
 /* ossl_rc5128cfb64_functions */
 IMPLEMENT_cipher(rc5, RC5, cfb64,  CFB, RC5_FLAGS, 128, 8, 64, stream)
+
+/* ossl_rc5256ecb_functions */
+IMPLEMENT_cipher(rc5, RC5, ecb, ECB, RC5_FLAGS, 256, 64, 0, block)
+/* ossl_rc5256cbc_functions */
+IMPLEMENT_cipher(rc5, RC5, cbc, CBC, RC5_FLAGS, 256, 64, 64, block)
+/* ossl_rc5256ofb64_functions */
+IMPLEMENT_cipher(rc5, RC5, ofb64, OFB, RC5_FLAGS, 256, 8, 64, stream)
+/* ossl_rc5256cfb64_functions */
+IMPLEMENT_cipher(rc5, RC5, cfb64,  CFB, RC5_FLAGS, 256, 8, 64, stream)
