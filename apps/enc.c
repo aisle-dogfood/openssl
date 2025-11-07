@@ -584,6 +584,13 @@ int enc_main(int argc, char **argv)
                 /* not needed if HASH_UPDATE() is fixed : */
                 int islen = (sptr != NULL ? saltlen : 0);
 
+                /* PBKDF2 requires a salt for security */
+                if (sptr == NULL || islen == 0) {
+                    BIO_printf(bio_err, "PBKDF2 requires a salt for security. "
+                                       "Cannot use -nosalt with -pbkdf2.\n");
+                    goto end;
+                }
+
                 if (!PKCS5_PBKDF2_HMAC(str, str_len, sptr, islen,
                                        iter, dgst, iklen+ivlen, tmpkeyiv)) {
                     BIO_printf(bio_err, "PKCS5_PBKDF2_HMAC failed\n");
