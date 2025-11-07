@@ -176,6 +176,8 @@ const OSSL_DISPATCH ossl_##alg##kbits##lcmode##_functions[] = {                \
     OSSL_DISPATCH_END                                                          \
 };
 
+/* RC5 cipher implementations disabled due to inadequate encryption strength vulnerability */
+#if 0 /* RC5 disabled for security reasons */
 /* ossl_rc5128ecb_functions */
 IMPLEMENT_cipher(rc5, RC5, ecb, ECB, RC5_FLAGS, 128, 64, 0, block)
 /* ossl_rc5128cbc_functions */
@@ -184,3 +186,4 @@ IMPLEMENT_cipher(rc5, RC5, cbc, CBC, RC5_FLAGS, 128, 64, 64, block)
 IMPLEMENT_cipher(rc5, RC5, ofb64, OFB, RC5_FLAGS, 128, 8, 64, stream)
 /* ossl_rc5128cfb64_functions */
 IMPLEMENT_cipher(rc5, RC5, cfb64,  CFB, RC5_FLAGS, 128, 8, 64, stream)
+#endif /* RC5 disabled */
