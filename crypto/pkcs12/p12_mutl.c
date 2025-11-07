@@ -138,6 +138,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
         goto err;
     }
 
+    /* Validate salt length to prevent weak salt attacks */
+    if (pbkdf2_salt->length < PKCS5_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        goto err;
+    }
+
     if (PKCS5_PBKDF2_HMAC(pass, passlen, pbkdf2_salt->data, pbkdf2_salt->length,
                           ASN1_INTEGER_get(pbkdf2_param->iter), kdf_md, keylen, key) <= 0) {
         ERR_raise(ERR_LIB_PKCS12, ERR_R_INTERNAL_ERROR);
@@ -186,6 +192,13 @@ static int pkcs12_gen_mac(PKCS12 *p12, const char *pass, int passlen,
 
     salt = p12->mac->salt->data;
     saltlen = p12->mac->salt->length;
+    
+    /* Validate salt length to prevent weak salt attacks */
+    if (saltlen < PKCS5_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        return 0;
+    }
+    
     if (p12->mac->iter == NULL)
         iter = 1;
     else
