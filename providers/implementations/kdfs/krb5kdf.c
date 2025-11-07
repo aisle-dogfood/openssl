@@ -422,6 +422,12 @@ static int KRB5KDF(const EVP_CIPHER *cipher, ENGINE *engine,
         goto out;
     }
 
+    if (constant_len == 0) {
+        ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_CONSTANT_LENGTH);
+        ret = 0;
+        goto out;
+    }
+
     if (constant_len > blocksize) {
         ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_CONSTANT_LENGTH);
         ret = 0;
