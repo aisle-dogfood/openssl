@@ -70,6 +70,11 @@ static int pkcs12_gen_gost_mac_key(const char *pass, int passlen,
         return 0;
     }
 
+    /* Validate salt length for security - RFC 2898 recommends at least 8 bytes */
+    if (saltlen < 8) {
+        return 0;
+    }
+
     if (!PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                            digest, sizeof(out), out)) {
         return 0;
@@ -124,6 +129,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
     }
     keylen = ASN1_INTEGER_get(pbkdf2_param->keylength);
     pbkdf2_salt = pbkdf2_param->salt->value.octet_string;
+
+    /* Validate salt length for security - RFC 2898 recommends at least 8 bytes */
+    if (pbkdf2_salt == NULL || pbkdf2_salt->length < 8) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
+        goto err;
+    }
 
     if (pbkdf2_param->prf == NULL) {
         kdf_hmac_nid = NID_hmacWithSHA1;
@@ -186,6 +197,13 @@ static int pkcs12_gen_mac(PKCS12 *p12, const char *pass, int passlen,
 
     salt = p12->mac->salt->data;
     saltlen = p12->mac->salt->length;
+    
+    /* Validate salt length for security - RFC 2898 recommends at least 8 bytes */
+    if (saltlen < 8) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
+        return 0;
+    }
+    
     if (p12->mac->iter == NULL)
         iter = 1;
     else
@@ -379,6 +397,11 @@ static int pkcs12_pbmac1_pbkdf2_key_gen(const char *pass, int passlen,
                                         unsigned char *out,
                                         const EVP_MD *md_type)
 {
+    /* Validate salt length for security - RFC 2898 recommends at least 8 bytes */
+    if (saltlen < 8) {
+        return 0;
+    }
+    
     return PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                              md_type, keylen, out);
 }
