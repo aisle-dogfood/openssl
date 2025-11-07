@@ -187,6 +187,13 @@ const OSSL_DISPATCH ossl_##des_##lcmode##_functions[] = {                      \
     OSSL_DISPATCH_END                                                          \
 }
 
+/*
+ * Single DES cipher implementations are disabled due to inadequate encryption strength.
+ * DES uses only 56-bit effective key length and is vulnerable to brute force attacks.
+ * These implementations are conditionally compiled only when explicitly enabled
+ * via OPENSSL_ENABLE_WEAK_DES_CIPHERS for legacy compatibility purposes.
+ */
+#ifdef OPENSSL_ENABLE_WEAK_DES_CIPHERS
 /* ossl_des_ecb_functions */
 IMPLEMENT_des_cipher(des, ecb, ECB, DES_FLAGS, 64, 64, 0, block);
 /* ossl_des_cbc_functions */
@@ -199,3 +206,4 @@ IMPLEMENT_des_cipher(des, cfb64, CFB, DES_FLAGS, 64, 8, 64, stream);
 IMPLEMENT_des_cipher(des, cfb1, CFB, DES_FLAGS, 64, 8, 64, stream);
 /* ossl_des_cfb8_functions */
 IMPLEMENT_des_cipher(des, cfb8, CFB, DES_FLAGS, 64, 8, 64, stream);
+#endif /* OPENSSL_ENABLE_WEAK_DES_CIPHERS */

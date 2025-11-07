@@ -219,12 +219,15 @@ extern const OSSL_DISPATCH ossl_tdes_ede2_cfb_functions[];
 extern const OSSL_DISPATCH ossl_tdes_desx_cbc_functions[];
 extern const OSSL_DISPATCH ossl_tdes_wrap_cbc_functions[];
 
+# ifdef OPENSSL_ENABLE_WEAK_DES_CIPHERS
+/* Single DES cipher function declarations - disabled by default due to inadequate encryption strength */
 extern const OSSL_DISPATCH ossl_des_ecb_functions[];
 extern const OSSL_DISPATCH ossl_des_cbc_functions[];
 extern const OSSL_DISPATCH ossl_des_ofb64_functions[];
 extern const OSSL_DISPATCH ossl_des_cfb64_functions[];
 extern const OSSL_DISPATCH ossl_des_cfb1_functions[];
 extern const OSSL_DISPATCH ossl_des_cfb8_functions[];
+# endif /* OPENSSL_ENABLE_WEAK_DES_CIPHERS */
 # endif /* FIPS_MODULE */
 #endif /* OPENSSL_NO_DES */
 
