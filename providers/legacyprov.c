@@ -159,7 +159,6 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_DES_CBC, ossl_des_cbc_functions),
     ALG(PROV_NAMES_DES_OFB, ossl_des_ofb64_functions),
     ALG(PROV_NAMES_DES_CFB, ossl_des_cfb64_functions),
-    ALG(PROV_NAMES_DES_CFB1, ossl_des_cfb1_functions),
     ALG(PROV_NAMES_DES_CFB8, ossl_des_cfb8_functions),
 #endif /* OPENSSL_NO_DES */
     { NULL, NULL, NULL }

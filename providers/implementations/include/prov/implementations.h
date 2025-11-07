@@ -222,7 +222,6 @@ extern const OSSL_DISPATCH ossl_des_ecb_functions[];
 extern const OSSL_DISPATCH ossl_des_cbc_functions[];
 extern const OSSL_DISPATCH ossl_des_ofb64_functions[];
 extern const OSSL_DISPATCH ossl_des_cfb64_functions[];
-extern const OSSL_DISPATCH ossl_des_cfb1_functions[];
 extern const OSSL_DISPATCH ossl_des_cfb8_functions[];
 # endif /* FIPS_MODULE */
 #endif /* OPENSSL_NO_DES */

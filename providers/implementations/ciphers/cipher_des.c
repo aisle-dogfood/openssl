@@ -214,7 +214,5 @@ IMPLEMENT_des_cipher(des, cbc, CBC, DES_FLAGS, 64, 64, 64, block);
 IMPLEMENT_des_cipher(des, ofb64, OFB, DES_FLAGS, 64, 8, 64, stream);
 /* ossl_des_cfb64_functions */
 IMPLEMENT_des_cipher(des, cfb64, CFB, DES_FLAGS, 64, 8, 64, stream);
-/* ossl_des_cfb1_functions */
-IMPLEMENT_des_cipher(des, cfb1, CFB, DES_FLAGS, 64, 8, 64, stream);
 /* ossl_des_cfb8_functions */
 IMPLEMENT_des_cipher(des, cfb8, CFB, DES_FLAGS, 64, 8, 64, stream);
