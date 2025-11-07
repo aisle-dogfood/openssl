@@ -803,6 +803,7 @@ static size_t get_file_length(struct h3ssl *h3ssl)
 {
     char filename[PATH_MAX];
     struct stat st;
+    int ret;
 
     /* Validate URL to prevent path traversal */
     if (!validate_url(h3ssl->url)) {
@@ -811,9 +812,16 @@ static size_t get_file_length(struct h3ssl *h3ssl)
     }
 
     memset(filename, 0, PATH_MAX);
-    if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+    if (h3ssl->fileprefix != NULL) {
+        ret = snprintf(filename, PATH_MAX, "%s%s", h3ssl->fileprefix, h3ssl->url);
+    } else {
+        ret = snprintf(filename, PATH_MAX, "%s", h3ssl->url);
+    }
+    
+    if (ret >= PATH_MAX) {
+        printf("Filename too long, truncated\n");
+        return 0;
+    }
 
     if (strcmp(h3ssl->url, "big") == 0) {
         printf("big!!!\n");
@@ -836,6 +844,7 @@ static char *get_file_data(struct h3ssl *h3ssl)
     size_t size = get_file_length(h3ssl);
     char *res;
     int fd;
+    int ret;
 
     if (size == 0)
         return NULL;
@@ -847,9 +856,16 @@ static char *get_file_data(struct h3ssl *h3ssl)
     }
 
     memset(filename, 0, PATH_MAX);
-    if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+    if (h3ssl->fileprefix != NULL) {
+        ret = snprintf(filename, PATH_MAX, "%s%s", h3ssl->fileprefix, h3ssl->url);
+    } else {
+        ret = snprintf(filename, PATH_MAX, "%s", h3ssl->url);
+    }
+    
+    if (ret >= PATH_MAX) {
+        printf("Filename too long, truncated\n");
+        return NULL;
+    }
 
     res = malloc(size+1);
     res[size] = '\0';
