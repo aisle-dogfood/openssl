@@ -1294,9 +1294,9 @@ int cms_main(int argc, char **argv)
     X509_VERIFY_PARAM_free(vpm);
     sk_OPENSSL_STRING_free(sksigners);
     sk_OPENSSL_STRING_free(skkeys);
-    OPENSSL_free(secret_key);
-    OPENSSL_free(secret_keyid);
-    OPENSSL_free(pwri_tmp);
+    OPENSSL_clear_free(secret_key, secret_keylen);
+    OPENSSL_clear_free(secret_keyid, secret_keyidlen);
+    OPENSSL_clear_free(pwri_tmp, pwri_tmp ? strlen((char *)pwri_tmp) : 0);
     ASN1_OBJECT_free(econtent_type);
     CMS_ReceiptRequest_free(rr);
     sk_OPENSSL_STRING_free(rr_to);
