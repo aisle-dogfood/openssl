@@ -117,6 +117,13 @@ QLOG *ossl_qlog_new_from_env(const QLOG_TRACE_INFO *info)
     if (l == 0)
         return NULL;
 
+    /*
+     * Validate qlogdir to prevent path traversal attacks.
+     * Reject absolute paths and paths containing ".." sequences.
+     */
+    if (ossl_is_absolute_path(qlogdir) || strstr(qlogdir, "..") != NULL)
+        return NULL;
+
     qlogdir_sep = ossl_determine_dirsep(qlogdir);
 
     /* dir; [sep]; ODCID; _; strlen("client" / "server"); strlen(".sqlog"); NUL */
