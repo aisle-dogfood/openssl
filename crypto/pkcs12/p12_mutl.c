@@ -65,8 +65,27 @@ static int pkcs12_gen_gost_mac_key(const char *pass, int passlen,
                                    const EVP_MD *digest)
 {
     unsigned char out[96];
+    int i;
 
     if (keylen != TK26_MAC_KEY_LEN) {
+        return 0;
+    }
+
+    /* Validate salt strength to prevent weak salt vulnerability */
+    if (salt == NULL || saltlen < 8) {
+        /* PKCS5 (RFC 8018) recommends minimum 64 bits (8 bytes) for PBES2 */
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_KEY_GEN_ERROR);
+        return 0;
+    }
+
+    /* Check for weak salt patterns (all zeros) */
+    for (i = 0; i < saltlen; i++) {
+        if (salt[i] != 0)
+            break;
+    }
+    if (i == saltlen) {
+        /* Salt is all zeros - this is a weak salt */
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_KEY_GEN_ERROR);
         return 0;
     }
 
