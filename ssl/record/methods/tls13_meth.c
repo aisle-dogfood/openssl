@@ -96,7 +96,7 @@ static int tls13_cipher(OSSL_RECORD_LAYER *rl, TLS_RL_RECORD *recs,
     int lenu, lenf;
     TLS_RL_RECORD *rec = &recs[0];
     WPACKET wpkt;
-    const EVP_CIPHER *cipher;
+    const EVP_CIPHER *cipher = NULL;
     EVP_MAC_CTX *mac_ctx = NULL;
     int mode;
 
