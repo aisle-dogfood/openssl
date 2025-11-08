@@ -46,6 +46,10 @@ static int adapt(unsigned int delta, unsigned int numpoints,
 {
     unsigned int k = 0;
 
+    /* Prevent division by zero */
+    if (numpoints == 0)
+        return -1;
+
     delta = (firsttime) ? delta / damp : delta / 2;
     delta = delta + delta / numpoints;
 
@@ -176,6 +180,10 @@ int ossl_punycode_decode(const char *pEncoded, const size_t enc_len,
         }
 
         bias = adapt(i - oldi, written_out + 1, (oldi == 0));
+        if (bias < 0)
+            return 0;
+        if (written_out + 1 == 0)
+            return 0;
         if (i / (written_out + 1) > maxint - n)
             return 0;
         n = n + i / (written_out + 1);
