@@ -40,7 +40,7 @@ static int argc;
 static int opt_index;
 static char *arg;
 static char *flag;
-static char *dunno;
+static char *dunno = NULL;
 static const char *unknown_name;
 static const OPTIONS *unknown;
 static const OPTIONS *opts;
