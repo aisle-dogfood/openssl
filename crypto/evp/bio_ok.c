@@ -546,6 +546,8 @@ static int block_out(BIO *b)
     if (!EVP_DigestUpdate(md,
                           (unsigned char *)&(ctx->buf[OK_BLOCK_BLOCK]), tl))
         goto berr;
+    if (ctx->buf_len + md_size > IOBS)
+        goto berr;
     if (!EVP_DigestFinal_ex(md, &(ctx->buf[ctx->buf_len]), NULL))
         goto berr;
     ctx->buf_len += md_size;
