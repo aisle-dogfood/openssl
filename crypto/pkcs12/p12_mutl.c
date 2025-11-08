@@ -125,6 +125,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
     keylen = ASN1_INTEGER_get(pbkdf2_param->keylength);
     pbkdf2_salt = pbkdf2_param->salt->value.octet_string;
 
+    /* Validate salt length - should be at least 8 octets (64 bits) for security */
+    if (pbkdf2_salt == NULL || pbkdf2_salt->length < 8) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        goto err;
+    }
+
     if (pbkdf2_param->prf == NULL) {
         kdf_hmac_nid = NID_hmacWithSHA1;
     } else {
@@ -186,6 +192,13 @@ static int pkcs12_gen_mac(PKCS12 *p12, const char *pass, int passlen,
 
     salt = p12->mac->salt->data;
     saltlen = p12->mac->salt->length;
+    
+    /* Validate salt length - should be at least 8 octets (64 bits) for security */
+    if (salt == NULL || saltlen < 8) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        return 0;
+    }
+    
     if (p12->mac->iter == NULL)
         iter = 1;
     else
