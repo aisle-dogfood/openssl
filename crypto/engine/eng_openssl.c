@@ -240,7 +240,7 @@ static const EVP_CIPHER *test_r4_cipher(void)
             || !EVP_CIPHER_meth_set_do_cipher(cipher, test_rc4_cipher)
             || !EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(TEST_RC4_KEY))) {
             EVP_CIPHER_meth_free(cipher);
-            cipher = NULL;
+            return NULL;
         }
         r4_cipher = cipher;
     }
@@ -265,7 +265,7 @@ static const EVP_CIPHER *test_r4_40_cipher(void)
             || !EVP_CIPHER_meth_set_do_cipher(cipher, test_rc4_cipher)
             || !EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(TEST_RC4_KEY))) {
             EVP_CIPHER_meth_free(cipher);
-            cipher = NULL;
+            return NULL;
         }
         r4_40_cipher = cipher;
     }
@@ -363,7 +363,7 @@ static const EVP_MD *test_sha_md(void)
             || !EVP_MD_meth_set_update(md, test_sha1_update)
             || !EVP_MD_meth_set_final(md, test_sha1_final)) {
             EVP_MD_meth_free(md);
-            md = NULL;
+            return NULL;
         }
         sha1_md = md;
     }
