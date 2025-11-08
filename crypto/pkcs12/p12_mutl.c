@@ -20,6 +20,7 @@
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/pkcs12.h>
+#include <openssl/evp.h>
 #include "p12_local.h"
 
 static int pkcs12_pbmac1_pbkdf2_key_gen(const char *pass, int passlen,
@@ -124,6 +125,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
     }
     keylen = ASN1_INTEGER_get(pbkdf2_param->keylength);
     pbkdf2_salt = pbkdf2_param->salt->value.octet_string;
+
+    /* Validate salt length to prevent weak salt attacks */
+    if (pbkdf2_salt == NULL || pbkdf2_salt->length < PKCS5_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, ERR_R_PASSED_INVALID_ARGUMENT);
+        goto err;
+    }
 
     if (pbkdf2_param->prf == NULL) {
         kdf_hmac_nid = NID_hmacWithSHA1;
