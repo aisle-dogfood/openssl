@@ -253,6 +253,7 @@ int X509_ocspid_print(BIO *bp, X509 *x)
     }
     BIO_printf(bp, "\n");
     EVP_MD_free(md);
+    md = NULL;
 
     return 1;
  err:
