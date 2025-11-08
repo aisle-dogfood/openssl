@@ -38,9 +38,11 @@ static void *des_newctx(void *provctx, size_t kbits, size_t blkbits,
         return NULL;
 
     ctx = OPENSSL_zalloc(sizeof(*ctx));
-    if (ctx != NULL)
+    if (ctx != NULL) {
+        OSSL_FIPS_IND_INIT(ctx)
         ossl_cipher_generic_initkey(ctx, kbits, blkbits, ivbits, mode, flags,
                                     hw, provctx);
+    }
     return ctx;
 }
 
@@ -55,6 +57,7 @@ static void *des_dupctx(void *ctx)
     ret = OPENSSL_malloc(sizeof(*ret));
     if (ret == NULL)
         return NULL;
+    OSSL_FIPS_IND_COPY(ret, in)
     in->base.hw->copyctx(&ret->base, &in->base);
 
     return ret;
@@ -67,6 +70,19 @@ static void des_freectx(void *vctx)
     ossl_cipher_generic_reset_ctx((PROV_CIPHER_CTX *)vctx);
     OPENSSL_clear_free(ctx,  sizeof(*ctx));
 }
+
+#ifdef FIPS_MODULE
+static int des_encrypt_check_approved(PROV_DES_CTX *ctx, int enc)
+{
+    /* DES encryption is not approved in FIPS 140-3 due to inadequate key strength */
+    if (enc && !OSSL_FIPS_IND_ON_UNAPPROVED(ctx, OSSL_FIPS_IND_SETTABLE0,
+                                            ctx->base.libctx,
+                                            "DES", "Encryption",
+                                            ossl_fips_config_des_encrypt_disallowed))
+        return 0;
+    return 1;
+}
+#endif
 
 static int des_init(void *vctx, const unsigned char *key, size_t keylen,
                     const unsigned char *iv, size_t ivlen,
@@ -98,7 +114,13 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
             return 0;
         ctx->key_set = 1;
     }
-    return ossl_cipher_generic_set_ctx_params(ctx, params);
+    if (!ossl_cipher_generic_set_ctx_params(ctx, params))
+        return 0;
+#ifdef FIPS_MODULE
+    if (!des_encrypt_check_approved((PROV_DES_CTX *)ctx, enc))
+        return 0;
+#endif
+    return 1;
 }
 
 static int des_einit(void *vctx, const unsigned char *key, size_t keylen,
@@ -129,6 +151,7 @@ static int des_generatekey(PROV_CIPHER_CTX *ctx, void *ptr)
 
 CIPHER_DEFAULT_GETTABLE_CTX_PARAMS_START(des)
     OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_RANDOM_KEY, NULL, 0),
+    OSSL_FIPS_IND_GETTABLE_CTX_PARAM()
 CIPHER_DEFAULT_GETTABLE_CTX_PARAMS_END(des)
 
 static int des_get_ctx_params(void *vctx, OSSL_PARAM params[])
@@ -144,6 +167,8 @@ static int des_get_ctx_params(void *vctx, OSSL_PARAM params[])
         ERR_raise(ERR_LIB_PROV, PROV_R_FAILED_TO_GENERATE_KEY);
         return 0;
     }
+    if (!OSSL_FIPS_IND_GET_CTX_PARAM(((PROV_DES_CTX *)vctx), params))
+        return 0;
     return 1;
 }
 

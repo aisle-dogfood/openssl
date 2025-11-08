@@ -51,6 +51,7 @@ typedef enum OPTION_choice {
     OPT_SSKDF_DIGEST_CHECK,
     OPT_X963KDF_DIGEST_CHECK,
     OPT_DISALLOW_DSA_SIGN,
+    OPT_DISALLOW_DES_ENCRYPT,
     OPT_DISALLOW_TDES_ENCRYPT,
     OPT_HKDF_KEY_CHECK,
     OPT_KBKDF_KEY_CHECK,
@@ -107,6 +108,8 @@ const OPTIONS fipsinstall_options[] = {
      "Enable digest check for X963KDF"},
     {"dsa_sign_disabled", OPT_DISALLOW_DSA_SIGN, '-',
      "Disallow DSA signing"},
+    {"des_encrypt_disabled", OPT_DISALLOW_DES_ENCRYPT, '-',
+     "Disallow DES encryption"},
     {"tdes_encrypt_disabled", OPT_DISALLOW_TDES_ENCRYPT, '-',
      "Disallow Triple-DES encryption"},
     {"rsa_pkcs15_padding_disabled", OPT_DISALLOW_PKCS15_PADDING, '-',
@@ -168,6 +171,7 @@ typedef struct {
     unsigned int sskdf_digest_check : 1;
     unsigned int x963kdf_digest_check : 1;
     unsigned int dsa_sign_disabled : 1;
+    unsigned int des_encrypt_disabled : 1;
     unsigned int tdes_encrypt_disabled : 1;
     unsigned int rsa_pkcs15_padding_disabled : 1;
     unsigned int rsa_pss_saltlen_check : 1;
@@ -409,6 +413,8 @@ static int write_config_fips_section(BIO *out, const char *section,
                       opts->x963kdf_digest_check ? "1": "0") <= 0
         || BIO_printf(out, "%s = %s\n", OSSL_PROV_PARAM_DSA_SIGN_DISABLED,
                       opts->dsa_sign_disabled ? "1" : "0") <= 0
+        || BIO_printf(out, "%s = %s\n", OSSL_PROV_PARAM_DES_ENCRYPT_DISABLED,
+                      opts->des_encrypt_disabled ? "1" : "0") <= 0
         || BIO_printf(out, "%s = %s\n", OSSL_PROV_PARAM_TDES_ENCRYPT_DISABLED,
                       opts->tdes_encrypt_disabled ? "1" : "0") <= 0
         || BIO_printf(out, "%s = %s\n",
@@ -663,6 +669,9 @@ int fipsinstall_main(int argc, char **argv)
             break;
         case OPT_DISALLOW_DSA_SIGN:
             fips_opts.dsa_sign_disabled = 1;
+            break;
+        case OPT_DISALLOW_DES_ENCRYPT:
+            fips_opts.des_encrypt_disabled = 1;
             break;
         case OPT_DISALLOW_TDES_ENCRYPT:
             fips_opts.tdes_encrypt_disabled = 1;
