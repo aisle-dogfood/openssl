@@ -9,6 +9,7 @@
 
 #include <openssl/des.h>
 #include "crypto/des_platform.h"
+#include "prov/securitycheck.h"
 
 #define TDES_FLAGS 0
 
@@ -22,6 +23,7 @@ typedef struct prov_des_ctx_st {
         void (*cbc) (const void *, void *, size_t,
                      const DES_key_schedule *, unsigned char *);
     } dstream;
+    OSSL_FIPS_IND_DECLARE
 
 } PROV_DES_CTX;
 
