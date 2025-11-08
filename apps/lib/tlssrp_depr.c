@@ -111,7 +111,7 @@ static char *ssl_give_srp_client_pwd_cb(SSL *s, void *arg)
     cb_tmp.prompt_info = "SRP user";
     if ((l = password_callback(pass, PWD_STRLEN, 0, &cb_tmp)) < 0) {
         BIO_printf(bio_err, "Can't read Password\n");
-        OPENSSL_free(pass);
+        OPENSSL_clear_free(pass, PWD_STRLEN + 1);
         return NULL;
     }
     *(pass + l) = '\0';
