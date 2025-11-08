@@ -91,7 +91,7 @@ static void kdf_scrypt_reset(void *vctx)
 {
     KDF_SCRYPT *ctx = (KDF_SCRYPT *)vctx;
 
-    OPENSSL_free(ctx->salt);
+    OPENSSL_clear_free(ctx->salt, ctx->salt_len);
     ctx->salt = NULL;
     OPENSSL_clear_free(ctx->pass, ctx->pass_len);
     ctx->pass = NULL;
