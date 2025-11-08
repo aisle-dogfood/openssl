@@ -124,7 +124,12 @@ void openssl_add_all_ciphers_int(void)
     EVP_add_cipher_alias(SN_cast5_cbc, "cast-cbc");
 #endif
 
-#ifndef OPENSSL_NO_RC5
+/*
+ * RC5 cipher disabled due to inadequate encryption strength.
+ * RC5 with 12 rounds is vulnerable to differential cryptanalysis
+ * and does not meet modern security standards.
+ */
+#if 0 /* RC5 disabled - inadequate encryption strength */
     EVP_add_cipher(EVP_rc5_32_12_16_ecb());
     EVP_add_cipher(EVP_rc5_32_12_16_cfb());
     EVP_add_cipher(EVP_rc5_32_12_16_ofb());
