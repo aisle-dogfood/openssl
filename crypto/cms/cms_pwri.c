@@ -314,7 +314,7 @@ int ossl_cms_RecipientInfo_pwri_crypt(const CMS_ContentInfo *cms,
     X509_ALGOR *algtmp, *kekalg = NULL;
     EVP_CIPHER_CTX *kekctx = NULL;
     char name[OSSL_MAX_NAME_SIZE];
-    EVP_CIPHER *kekcipher;
+    EVP_CIPHER *kekcipher = NULL;
     unsigned char *key = NULL;
     size_t keylen;
     const CMS_CTX *cms_ctx = ossl_cms_get0_cmsctx(cms);
