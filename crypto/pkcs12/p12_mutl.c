@@ -22,6 +22,9 @@
 #include <openssl/pkcs12.h>
 #include "p12_local.h"
 
+/* Minimum salt length for PBKDF2 as per SP800-132 */
+#define PKCS12_MIN_SALT_LEN 16
+
 static int pkcs12_pbmac1_pbkdf2_key_gen(const char *pass, int passlen,
                                         unsigned char *salt, int saltlen,
                                         int id, int iter, int keylen,
@@ -67,6 +70,11 @@ static int pkcs12_gen_gost_mac_key(const char *pass, int passlen,
     unsigned char out[96];
 
     if (keylen != TK26_MAC_KEY_LEN) {
+        return 0;
+    }
+
+    /* Validate salt length for PBKDF2 */
+    if (saltlen < PKCS12_MIN_SALT_LEN) {
         return 0;
     }
 
@@ -135,6 +143,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
     kdf_md = EVP_MD_fetch(ctx, OBJ_nid2sn(ossl_hmac2mdnid(kdf_hmac_nid)), propq);
     if (kdf_md == NULL) {
         ERR_raise(ERR_LIB_PKCS12, ERR_R_FETCH_FAILED);
+        goto err;
+    }
+
+    /* Validate salt length for PBKDF2 */
+    if (pbkdf2_salt->length < PKCS12_MIN_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
         goto err;
     }
 
@@ -379,6 +393,11 @@ static int pkcs12_pbmac1_pbkdf2_key_gen(const char *pass, int passlen,
                                         unsigned char *out,
                                         const EVP_MD *md_type)
 {
+    /* Validate salt length for PBKDF2 */
+    if (saltlen < PKCS12_MIN_SALT_LEN) {
+        return 0;
+    }
+    
     return PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                              md_type, keylen, out);
 }
@@ -404,9 +423,11 @@ static int pkcs12_setup_mac(PKCS12 *p12, int iter, unsigned char *salt, int salt
         }
     }
     if (saltlen == 0)
-        saltlen = PKCS12_SALT_LEN;
-    else if (saltlen < 0)
+        saltlen = PKCS12_MIN_SALT_LEN;
+    else if (saltlen < PKCS12_MIN_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
         return 0;
+    }
     if ((p12->mac->salt->data = OPENSSL_malloc(saltlen)) == NULL)
         return 0;
     p12->mac->salt->length = saltlen;
@@ -459,6 +480,12 @@ int PKCS12_set_pbmac1_pbkdf2(PKCS12 *p12, const char *pass, int passlen,
 
     if (iter == 0)
         iter = PKCS12_DEFAULT_ITER;
+
+    /* Validate salt length */
+    if (saltlen < PKCS12_MIN_SALT_LEN) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
+        goto err;
+    }
 
     keylen = EVP_MD_get_size(md_type);
 
