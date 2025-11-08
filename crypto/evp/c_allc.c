@@ -57,7 +57,7 @@ void openssl_add_all_ciphers_int(void)
     EVP_add_cipher(EVP_rc4());
     EVP_add_cipher(EVP_rc4_40());
 # ifndef OPENSSL_NO_MD5
-    EVP_add_cipher(EVP_rc4_hmac_md5());
+    /* EVP_add_cipher(EVP_rc4_hmac_md5()); */ /* Disabled due to inadequate encryption strength */
 # endif
 #endif
 
