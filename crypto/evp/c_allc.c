@@ -54,8 +54,9 @@ void openssl_add_all_ciphers_int(void)
 #endif
 
 #ifndef OPENSSL_NO_RC4
-    EVP_add_cipher(EVP_rc4());
-    EVP_add_cipher(EVP_rc4_40());
+    /* RC4 and RC4-40 ciphers removed due to inadequate encryption strength */
+    /* EVP_add_cipher(EVP_rc4()); */
+    /* EVP_add_cipher(EVP_rc4_40()); */
 # ifndef OPENSSL_NO_MD5
     EVP_add_cipher(EVP_rc4_hmac_md5());
 # endif
