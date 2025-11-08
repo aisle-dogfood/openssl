@@ -58,18 +58,20 @@ static int rc5_einit(void *ctx, const unsigned char *key, size_t keylen,
                           const unsigned char *iv, size_t ivlen,
                           const OSSL_PARAM params[])
 {
-    if (!ossl_cipher_generic_einit(ctx, key, keylen, iv, ivlen, NULL))
-        return 0;
-    return rc5_set_ctx_params(ctx, params);
+    /* RC5 has a 64-bit block size which is cryptographically weak */
+    /* Reject initialization to prevent use of inadequate encryption */
+    ERR_raise(ERR_LIB_PROV, PROV_R_CIPHER_OPERATION_FAILED);
+    return 0;
 }
 
 static int rc5_dinit(void *ctx, const unsigned char *key, size_t keylen,
                           const unsigned char *iv, size_t ivlen,
                           const OSSL_PARAM params[])
 {
-    if (!ossl_cipher_generic_dinit(ctx, key, keylen, iv, ivlen, NULL))
-        return 0;
-    return rc5_set_ctx_params(ctx, params);
+    /* RC5 has a 64-bit block size which is cryptographically weak */
+    /* Reject initialization to prevent use of inadequate encryption */
+    ERR_raise(ERR_LIB_PROV, PROV_R_CIPHER_OPERATION_FAILED);
+    return 0;
 }
 
 static int rc5_set_ctx_params(void *vctx, const OSSL_PARAM params[])
