@@ -769,10 +769,17 @@ static size_t get_file_length(struct h3ssl *h3ssl)
     char filename[PATH_MAX];
     struct stat st;
 
-    memset(filename, 0, PATH_MAX);
-    if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+    if (h3ssl->fileprefix != NULL) {
+        if (snprintf(filename, sizeof(filename), "%s%s", h3ssl->fileprefix, h3ssl->url) >= sizeof(filename)) {
+            printf("Filename too long: %s%s\n", h3ssl->fileprefix, h3ssl->url);
+            return 0;
+        }
+    } else {
+        if (snprintf(filename, sizeof(filename), "%s", h3ssl->url) >= sizeof(filename)) {
+            printf("Filename too long: %s\n", h3ssl->url);
+            return 0;
+        }
+    }
 
     if (strcmp(h3ssl->url, "big") == 0) {
         printf("big!!!\n");
@@ -799,10 +806,17 @@ static char *get_file_data(struct h3ssl *h3ssl)
     if (size == 0)
         return NULL;
 
-    memset(filename, 0, PATH_MAX);
-    if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+    if (h3ssl->fileprefix != NULL) {
+        if (snprintf(filename, sizeof(filename), "%s%s", h3ssl->fileprefix, h3ssl->url) >= sizeof(filename)) {
+            printf("Filename too long: %s%s\n", h3ssl->fileprefix, h3ssl->url);
+            return NULL;
+        }
+    } else {
+        if (snprintf(filename, sizeof(filename), "%s", h3ssl->url) >= sizeof(filename)) {
+            printf("Filename too long: %s\n", h3ssl->url);
+            return NULL;
+        }
+    }
 
     res = malloc(size+1);
     res[size] = '\0';
