@@ -284,8 +284,6 @@ const OSSL_DISPATCH ossl_##alg##kbits##lcmode##_functions[] = {                \
 IMPLEMENT_cipher(rc2, RC2, ecb, ECB, RC2_FLAGS, 128, 64, 0, block)
 /* ossl_rc2128cbc_functions */
 IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 128, 64, 64, block)
-/* ossl_rc240cbc_functions */
-IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 40, 64, 64, block)
 /* ossl_rc264cbc_functions */
 IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 64, 64, 64, block)
 
