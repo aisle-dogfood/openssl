@@ -126,7 +126,7 @@ int rsa_main(int argc, char **argv)
     EVP_PKEY *pkey = NULL;
     EVP_PKEY_CTX *pctx;
     EVP_CIPHER *enc = NULL;
-    char *infile = NULL, *outfile = NULL, *ciphername = NULL, *prog;
+    char *infile = NULL, *outfile = NULL, *ciphername = NULL, *prog = NULL;
     char *passin = NULL, *passout = NULL, *passinarg = NULL, *passoutarg = NULL;
     int private = 0;
     int informat = FORMAT_UNDEF, outformat = FORMAT_PEM, text = 0, check = 0;
