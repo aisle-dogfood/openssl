@@ -18,34 +18,41 @@ void openssl_add_all_ciphers_int(void)
 {
 
 #ifndef OPENSSL_NO_DES
+    /* 
+     * Single DES ciphers are cryptographically weak due to 56-bit key size.
+     * They are disabled by default for security. Define OPENSSL_ENABLE_WEAK_DES
+     * to enable them for legacy compatibility if absolutely necessary.
+     */
+# ifdef OPENSSL_ENABLE_WEAK_DES
     EVP_add_cipher(EVP_des_cfb());
     EVP_add_cipher(EVP_des_cfb1());
     EVP_add_cipher(EVP_des_cfb8());
-    EVP_add_cipher(EVP_des_ede_cfb());
-    EVP_add_cipher(EVP_des_ede3_cfb());
-    EVP_add_cipher(EVP_des_ede3_cfb1());
-    EVP_add_cipher(EVP_des_ede3_cfb8());
-
     EVP_add_cipher(EVP_des_ofb());
-    EVP_add_cipher(EVP_des_ede_ofb());
-    EVP_add_cipher(EVP_des_ede3_ofb());
-
-    EVP_add_cipher(EVP_desx_cbc());
-    EVP_add_cipher_alias(SN_desx_cbc, "DESX");
-    EVP_add_cipher_alias(SN_desx_cbc, "desx");
-
     EVP_add_cipher(EVP_des_cbc());
     EVP_add_cipher_alias(SN_des_cbc, "DES");
     EVP_add_cipher_alias(SN_des_cbc, "des");
-    EVP_add_cipher(EVP_des_ede_cbc());
-    EVP_add_cipher(EVP_des_ede3_cbc());
-    EVP_add_cipher_alias(SN_des_ede3_cbc, "DES3");
-    EVP_add_cipher_alias(SN_des_ede3_cbc, "des3");
-
     EVP_add_cipher(EVP_des_ecb());
+    EVP_add_cipher(EVP_desx_cbc());
+    EVP_add_cipher_alias(SN_desx_cbc, "DESX");
+    EVP_add_cipher_alias(SN_desx_cbc, "desx");
+# endif
+
+    /* DES-EDE (2DES) is also weak but kept for compatibility */
+    EVP_add_cipher(EVP_des_ede_cfb());
+    EVP_add_cipher(EVP_des_ede_ofb());
+    EVP_add_cipher(EVP_des_ede_cbc());
     EVP_add_cipher(EVP_des_ede());
     EVP_add_cipher_alias(SN_des_ede_ecb, "DES-EDE-ECB");
     EVP_add_cipher_alias(SN_des_ede_ecb, "des-ede-ecb");
+
+    /* Triple DES (3DES) - stronger but still not recommended for new applications */
+    EVP_add_cipher(EVP_des_ede3_cfb());
+    EVP_add_cipher(EVP_des_ede3_cfb1());
+    EVP_add_cipher(EVP_des_ede3_cfb8());
+    EVP_add_cipher(EVP_des_ede3_ofb());
+    EVP_add_cipher(EVP_des_ede3_cbc());
+    EVP_add_cipher_alias(SN_des_ede3_cbc, "DES3");
+    EVP_add_cipher_alias(SN_des_ede3_cbc, "des3");
     EVP_add_cipher(EVP_des_ede3());
     EVP_add_cipher_alias(SN_des_ede3_ecb, "DES-EDE3-ECB");
     EVP_add_cipher_alias(SN_des_ede3_ecb, "des-ede3-ecb");
