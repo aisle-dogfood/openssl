@@ -233,14 +233,17 @@ static const EVP_CIPHER *test_r4_cipher(void)
     if (r4_cipher == NULL) {
         EVP_CIPHER *cipher;
 
-        if ((cipher = EVP_CIPHER_meth_new(NID_rc4, 1, TEST_RC4_KEY_SIZE)) == NULL
-            || !EVP_CIPHER_meth_set_iv_length(cipher, 0)
+        cipher = EVP_CIPHER_meth_new(NID_rc4, 1, TEST_RC4_KEY_SIZE);
+        if (cipher == NULL)
+            return NULL;
+
+        if (!EVP_CIPHER_meth_set_iv_length(cipher, 0)
             || !EVP_CIPHER_meth_set_flags(cipher, EVP_CIPH_VARIABLE_LENGTH)
             || !EVP_CIPHER_meth_set_init(cipher, test_rc4_init_key)
             || !EVP_CIPHER_meth_set_do_cipher(cipher, test_rc4_cipher)
             || !EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(TEST_RC4_KEY))) {
             EVP_CIPHER_meth_free(cipher);
-            cipher = NULL;
+            return NULL;
         }
         r4_cipher = cipher;
     }
@@ -258,14 +261,17 @@ static const EVP_CIPHER *test_r4_40_cipher(void)
     if (r4_40_cipher == NULL) {
         EVP_CIPHER *cipher;
 
-        if ((cipher = EVP_CIPHER_meth_new(NID_rc4, 1, 5 /* 40 bits */)) == NULL
-            || !EVP_CIPHER_meth_set_iv_length(cipher, 0)
+        cipher = EVP_CIPHER_meth_new(NID_rc4, 1, 5 /* 40 bits */);
+        if (cipher == NULL)
+            return NULL;
+
+        if (!EVP_CIPHER_meth_set_iv_length(cipher, 0)
             || !EVP_CIPHER_meth_set_flags(cipher, EVP_CIPH_VARIABLE_LENGTH)
             || !EVP_CIPHER_meth_set_init(cipher, test_rc4_init_key)
             || !EVP_CIPHER_meth_set_do_cipher(cipher, test_rc4_cipher)
             || !EVP_CIPHER_meth_set_impl_ctx_size(cipher, sizeof(TEST_RC4_KEY))) {
             EVP_CIPHER_meth_free(cipher);
-            cipher = NULL;
+            return NULL;
         }
         r4_40_cipher = cipher;
     }
@@ -353,8 +359,11 @@ static const EVP_MD *test_sha_md(void)
     if (sha1_md == NULL) {
         EVP_MD *md;
 
-        if ((md = EVP_MD_meth_new(NID_sha1, NID_sha1WithRSAEncryption)) == NULL
-            || !EVP_MD_meth_set_result_size(md, SHA_DIGEST_LENGTH)
+        md = EVP_MD_meth_new(NID_sha1, NID_sha1WithRSAEncryption);
+        if (md == NULL)
+            return NULL;
+
+        if (!EVP_MD_meth_set_result_size(md, SHA_DIGEST_LENGTH)
             || !EVP_MD_meth_set_input_blocksize(md, SHA_CBLOCK)
             || !EVP_MD_meth_set_app_datasize(md,
                                              sizeof(EVP_MD *) + sizeof(SHA_CTX))
@@ -363,7 +372,7 @@ static const EVP_MD *test_sha_md(void)
             || !EVP_MD_meth_set_update(md, test_sha1_update)
             || !EVP_MD_meth_set_final(md, test_sha1_final)) {
             EVP_MD_meth_free(md);
-            md = NULL;
+            return NULL;
         }
         sha1_md = md;
     }
