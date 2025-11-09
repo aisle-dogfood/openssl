@@ -110,13 +110,17 @@ static int int_ctrl_helper(ENGINE *e, int cmd, long i, void *p,
     case ENGINE_CTRL_GET_NAME_LEN_FROM_CMD:
         return strlen(cdp->cmd_name);
     case ENGINE_CTRL_GET_NAME_FROM_CMD:
-        return strlen(strcpy(s, cdp->cmd_name));
+        OPENSSL_strlcpy(s, cdp->cmd_name, strlen(cdp->cmd_name) + 1);
+        return strlen(cdp->cmd_name);
     case ENGINE_CTRL_GET_DESC_LEN_FROM_CMD:
         return strlen(cdp->cmd_desc == NULL ? int_no_description
                                             : cdp->cmd_desc);
     case ENGINE_CTRL_GET_DESC_FROM_CMD:
-        return strlen(strcpy(s, cdp->cmd_desc == NULL ? int_no_description
-                                                      : cdp->cmd_desc));
+        {
+            const char *desc = cdp->cmd_desc == NULL ? int_no_description : cdp->cmd_desc;
+            OPENSSL_strlcpy(s, desc, strlen(desc) + 1);
+            return strlen(desc);
+        }
     case ENGINE_CTRL_GET_CMD_FLAGS:
         return cdp->cmd_flags;
     }
