@@ -213,7 +213,14 @@ static int psk_use_session_cb(SSL *s, const EVP_MD *md,
         usesess = psksess;
     } else {
         long key_len;
-        unsigned char *key = OPENSSL_hexstr2buf(psk_key, &key_len);
+        unsigned char *key;
+
+        if (psk_key == NULL) {
+            BIO_printf(bio_err, "No PSK key available\n");
+            return 0;
+        }
+
+        key = OPENSSL_hexstr2buf(psk_key, &key_len);
 
         if (key == NULL) {
             BIO_printf(bio_err, "Could not convert PSK key '%s' to buffer\n",
