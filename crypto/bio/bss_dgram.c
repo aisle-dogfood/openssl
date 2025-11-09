@@ -2350,6 +2350,11 @@ static long dgram_sctp_ctrl(BIO *b, int cmd, long num, void *ptr)
             ret = -1;
             break;
         }
+        if (ptr == NULL) {
+            OPENSSL_free(authkey);
+            ret = -1;
+            break;
+        }
         memset(authkey, 0, sockopt_len);
         authkey->sca_keynumber = authkeyid.scact_keynumber + 1;
 #  ifndef __FreeBSD__
