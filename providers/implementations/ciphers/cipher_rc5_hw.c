@@ -15,6 +15,8 @@
 
 #include "cipher_rc5.h"
 
+#ifndef OPENSSL_NO_RC5
+
 static int cipher_hw_rc5_initkey(PROV_CIPHER_CTX *ctx,
                                  const unsigned char *key, size_t keylen)
 {
@@ -39,3 +41,5 @@ PROV_CIPHER_HW_rc5_mode(cbc, CBC)
 PROV_CIPHER_HW_rc5_mode(ecb, ECB)
 PROV_CIPHER_HW_rc5_mode(ofb64, OFB)
 PROV_CIPHER_HW_rc5_mode(cfb64, CFB)
+
+#endif /* OPENSSL_NO_RC5 */

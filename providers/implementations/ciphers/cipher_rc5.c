@@ -20,6 +20,8 @@
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
 
+#ifndef OPENSSL_NO_RC5
+
 #define RC5_FLAGS PROV_CIPHER_FLAG_VARIABLE_LENGTH
 
 static OSSL_FUNC_cipher_encrypt_init_fn rc5_einit;
@@ -184,3 +186,5 @@ IMPLEMENT_cipher(rc5, RC5, cbc, CBC, RC5_FLAGS, 128, 64, 64, block)
 IMPLEMENT_cipher(rc5, RC5, ofb64, OFB, RC5_FLAGS, 128, 8, 64, stream)
 /* ossl_rc5128cfb64_functions */
 IMPLEMENT_cipher(rc5, RC5, cfb64,  CFB, RC5_FLAGS, 128, 8, 64, stream)
+
+#endif /* OPENSSL_NO_RC5 */
