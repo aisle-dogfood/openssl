@@ -172,6 +172,7 @@ void ossl_malloc_setup_failures(void)
         cplen = strlen(cp);
         if (cplen <= CRYPTO_MEM_CHECK_MAX_FS) {
             strncpy(md_failbuf, cp, CRYPTO_MEM_CHECK_MAX_FS);
+            md_failbuf[CRYPTO_MEM_CHECK_MAX_FS] = '\0';  /* Ensure null termination */
             md_failstring = md_failbuf;
             parseit();
         }
