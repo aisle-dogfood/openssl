@@ -57,12 +57,18 @@ void OPENSSL_Uplink(volatile void **table, int index)
     do {
         len = _sntprintf(msg, sizeof(msg) / sizeof(TCHAR),
                          _T("OPENSSL_Uplink(%p,%02X): "), table, index);
-        _tcscpy(msg + len, _T("unimplemented function"));
+        if (len >= 0 && len < (int)(sizeof(msg) / sizeof(TCHAR))) {
+            _sntprintf(msg + len, (sizeof(msg) / sizeof(TCHAR)) - len,
+                       _T("unimplemented function"));
+        }
 
         if ((h = apphandle) == NULL) {
             if ((h = GetModuleHandle(NULL)) == NULL) {
                 apphandle = (HMODULE) - 1;
-                _tcscpy(msg + len, _T("no host application"));
+                if (len >= 0 && len < (int)(sizeof(msg) / sizeof(TCHAR))) {
+                    _sntprintf(msg + len, (sizeof(msg) / sizeof(TCHAR)) - len,
+                               _T("no host application"));
+                }
                 break;
             }
             apphandle = h;
@@ -76,13 +82,19 @@ void OPENSSL_Uplink(volatile void **table, int index)
             applink = (void **(*)())GetProcAddress(h, "OPENSSL_Applink");
             if (applink == NULL) {
                 apphandle = (HMODULE) - 1;
-                _tcscpy(msg + len, _T("no OPENSSL_Applink"));
+                if (len >= 0 && len < (int)(sizeof(msg) / sizeof(TCHAR))) {
+                    _sntprintf(msg + len, (sizeof(msg) / sizeof(TCHAR)) - len,
+                               _T("no OPENSSL_Applink"));
+                }
                 break;
             }
             p = (*applink) ();
             if (p == NULL) {
                 apphandle = (HMODULE) - 1;
-                _tcscpy(msg + len, _T("no ApplinkTable"));
+                if (len >= 0 && len < (int)(sizeof(msg) / sizeof(TCHAR))) {
+                    _sntprintf(msg + len, (sizeof(msg) / sizeof(TCHAR)) - len,
+                               _T("no ApplinkTable"));
+                }
                 break;
             }
             applinktable = p;
