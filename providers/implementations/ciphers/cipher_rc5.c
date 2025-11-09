@@ -149,7 +149,7 @@ static void *alg##_##kbits##_##lcmode##_newctx(void *provctx)                  \
                                      EVP_CIPH_##UCMODE##_MODE, flags,          \
                                      ossl_prov_cipher_hw_##alg##_##lcmode(kbits),\
                                 NULL);                                         \
-         ctx->rounds = RC5_12_ROUNDS;                                          \
+         ctx->rounds = RC5_16_ROUNDS;                                          \
      }                                                                         \
      return ctx;                                                               \
 }                                                                              \
