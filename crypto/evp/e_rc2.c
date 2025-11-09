@@ -49,6 +49,8 @@ IMPLEMENT_BLOCK_CIPHER(rc2, ks, RC2, EVP_RC2_KEY, NID_rc2,
 # define RC2_40_MAGIC    0xa0
 # define RC2_64_MAGIC    0x78
 # define RC2_128_MAGIC   0x3a
+/* RC2-64 and RC2-40 ciphers disabled due to inadequate encryption strength */
+#if 0
 static const EVP_CIPHER r2_64_cbc_cipher = {
     NID_rc2_64_cbc,
     8, 8 /* 64 bit */ , 8,
@@ -78,15 +80,18 @@ static const EVP_CIPHER r2_40_cbc_cipher = {
     rc2_ctrl,
     NULL
 };
+#endif
 
 const EVP_CIPHER *EVP_rc2_64_cbc(void)
 {
-    return &r2_64_cbc_cipher;
+    /* RC2-64 cipher disabled due to inadequate encryption strength */
+    return NULL;
 }
 
 const EVP_CIPHER *EVP_rc2_40_cbc(void)
 {
-    return &r2_40_cbc_cipher;
+    /* RC2-40 cipher disabled due to inadequate encryption strength */
+    return NULL;
 }
 
 static int rc2_init_key(EVP_CIPHER_CTX *ctx, const unsigned char *key,
@@ -105,10 +110,15 @@ static int rc2_meth_to_magic(EVP_CIPHER_CTX *e)
         return 0;
     if (i == 128)
         return RC2_128_MAGIC;
-    else if (i == 64)
-        return RC2_64_MAGIC;
-    else if (i == 40)
-        return RC2_40_MAGIC;
+    /* RC2-64 and RC2-40 disabled due to inadequate encryption strength */
+    else if (i == 64) {
+        ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_KEY_SIZE);
+        return 0;
+    }
+    else if (i == 40) {
+        ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_KEY_SIZE);
+        return 0;
+    }
     else
         return 0;
 }
@@ -117,10 +127,15 @@ static int rc2_magic_to_meth(int i)
 {
     if (i == RC2_128_MAGIC)
         return 128;
-    else if (i == RC2_64_MAGIC)
-        return 64;
-    else if (i == RC2_40_MAGIC)
-        return 40;
+    /* RC2-64 and RC2-40 disabled due to inadequate encryption strength */
+    else if (i == RC2_64_MAGIC) {
+        ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_KEY_SIZE);
+        return 0;
+    }
+    else if (i == RC2_40_MAGIC) {
+        ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_KEY_SIZE);
+        return 0;
+    }
     else {
         ERR_raise(ERR_LIB_EVP, EVP_R_UNSUPPORTED_KEY_SIZE);
         return 0;
