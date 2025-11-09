@@ -160,22 +160,24 @@ int enc_main(int argc, char **argv)
     EVP_SKEYMGMT *mgmt = NULL;
 
     /* first check the command name */
-    if (strcmp(argv[0], "base64") == 0)
-        base64 = 1;
+    if (argc > 0 && argv[0] != NULL) {
+        if (strcmp(argv[0], "base64") == 0)
+            base64 = 1;
 #ifndef OPENSSL_NO_ZLIB
-    else if (strcmp(argv[0], "zlib") == 0)
-        do_zlib = 1;
+        else if (strcmp(argv[0], "zlib") == 0)
+            do_zlib = 1;
 #endif
 #ifndef OPENSSL_NO_BROTLI
-    else if (strcmp(argv[0], "brotli") == 0)
-        do_brotli = 1;
+        else if (strcmp(argv[0], "brotli") == 0)
+            do_brotli = 1;
 #endif
 #ifndef OPENSSL_NO_ZSTD
-    else if (strcmp(argv[0], "zstd") == 0)
-        do_zstd = 1;
+        else if (strcmp(argv[0], "zstd") == 0)
+            do_zstd = 1;
 #endif
-    else if (strcmp(argv[0], "enc") != 0)
-        ciphername = argv[0];
+        else if (strcmp(argv[0], "enc") != 0)
+            ciphername = argv[0];
+    }
 
     opt_set_unknown_name("cipher");
     prog = opt_init(argc, argv, enc_options);
