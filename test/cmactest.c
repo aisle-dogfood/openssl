@@ -268,7 +268,7 @@ static int test_cmac_run(void)
     if (!TEST_str_eq(p, test[5].mac))
         goto err;
 
-#ifndef OPENSSL_NO_DES
+#if !defined(OPENSSL_NO_DES) && !defined(OPENSSL_NO_WEAK_EVP_CIPHERS)
     if (!TEST_true(CMAC_Init(ctx, test[6].key, test[6].key_len,
                              EVP_des_ede3_cbc(), NULL))
         || !TEST_true(CMAC_Update(ctx, test[6].data, test[6].data_len))

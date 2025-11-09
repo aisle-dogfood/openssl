@@ -111,14 +111,14 @@ err:
 }
 #endif
 
-#if !defined OPENSSL_NO_RC4 && !defined OPENSSL_NO_MD5
+#if !defined OPENSSL_NO_RC4 && !defined OPENSSL_NO_MD5 && !defined OPENSSL_NO_WEAK_EVP_CIPHERS
 static int test_pkcs5_pbe_rc4_md5(void)
 {
     return test_pkcs5_pbe(EVP_rc4(), EVP_md5(), pbe_ciphertext_rc4_md5, sizeof(pbe_ciphertext_rc4_md5));
 }
 #endif
 
-#if !defined OPENSSL_NO_DES && !defined OPENSSL_NO_SHA1
+#if !defined OPENSSL_NO_DES && !defined OPENSSL_NO_SHA1 && !defined OPENSSL_NO_WEAK_EVP_CIPHERS
 static int test_pkcs5_pbe_des_sha1(void)
 {
     return test_pkcs5_pbe(EVP_des_cbc(), EVP_sha1(), pbe_ciphertext_des_sha1, sizeof(pbe_ciphertext_des_sha1));
@@ -146,10 +146,10 @@ int setup_tests(void)
     }
 #endif
 
-#if !defined OPENSSL_NO_RC4 && !defined OPENSSL_NO_MD5
+#if !defined OPENSSL_NO_RC4 && !defined OPENSSL_NO_MD5 && !defined OPENSSL_NO_WEAK_EVP_CIPHERS
     ADD_TEST(test_pkcs5_pbe_rc4_md5);
 #endif
-#if !defined OPENSSL_NO_DES && !defined OPENSSL_NO_SHA1
+#if !defined OPENSSL_NO_DES && !defined OPENSSL_NO_SHA1 && !defined OPENSSL_NO_WEAK_EVP_CIPHERS
     ADD_TEST(test_pkcs5_pbe_des_sha1);
 #endif
 
