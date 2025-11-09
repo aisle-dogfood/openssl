@@ -110,6 +110,18 @@ int gendsa_main(int argc, char **argv)
         goto opthelp;
     argv = opt_rest();
     dsaparams = argv[0];
+    
+    /* Validate the dsaparams argument */
+    if (dsaparams == NULL || *dsaparams == '\0') {
+        BIO_printf(bio_err, "Error: DSA parameters file argument is required\n");
+        goto opthelp;
+    }
+    
+    /* Additional validation for heap safety */
+    if (strlen(dsaparams) > 4096) {  /* Reasonable maximum path length */
+        BIO_printf(bio_err, "Error: DSA parameters file path too long\n");
+        goto opthelp;
+    }
 
     if (!app_RAND_load())
         goto end;
