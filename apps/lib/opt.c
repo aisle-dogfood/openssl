@@ -430,13 +430,22 @@ int opt_cipher(const char *name, EVP_CIPHER **cipherp)
 
     if (name == NULL)
          return 1;
+    
+    /* Basic input validation for cipher name */
+    if (strlen(name) > 256) {
+        opt_printf_stderr("%s: Cipher name too long: %s\n", prog, name);
+        return 0;
+    }
+    
      if (opt_cipher_any(name, &c)) {
         mode = EVP_CIPHER_get_mode(c);
         flags = EVP_CIPHER_get_flags(c);
         if (mode == EVP_CIPH_XTS_MODE) {
             opt_printf_stderr("%s XTS ciphers not supported\n", prog);
+            EVP_CIPHER_free(c);
         } else if ((flags & EVP_CIPH_FLAG_AEAD_CIPHER) != 0) {
             opt_printf_stderr("%s: AEAD ciphers not supported\n", prog);
+            EVP_CIPHER_free(c);
         } else {
             ret = 1;
             if (cipherp != NULL)
