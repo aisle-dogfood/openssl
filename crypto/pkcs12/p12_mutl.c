@@ -70,6 +70,11 @@ static int pkcs12_gen_gost_mac_key(const char *pass, int passlen,
         return 0;
     }
 
+    /* Validate salt length to prevent weak salt attacks */
+    if (saltlen < PKCS12_SALT_LEN) {
+        return 0;
+    }
+
     if (!PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                            digest, sizeof(out), out)) {
         return 0;
