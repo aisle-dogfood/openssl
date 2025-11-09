@@ -202,6 +202,12 @@ static int psk_find_session_cb(SSL *ssl, const unsigned char *identity,
     long key_len;
     const SSL_CIPHER *cipher = NULL;
 
+    /* Validate input parameters to prevent NULL pointer dereference */
+    if (psk_identity == NULL || identity == NULL) {
+        *sess = NULL;
+        return 1;
+    }
+
     if (strlen(psk_identity) != identity_len
             || memcmp(psk_identity, identity, identity_len) != 0) {
         *sess = NULL;
