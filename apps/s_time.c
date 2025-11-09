@@ -312,7 +312,7 @@ int s_time_main(int argc, char **argv)
 
     printf
         ("\n\n%d connections in %.2fs; %.2f connections/user sec, bytes read %ld\n",
-         nConn, totalTime, ((double)nConn / totalTime), bytes_read);
+         nConn, totalTime, (totalTime > 0.0 ? ((double)nConn / totalTime) : 0.0), bytes_read);
     printf
         ("%d connections in %ld real seconds, %ld bytes read per connection\n",
          nConn, (long)time(NULL) - finishtime + maxtime,
