@@ -112,9 +112,10 @@ struct record_functions_st {
      *    0: if the record is publicly invalid, or an internal error, or AEAD
      *       decryption failed, or EtM decryption failed.
      *    1: Success or MtE decryption failed (MAC will be randomised)
+     * Note: macs parameter may be NULL when MAC processing is not required
      */
     int (*cipher)(OSSL_RECORD_LAYER *rl, TLS_RL_RECORD *recs, size_t n_recs,
-                  int sending, SSL_MAC_BUF *macs, size_t macsize);
+                  int sending, SSL_MAC_BUF * /* nullable */ macs, size_t macsize);
     /* Returns 1 for success or 0 for error */
     int (*mac)(OSSL_RECORD_LAYER *rl, TLS_RL_RECORD *rec, unsigned char *md,
                int sending);
