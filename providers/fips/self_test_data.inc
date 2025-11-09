@@ -3457,9 +3457,12 @@ static const ST_KAT_KEM st_kat_kem_tests[] = {
         OSSL_SELF_TEST_DESC_KEM,
         "ML-KEM-512",
         ml_kem_key,
-        ITM(ml_kem_512_cipher_text),
-        ITM(ml_kem_512_entropy),
-        ITM(ml_kem_512_secret),
+        ml_kem_512_cipher_text,
+        sizeof(ml_kem_512_cipher_text),
+        ml_kem_512_entropy,
+        sizeof(ml_kem_512_entropy),
+        ml_kem_512_secret,
+        sizeof(ml_kem_512_secret),
         ml_kem_512_reject_secret    /* No length because same as _secret's */
     },
 };
