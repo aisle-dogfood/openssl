@@ -186,8 +186,10 @@ static int el_setup_keyslot(OSSL_QRL_ENC_LEVEL_SET *els,
     return 1;
 
  err:
-    EVP_CIPHER_CTX_free(cctx);
-    EVP_CIPHER_free(cipher);
+    if (cctx != NULL)
+        EVP_CIPHER_CTX_free(cctx);
+    if (cipher != NULL)
+        EVP_CIPHER_free(cipher);
     OPENSSL_cleanse(el->iv[keyslot], sizeof(el->iv[keyslot]));
     OPENSSL_cleanse(key, sizeof(key));
     return 0;
