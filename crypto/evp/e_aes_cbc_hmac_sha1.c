@@ -401,6 +401,9 @@ static size_t tls1_1_multi_block_encrypt(EVP_AES_HMAC_SHA1 *key,
 
     OPENSSL_cleanse(blocks, sizeof(blocks));
     OPENSSL_cleanse(ctx, sizeof(*ctx));
+    OPENSSL_cleanse(hash_d, sizeof(hash_d));
+    OPENSSL_cleanse(edges, sizeof(edges));
+    OPENSSL_cleanse(ciph_d, sizeof(ciph_d));
 
     return ret;
 }
