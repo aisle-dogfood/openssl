@@ -150,13 +150,9 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_RC5_CFB, ossl_rc5128cfb64_functions),
 #endif /* OPENSSL_NO_RC5 */
 #ifndef OPENSSL_NO_DES
+    /* Single DES ciphers removed due to inadequate encryption strength (56-bit keys) */
+    /* Only keeping DESX which provides better security than single DES */
     ALG(PROV_NAMES_DESX_CBC, ossl_tdes_desx_cbc_functions),
-    ALG(PROV_NAMES_DES_ECB, ossl_des_ecb_functions),
-    ALG(PROV_NAMES_DES_CBC, ossl_des_cbc_functions),
-    ALG(PROV_NAMES_DES_OFB, ossl_des_ofb64_functions),
-    ALG(PROV_NAMES_DES_CFB, ossl_des_cfb64_functions),
-    ALG(PROV_NAMES_DES_CFB1, ossl_des_cfb1_functions),
-    ALG(PROV_NAMES_DES_CFB8, ossl_des_cfb8_functions),
 #endif /* OPENSSL_NO_DES */
     { NULL, NULL, NULL }
 };
