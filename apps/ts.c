@@ -349,7 +349,10 @@ int ts_main(int argc, char **argv)
     X509_VERIFY_PARAM_free(vpm);
     EVP_MD_free(md);
     NCONF_free(conf);
-    OPENSSL_free(password);
+    if (password != NULL) {
+        OPENSSL_cleanse(password, strlen(password));
+        OPENSSL_free(password);
+    }
     return ret;
 }
 
