@@ -102,6 +102,63 @@ err:
     return NULL;
 }
 
+/*
+ * Validate a directory path to prevent path traversal attacks.
+ * Returns 1 if the path is safe, 0 if it contains dangerous components.
+ */
+static int validate_qlog_directory_path(const char *path)
+{
+    const char *p;
+    size_t len;
+
+    if (path == NULL)
+        return 0;
+
+    len = strlen(path);
+    if (len == 0)
+        return 0;
+
+    /* Check for null bytes in the path */
+    if (strlen(path) != len)
+        return 0;
+
+    /* Check for path traversal sequences */
+    p = path;
+    while ((p = strstr(p, "..")) != NULL) {
+        /* Check if ".." is a complete path component */
+        if ((p == path || p[-1] == '/' || p[-1] == '\\') &&
+            (p[2] == '\0' || p[2] == '/' || p[2] == '\\')) {
+            return 0; /* Path traversal detected */
+        }
+        p += 2;
+    }
+
+    /* Additional checks for dangerous paths */
+    if (path[0] == '\0')
+        return 0;
+
+    /* Reject paths that start with certain dangerous patterns */
+    if (strncmp(path, "/etc", 4) == 0 ||
+        strncmp(path, "/proc", 5) == 0 ||
+        strncmp(path, "/sys", 4) == 0 ||
+        strncmp(path, "/dev", 4) == 0 ||
+        strncmp(path, "/boot", 5) == 0 ||
+        strncmp(path, "/root", 5) == 0) {
+        return 0;
+    }
+
+#ifdef _WIN32
+    /* On Windows, reject paths to system directories */
+    if (strncmp(path, "C:\\Windows", 10) == 0 ||
+        strncmp(path, "C:\\Program Files", 16) == 0 ||
+        strncmp(path, "C:\\System", 9) == 0) {
+        return 0;
+    }
+#endif
+
+    return 1;
+}
+
 QLOG *ossl_qlog_new_from_env(const QLOG_TRACE_INFO *info)
 {
     QLOG *qlog = NULL;
@@ -111,6 +168,10 @@ QLOG *ossl_qlog_new_from_env(const QLOG_TRACE_INFO *info)
     size_t i, l, strl;
 
     if (info == NULL || qlogdir == NULL)
+        return NULL;
+
+    /* Validate the directory path to prevent path traversal attacks */
+    if (!validate_qlog_directory_path(qlogdir))
         return NULL;
 
     l = strlen(qlogdir);
