@@ -2042,6 +2042,12 @@ static int certify_spkac(X509 **xret, const char *infile, EVP_PKEY *pkey,
             continue;
         }
 
+        /* Validate NID to prevent integer overflow */
+        if (OBJ_nid2obj(nid) == NULL) {
+            BIO_printf(bio_err, "Invalid NID value: %d\n", nid);
+            goto end;
+        }
+
         if (!X509_NAME_add_entry_by_NID(n, nid, chtype,
                                         (unsigned char *)buf, -1, -1, 0))
             goto end;
