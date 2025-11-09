@@ -102,6 +102,37 @@ err:
     return NULL;
 }
 
+/*
+ * Check if directory path contains path traversal sequences that could be used
+ * to access files outside the intended directory.
+ * Returns 1 if path is safe, 0 if it contains dangerous sequences.
+ */
+static int is_safe_qlog_dir(const char *qlogdir)
+{
+    const char *p;
+    
+    if (qlogdir == NULL)
+        return 0;
+    
+    /* Check for absolute paths - these are allowed for QLOGDIR */
+    /* but we still need to check for path traversal sequences */
+    
+    /* Check for path traversal sequences */
+    p = qlogdir;
+    while (*p != '\0') {
+        if (p[0] == '.' && p[1] == '.') {
+            /* Found ".." - check if it's a directory traversal */
+            if ((p == qlogdir || p[-1] == '/' || p[-1] == '\\') &&
+                (p[2] == '\0' || p[2] == '/' || p[2] == '\\')) {
+                return 0;
+            }
+        }
+        p++;
+    }
+    
+    return 1;
+}
+
 QLOG *ossl_qlog_new_from_env(const QLOG_TRACE_INFO *info)
 {
     QLOG *qlog = NULL;
@@ -115,6 +146,10 @@ QLOG *ossl_qlog_new_from_env(const QLOG_TRACE_INFO *info)
 
     l = strlen(qlogdir);
     if (l == 0)
+        return NULL;
+
+    /* Validate QLOGDIR to prevent path traversal attacks */
+    if (!is_safe_qlog_dir(qlogdir))
         return NULL;
 
     qlogdir_sep = ossl_determine_dirsep(qlogdir);
