@@ -57,7 +57,11 @@ static void kdf_pvk_cleanup(KDF_PVK *ctx)
 {
     ossl_prov_digest_reset(&ctx->digest);
     OPENSSL_free(ctx->salt);
+    ctx->salt = NULL;
+    ctx->salt_len = 0;
     OPENSSL_clear_free(ctx->pass, ctx->pass_len);
+    ctx->pass = NULL;
+    ctx->pass_len = 0;
     OPENSSL_cleanse(ctx, sizeof(*ctx));
 }
 
