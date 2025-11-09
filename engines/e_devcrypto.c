@@ -211,6 +211,10 @@ static int cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
         get_cipher_data(EVP_CIPHER_CTX_get_nid(ctx));
     int ret;
 
+    /* Validate cipher_ctx pointer to prevent heap inspection vulnerability */
+    if (cipher_ctx == NULL)
+        return 0;
+
     /* cleanup a previous session */
     if (cipher_ctx->sess.ses != 0 &&
         clean_devcrypto_session(&cipher_ctx->sess) == 0)
@@ -245,6 +249,10 @@ static int cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         (struct cipher_ctx *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     struct crypt_op cryp;
     unsigned char *iv = EVP_CIPHER_CTX_iv_noconst(ctx);
+
+    /* Validate cipher_ctx pointer to prevent heap inspection vulnerability */
+    if (cipher_ctx == NULL)
+        return 0;
 #if !defined(COP_FLAG_WRITE_IV)
     unsigned char saved_iv[EVP_MAX_IV_LENGTH];
     const unsigned char *ivptr;
@@ -326,6 +334,10 @@ static int ctr_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
         (struct cipher_ctx *)EVP_CIPHER_CTX_get_cipher_data(ctx);
     size_t nblocks, len;
 
+    /* Validate cipher_ctx pointer to prevent heap inspection vulnerability */
+    if (cipher_ctx == NULL)
+        return 0;
+
     /* initial partial block */
     while (cipher_ctx->num && inl) {
         (*out++) = *(in++) ^ cipher_ctx->partial[cipher_ctx->num];
@@ -367,14 +379,19 @@ static int cipher_ctrl(EVP_CIPHER_CTX *ctx, int type, int p1, void* p2)
     EVP_CIPHER_CTX *to_ctx = (EVP_CIPHER_CTX *)p2;
     struct cipher_ctx *to_cipher_ctx;
 
+    /* Validate cipher_ctx pointer to prevent heap inspection vulnerability */
+    if (cipher_ctx == NULL)
+        return -1;
+
     switch (type) {
 
     case EVP_CTRL_COPY:
-        if (cipher_ctx == NULL)
-            return 1;
         /* when copying the context, a new session needs to be initialized */
         to_cipher_ctx =
             (struct cipher_ctx *)EVP_CIPHER_CTX_get_cipher_data(to_ctx);
+        /* Validate to_cipher_ctx pointer to prevent heap inspection vulnerability */
+        if (to_cipher_ctx == NULL)
+            return 0;
         memset(&to_cipher_ctx->sess, 0, sizeof(to_cipher_ctx->sess));
         return cipher_init(to_ctx, (void *)cipher_ctx->sess.key, EVP_CIPHER_CTX_iv(ctx),
                            (cipher_ctx->op == COP_ENCRYPT));
@@ -394,6 +411,10 @@ static int cipher_cleanup(EVP_CIPHER_CTX *ctx)
 {
     struct cipher_ctx *cipher_ctx =
         (struct cipher_ctx *)EVP_CIPHER_CTX_get_cipher_data(ctx);
+
+    /* Validate cipher_ctx pointer to prevent heap inspection vulnerability */
+    if (cipher_ctx == NULL)
+        return 1;
 
     return clean_devcrypto_session(&cipher_ctx->sess);
 }
