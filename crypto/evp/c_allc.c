@@ -17,7 +17,7 @@
 void openssl_add_all_ciphers_int(void)
 {
 
-#ifndef OPENSSL_NO_DES
+#if !defined(OPENSSL_NO_DES) && !defined(OPENSSL_NO_WEAK_SSL_CIPHERS)
     EVP_add_cipher(EVP_des_cfb());
     EVP_add_cipher(EVP_des_cfb1());
     EVP_add_cipher(EVP_des_cfb8());
@@ -53,7 +53,7 @@ void openssl_add_all_ciphers_int(void)
     EVP_add_cipher_alias(SN_id_smime_alg_CMS3DESwrap, "des3-wrap");
 #endif
 
-#ifndef OPENSSL_NO_RC4
+#if !defined(OPENSSL_NO_RC4) && !defined(OPENSSL_NO_WEAK_SSL_CIPHERS)
     EVP_add_cipher(EVP_rc4());
     EVP_add_cipher(EVP_rc4_40());
 # ifndef OPENSSL_NO_MD5
@@ -89,7 +89,7 @@ void openssl_add_all_ciphers_int(void)
     EVP_add_cipher_alias(SN_sm4_cbc, "sm4");
 #endif
 
-#ifndef OPENSSL_NO_RC2
+#if !defined(OPENSSL_NO_RC2) && !defined(OPENSSL_NO_WEAK_SSL_CIPHERS)
     EVP_add_cipher(EVP_rc2_ecb());
     EVP_add_cipher(EVP_rc2_cfb());
     EVP_add_cipher(EVP_rc2_ofb());
