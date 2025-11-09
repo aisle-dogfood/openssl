@@ -724,7 +724,7 @@ static int self_test_kem_decapsulate(const ST_KAT_KEM *t, OSSL_SELF_TEST *st,
     EVP_PKEY_CTX *ctx = NULL;
     unsigned char *secret = NULL, *alloced = NULL;
     const unsigned char *test_secret = t->secret;
-    const unsigned char *cipher_text = t->cipher_text;
+    const unsigned char *cipher_text;
     size_t secretlen = t->secret_len;
 
     OSSL_SELF_TEST_onbegin(st, OSSL_SELF_TEST_TYPE_KAT_KEM,
@@ -736,6 +736,8 @@ static int self_test_kem_decapsulate(const ST_KAT_KEM *t, OSSL_SELF_TEST *st,
         if (alloced == NULL)
             goto err;
         test_secret = t->reject_secret;
+    } else {
+        cipher_text = t->cipher_text;
     }
 
     ctx = EVP_PKEY_CTX_new_from_pkey(libctx, pkey, "");
