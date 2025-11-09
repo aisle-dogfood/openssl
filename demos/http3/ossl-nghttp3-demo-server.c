@@ -274,6 +274,64 @@ static void close_all_ids(struct h3ssl *h3ssl)
     }
 }
 
+/*
+ * Validate and sanitize URL path to prevent path traversal attacks.
+ * Returns 1 if the path is safe, 0 if it should be rejected.
+ */
+static int validate_url_path(const char *path, size_t path_len, char *safe_path, size_t safe_path_size)
+{
+    size_t i, j = 0;
+    int has_dot_dot = 0;
+    
+    /* Check for path traversal sequences */
+    for (i = 0; i < path_len - 1; i++) {
+        if (path[i] == '.' && path[i + 1] == '.') {
+            /* Check if it's a proper "../" or ".." at end */
+            if ((i == 0 || path[i - 1] == '/') && 
+                (i + 2 >= path_len || path[i + 2] == '/')) {
+                has_dot_dot = 1;
+                break;
+            }
+        }
+    }
+    
+    /* Reject paths with ".." sequences */
+    if (has_dot_dot) {
+        return 0;
+    }
+    
+    /* Copy safe characters, skipping redundant slashes */
+    for (i = 0; i < path_len && j < safe_path_size - 1; i++) {
+        char c = path[i];
+        
+        /* Skip redundant slashes */
+        if (c == '/' && j > 0 && safe_path[j - 1] == '/') {
+            continue;
+        }
+        
+        /* Only allow alphanumeric, dash, underscore, dot, and slash */
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || 
+            (c >= '0' && c <= '9') || c == '-' || c == '_' || 
+            c == '.' || c == '/') {
+            safe_path[j++] = c;
+        } else {
+            /* Replace invalid characters with underscore */
+            safe_path[j++] = '_';
+        }
+    }
+    
+    safe_path[j] = '\0';
+    
+    /* Ensure path doesn't start with slash after processing */
+    if (j > 0 && safe_path[0] == '/') {
+        memmove(safe_path, safe_path + 1, j);
+        j--;
+        safe_path[j] = '\0';
+    }
+    
+    return 1;
+}
+
 static int on_recv_header(nghttp3_conn *conn, int64_t stream_id, int32_t token,
                           nghttp3_rcbuf *name, nghttp3_rcbuf *value,
                           uint8_t flags, void *user_data,
@@ -293,18 +351,44 @@ static int on_recv_header(nghttp3_conn *conn, int64_t stream_id, int32_t token,
 
     if (token == NGHTTP3_QPACK_TOKEN__PATH) {
         int len = (((vvalue.len) < (MAXURL)) ? (vvalue.len) : (MAXURL));
+        char temp_path[MAXURL];
+        char safe_path[MAXURL];
 
         memset(h3ssl->url, 0, sizeof(h3ssl->url));
+        memset(temp_path, 0, sizeof(temp_path));
+        memset(safe_path, 0, sizeof(safe_path));
+        
         if (vvalue.base[0] == '/') {
             if (vvalue.base[1] == '\0') {
-                strncpy(h3ssl->url, "index.html", MAXURL);
+                strncpy(h3ssl->url, "index.html", MAXURL - 1);
             } else {
-                memcpy(h3ssl->url, vvalue.base + 1, len - 1);
-                h3ssl->url[len - 1] = '\0';
+                /* Copy the path without the leading slash for validation */
+                memcpy(temp_path, vvalue.base + 1, len - 1);
+                temp_path[len - 1] = '\0';
+                
+                /* Validate and sanitize the path */
+                if (validate_url_path(temp_path, strlen(temp_path), safe_path, sizeof(safe_path))) {
+                    strncpy(h3ssl->url, safe_path, MAXURL - 1);
+                } else {
+                    /* Path traversal detected, use default */
+                    strncpy(h3ssl->url, "index.html", MAXURL - 1);
+                    fprintf(stderr, "Path traversal attempt detected, serving default page\n");
+                }
             }
         } else {
-            memcpy(h3ssl->url, vvalue.base, len);
+            /* Path doesn't start with slash, validate as-is */
+            memcpy(temp_path, vvalue.base, len);
+            temp_path[len] = '\0';
+            
+            if (validate_url_path(temp_path, strlen(temp_path), safe_path, sizeof(safe_path))) {
+                strncpy(h3ssl->url, safe_path, MAXURL - 1);
+            } else {
+                /* Path traversal detected, use default */
+                strncpy(h3ssl->url, "index.html", MAXURL - 1);
+                fprintf(stderr, "Path traversal attempt detected, serving default page\n");
+            }
         }
+        h3ssl->url[MAXURL - 1] = '\0';  /* Ensure null termination */
     }
 
     return 0;
