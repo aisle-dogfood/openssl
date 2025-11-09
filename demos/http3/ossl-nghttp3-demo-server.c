@@ -768,11 +768,25 @@ static size_t get_file_length(struct h3ssl *h3ssl)
 {
     char filename[PATH_MAX];
     struct stat st;
+    size_t prefix_len = 0, url_len = 0;
 
     memset(filename, 0, PATH_MAX);
+    
+    /* Calculate lengths and check bounds */
     if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+        prefix_len = strlen(h3ssl->fileprefix);
+    url_len = strlen(h3ssl->url);
+    
+    /* Check if concatenated string would exceed buffer */
+    if (prefix_len + url_len >= PATH_MAX) {
+        printf("Filename too long: prefix_len=%zu, url_len=%zu\n", prefix_len, url_len);
+        return 0;
+    }
+    
+    /* Safe concatenation */
+    if (h3ssl->fileprefix != NULL)
+        strncat(filename, h3ssl->fileprefix, PATH_MAX - 1);
+    strncat(filename, h3ssl->url, PATH_MAX - 1 - strlen(filename));
 
     if (strcmp(h3ssl->url, "big") == 0) {
         printf("big!!!\n");
@@ -795,14 +809,28 @@ static char *get_file_data(struct h3ssl *h3ssl)
     size_t size = get_file_length(h3ssl);
     char *res;
     int fd;
+    size_t prefix_len = 0, url_len = 0;
 
     if (size == 0)
         return NULL;
 
     memset(filename, 0, PATH_MAX);
+    
+    /* Calculate lengths and check bounds */
     if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+        prefix_len = strlen(h3ssl->fileprefix);
+    url_len = strlen(h3ssl->url);
+    
+    /* Check if concatenated string would exceed buffer */
+    if (prefix_len + url_len >= PATH_MAX) {
+        printf("Filename too long: prefix_len=%zu, url_len=%zu\n", prefix_len, url_len);
+        return NULL;
+    }
+    
+    /* Safe concatenation */
+    if (h3ssl->fileprefix != NULL)
+        strncat(filename, h3ssl->fileprefix, PATH_MAX - 1);
+    strncat(filename, h3ssl->url, PATH_MAX - 1 - strlen(filename));
 
     res = malloc(size+1);
     res[size] = '\0';
