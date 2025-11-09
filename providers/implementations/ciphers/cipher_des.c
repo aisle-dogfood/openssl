@@ -19,6 +19,7 @@
 #include "cipher_des.h"
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
+#include "prov/securitycheck.h"
 
 #define DES_FLAGS PROV_CIPHER_FLAG_RAND_KEY
 
@@ -76,6 +77,12 @@ static int des_init(void *vctx, const unsigned char *key, size_t keylen,
 
     if (!ossl_prov_is_running())
         return 0;
+
+    /* Check for adequate encryption strength - DES provides only 56 effective bits */
+    if (!ossl_cipher_check_security_strength(56)) {
+        ERR_raise(ERR_LIB_PROV, PROV_R_INSUFFICIENT_DRBG_STRENGTH);
+        return 0;
+    }
 
     ctx->num = 0;
     ctx->bufsz = 0;

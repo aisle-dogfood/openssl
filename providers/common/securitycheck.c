@@ -87,6 +87,15 @@ int ossl_mac_check_key_size(size_t keylen)
     return ossl_kdf_check_key_size(keylen);
 }
 
+/*
+ * Check cipher security strength. DES provides only 56 effective bits of security,
+ * which is below the minimum required 112 bits.
+ */
+int ossl_cipher_check_security_strength(size_t effective_key_bits)
+{
+    return effective_key_bits >= OSSL_FIPS_MIN_SECURITY_STRENGTH_BITS;
+}
+
 #ifndef OPENSSL_NO_EC
 
 int ossl_ec_check_curve_allowed(const EC_GROUP *group)
