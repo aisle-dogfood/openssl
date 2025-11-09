@@ -128,14 +128,15 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_SEED_OFB, ossl_seed128ofb128_functions),
     ALG(PROV_NAMES_SEED_CFB, ossl_seed128cfb128_functions),
 #endif /* OPENSSL_NO_SEED */
-#ifndef OPENSSL_NO_RC2
+/* RC2 cipher registrations disabled by default due to inadequate encryption strength */
+#ifdef OPENSSL_ENABLE_WEAK_RC2
     ALG(PROV_NAMES_RC2_ECB, ossl_rc2128ecb_functions),
     ALG(PROV_NAMES_RC2_CBC, ossl_rc2128cbc_functions),
     ALG(PROV_NAMES_RC2_40_CBC, ossl_rc240cbc_functions),
     ALG(PROV_NAMES_RC2_64_CBC, ossl_rc264cbc_functions),
     ALG(PROV_NAMES_RC2_CFB, ossl_rc2128cfb128_functions),
     ALG(PROV_NAMES_RC2_OFB, ossl_rc2128ofb128_functions),
-#endif /* OPENSSL_NO_RC2 */
+#endif /* OPENSSL_ENABLE_WEAK_RC2 */
 #ifndef OPENSSL_NO_RC4
     ALG(PROV_NAMES_RC4, ossl_rc4128_functions),
     ALG(PROV_NAMES_RC4_40, ossl_rc440_functions),

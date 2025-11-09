@@ -280,6 +280,17 @@ const OSSL_DISPATCH ossl_##alg##kbits##lcmode##_functions[] = {                \
     OSSL_DISPATCH_END                                                          \
 };
 
+/* 
+ * RC2 cipher implementations disabled due to inadequate encryption strength.
+ * RC2 has known cryptographic weaknesses including:
+ * - Small 64-bit block size vulnerable to birthday attacks
+ * - Weak key schedule algorithm
+ * - Known cryptanalytic attacks
+ * 
+ * These implementations are disabled by default for security reasons.
+ * To enable RC2 (not recommended), define OPENSSL_ENABLE_WEAK_RC2.
+ */
+#ifdef OPENSSL_ENABLE_WEAK_RC2
 /* ossl_rc2128ecb_functions */
 IMPLEMENT_cipher(rc2, RC2, ecb, ECB, RC2_FLAGS, 128, 64, 0, block)
 /* ossl_rc2128cbc_functions */
@@ -293,3 +304,4 @@ IMPLEMENT_cipher(rc2, RC2, cbc, CBC, RC2_FLAGS, 64, 64, 64, block)
 IMPLEMENT_cipher(rc2, RC2, ofb128, OFB, RC2_FLAGS, 128, 8, 64, stream)
 /* ossl_rc2128cfb128_functions */
 IMPLEMENT_cipher(rc2, RC2, cfb128, CFB, RC2_FLAGS, 128, 8, 64, stream)
+#endif /* OPENSSL_ENABLE_WEAK_RC2 */
