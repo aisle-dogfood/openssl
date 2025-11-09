@@ -232,7 +232,9 @@ extern const OSSL_DISPATCH ossl_des_cfb8_functions[];
 extern const OSSL_DISPATCH ossl_rc440_functions[];
 extern const OSSL_DISPATCH ossl_rc4128_functions[];
 # ifndef OPENSSL_NO_MD5
+#  ifndef OPENSSL_NO_WEAK_SSL_CIPHERS
 extern const OSSL_DISPATCH ossl_rc4_hmac_ossl_md5_functions[];
+#  endif /* OPENSSL_NO_WEAK_SSL_CIPHERS */
 # endif /* OPENSSL_NO_MD5 */
 #endif /* OPENSSL_NO_RC4 */
 #ifndef OPENSSL_NO_CHACHA

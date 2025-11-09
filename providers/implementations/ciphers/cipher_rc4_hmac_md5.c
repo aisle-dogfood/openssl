@@ -221,6 +221,7 @@ static int rc4_hmac_md5_get_params(OSSL_PARAM params[])
                                           RC4_HMAC_MD5_IV_BITS);
 }
 
+#ifndef OPENSSL_NO_WEAK_SSL_CIPHERS
 const OSSL_DISPATCH ossl_rc4_hmac_ossl_md5_functions[] = {
     { OSSL_FUNC_CIPHER_NEWCTX, (void (*)(void))rc4_hmac_md5_newctx },
     { OSSL_FUNC_CIPHER_FREECTX, (void (*)(void))rc4_hmac_md5_freectx },
@@ -243,3 +244,4 @@ const OSSL_DISPATCH ossl_rc4_hmac_ossl_md5_functions[] = {
         (void (*)(void))rc4_hmac_md5_settable_ctx_params },
     OSSL_DISPATCH_END
 };
+#endif /* OPENSSL_NO_WEAK_SSL_CIPHERS */
