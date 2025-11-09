@@ -1040,6 +1040,8 @@ int cms_main(int argc, char **argv)
             /* NULL these because call absorbs them */
             secret_key = NULL;
             secret_keyid = NULL;
+            secret_keylen = 0;
+            secret_keyidlen = 0;
         }
         if (pwri_pass != NULL) {
             pwri_tmp = (unsigned char *)OPENSSL_strdup((char *)pwri_pass);
@@ -1063,6 +1065,10 @@ int cms_main(int argc, char **argv)
             }
         }
     } else if (operation == SMIME_ENCRYPTED_ENCRYPT) {
+        if (secret_key == NULL || secret_keylen == 0) {
+            BIO_puts(bio_err, "No secret key provided for encrypted data encryption\n");
+            goto end;
+        }
         cms = CMS_EncryptedData_encrypt_ex(in, cipher, secret_key,
                                            secret_keylen, flags, libctx, app_get0_propq());
 
@@ -1169,7 +1175,7 @@ int cms_main(int argc, char **argv)
         if (flags & CMS_DEBUG_DECRYPT)
             CMS_decrypt(cms, NULL, NULL, NULL, NULL, flags);
 
-        if (secret_key != NULL) {
+        if (secret_key != NULL && secret_keylen > 0) {
             if (!CMS_decrypt_set1_key(cms,
                                       secret_key, secret_keylen,
                                       secret_keyid, secret_keyidlen)) {
@@ -1210,6 +1216,10 @@ int cms_main(int argc, char **argv)
             goto end;
         }
     } else if (operation == SMIME_ENCRYPTED_DECRYPT) {
+        if (secret_key == NULL || secret_keylen == 0) {
+            BIO_puts(bio_err, "No secret key provided for encrypted data decryption\n");
+            goto end;
+        }
         if (!CMS_EncryptedData_decrypt(cms, secret_key, secret_keylen,
                                        indata, out, flags))
             goto end;
