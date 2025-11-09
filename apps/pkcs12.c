@@ -311,6 +311,24 @@ int pkcs12_main(int argc, char **argv)
             break;
         case OPT_UNTRUSTED:
             untrusted = opt_arg();
+            /* Validate untrusted parameter to prevent heap inspection */
+            if (untrusted != NULL) {
+                size_t len = strlen(untrusted);
+                if (len == 0) {
+                    BIO_printf(bio_err, "Error: untrusted parameter cannot be empty\n");
+                    goto opthelp;
+                }
+                /* Check for potentially dangerous characters that could lead to heap inspection */
+                if (strpbrk(untrusted, "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x0b\x0c\x0e\x0f\x10\x11\x12\x13\x14\x15\x16\x17\x18\x19\x1a\x1b\x1c\x1d\x1e\x1f\x7f") != NULL) {
+                    BIO_printf(bio_err, "Error: untrusted parameter contains invalid control characters\n");
+                    goto opthelp;
+                }
+                /* Limit maximum length to prevent buffer overflow attacks */
+                if (len > 4096) {
+                    BIO_printf(bio_err, "Error: untrusted parameter exceeds maximum length\n");
+                    goto opthelp;
+                }
+            }
             break;
         case OPT_PASSCERTS:
             passcertsarg = opt_arg();
