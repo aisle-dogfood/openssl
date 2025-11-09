@@ -1235,8 +1235,19 @@ end_of_options:
                 X509_CRL_add1_ext_i2d(crl, NID_crl_number, tmpser, 0, 0);
                 ASN1_INTEGER_free(tmpser);
                 crl_v2 = 1;
-                if (!BN_add_word(crlnumber, 1))
-                    goto end;
+                /* Check if CRL number is approaching maximum safe value */
+                if (BN_num_bits(crlnumber) > 159) { /* 160 bits is ASN.1 INTEGER limit */
+                    BIO_printf(bio_err, "CRL number too large, resetting to 1\n");
+                    if (!BN_set_word(crlnumber, 1)) {
+                        BIO_printf(bio_err, "Error resetting CRL number\n");
+                        goto end;
+                    }
+                } else {
+                    if (!BN_add_word(crlnumber, 1)) {
+                        BIO_printf(bio_err, "Error incrementing CRL number\n");
+                        goto end;
+                    }
+                }
             }
         }
         if (crl_ext != NULL || crl_v2) {
