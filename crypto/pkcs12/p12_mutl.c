@@ -70,6 +70,12 @@ static int pkcs12_gen_gost_mac_key(const char *pass, int passlen,
         return 0;
     }
 
+    /* Validate salt to prevent weak salt vulnerability */
+    if (salt == NULL || saltlen < 8) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
+        return 0;
+    }
+
     if (!PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                            digest, sizeof(out), out)) {
         return 0;
@@ -135,6 +141,12 @@ static int PBMAC1_PBKDF2_HMAC(OSSL_LIB_CTX *ctx, const char *propq,
     kdf_md = EVP_MD_fetch(ctx, OBJ_nid2sn(ossl_hmac2mdnid(kdf_hmac_nid)), propq);
     if (kdf_md == NULL) {
         ERR_raise(ERR_LIB_PKCS12, ERR_R_FETCH_FAILED);
+        goto err;
+    }
+
+    /* Validate salt to prevent weak salt vulnerability */
+    if (pbkdf2_salt == NULL || pbkdf2_salt->data == NULL || pbkdf2_salt->length < 8) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
         goto err;
     }
 
@@ -379,6 +391,12 @@ static int pkcs12_pbmac1_pbkdf2_key_gen(const char *pass, int passlen,
                                         unsigned char *out,
                                         const EVP_MD *md_type)
 {
+    /* Validate salt to prevent weak salt vulnerability */
+    if (salt == NULL || saltlen < 8) {
+        ERR_raise(ERR_LIB_PKCS12, PKCS12_R_INVALID_NULL_ARGUMENT);
+        return 0;
+    }
+
     return PKCS5_PBKDF2_HMAC(pass, passlen, salt, saltlen, iter,
                              md_type, keylen, out);
 }
