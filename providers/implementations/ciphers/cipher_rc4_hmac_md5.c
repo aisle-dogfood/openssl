@@ -16,6 +16,7 @@
 #include "internal/deprecated.h"
 
 #include <openssl/proverr.h>
+#include <openssl/evp.h>
 #include "cipher_rc4_hmac_md5.h"
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
@@ -23,7 +24,7 @@
 #define RC4_HMAC_MD5_FLAGS (PROV_CIPHER_FLAG_VARIABLE_LENGTH                   \
                             | PROV_CIPHER_FLAG_AEAD)
 
-#define RC4_HMAC_MD5_KEY_BITS (16 * 8)
+#define RC4_HMAC_MD5_KEY_BITS (16 * 8)  /* 128 bits - considered inadequate encryption strength */
 #define RC4_HMAC_MD5_BLOCK_BITS (1 * 8)
 #define RC4_HMAC_MD5_IV_BITS 0
 #define RC4_HMAC_MD5_MODE 0
@@ -51,6 +52,12 @@ static void *rc4_hmac_md5_newctx(void *provctx)
 
     if (!ossl_prov_is_running())
         return NULL;
+
+    /* 
+     * RC4-HMAC-MD5 uses 128-bit keys which provide inadequate encryption strength.
+     * RC4 is cryptographically broken and should not be used in secure contexts.
+     * This cipher is maintained for backward compatibility with legacy systems only.
+     */
 
     ctx = OPENSSL_zalloc(sizeof(*ctx));
     if (ctx != NULL)

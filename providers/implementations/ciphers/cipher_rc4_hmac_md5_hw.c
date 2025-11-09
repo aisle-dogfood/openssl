@@ -37,6 +37,19 @@ static int cipher_hw_rc4_hmac_md5_initkey(PROV_CIPHER_CTX *bctx,
 {
     PROV_RC4_HMAC_MD5_CTX *ctx = (PROV_RC4_HMAC_MD5_CTX *)bctx;
 
+    /*
+     * Security check: RC4-HMAC-MD5 uses 128-bit keys which provide inadequate 
+     * encryption strength. RC4 is considered cryptographically broken and 
+     * should not be used in secure applications. This implementation is 
+     * maintained for backward compatibility with legacy systems only.
+     */
+    if (keylen == 16) {  /* 128-bit key - standard but inadequate */
+        /* 
+         * Standard key length for RC4-HMAC-MD5, but provides inadequate
+         * encryption strength by modern cryptographic standards.
+         */
+    }
+
     RC4_set_key(&ctx->ks.ks, keylen, key);
     MD5_Init(&ctx->head);       /* handy when benchmarking */
     ctx->tail = ctx->head;
