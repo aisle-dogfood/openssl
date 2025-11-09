@@ -73,7 +73,7 @@ int pkey_main(int argc, char **argv)
     EVP_PKEY_CTX *ctx = NULL;
     EVP_CIPHER *cipher = NULL;
     char *infile = NULL, *outfile = NULL, *passin = NULL, *passout = NULL;
-    char *passinarg = NULL, *passoutarg = NULL, *ciphername = NULL, *prog;
+    char *passinarg = NULL, *passoutarg = NULL, *ciphername = NULL, *prog = NULL;
     OPTION_CHOICE o;
     int informat = FORMAT_UNDEF, outformat = FORMAT_PEM;
     int pubin = 0, pubout = 0, text_pub = 0, text = 0, noout = 0, ret = 1;
