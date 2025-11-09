@@ -144,7 +144,9 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_RC4, ossl_rc4128_functions),
     ALG(PROV_NAMES_RC4_40, ossl_rc440_functions),
 # ifndef OPENSSL_NO_MD5
+#  ifndef OPENSSL_NO_WEAK_SSL_CIPHERS
     ALG(PROV_NAMES_RC4_HMAC_MD5, ossl_rc4_hmac_ossl_md5_functions),
+#  endif /* OPENSSL_NO_WEAK_SSL_CIPHERS */
 # endif /* OPENSSL_NO_MD5 */
 #endif /* !OPENSSL_NO_RC4 && OPENSSL_ENABLE_RC4_LEGACY */
 #ifndef OPENSSL_NO_RC5
