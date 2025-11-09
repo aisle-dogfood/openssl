@@ -17,7 +17,7 @@
 void openssl_add_all_ciphers_int(void)
 {
 
-#ifndef OPENSSL_NO_DES
+#if !defined(OPENSSL_NO_DES) && !defined(OPENSSL_NO_DEPRECATED_3_0)
     EVP_add_cipher(EVP_des_cfb());
     EVP_add_cipher(EVP_des_cfb1());
     EVP_add_cipher(EVP_des_cfb8());
