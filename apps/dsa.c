@@ -301,7 +301,9 @@ int dsa_main(int argc, char **argv)
     EVP_PKEY_free(pkey);
     EVP_CIPHER_free(enc);
     release_engine(e);
-    OPENSSL_free(passin);
-    OPENSSL_free(passout);
+    if (passin != NULL)
+        OPENSSL_clear_free(passin, strlen(passin));
+    if (passout != NULL)
+        OPENSSL_clear_free(passout, strlen(passout));
     return ret;
 }
