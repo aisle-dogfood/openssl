@@ -418,7 +418,7 @@ int opt_cipher_any(const char *name, EVP_CIPHER **cipherp)
     if (name == NULL)
          return 1;
     if ((ret = opt_cipher_silent(name, cipherp)) == 0)
-        opt_printf_stderr("%s: Unknown option or cipher: %s\n", prog, name);
+        opt_printf_stderr("%s: Unknown option or cipher\n", prog);
     return ret;
 }
 
@@ -486,8 +486,8 @@ int opt_md(const char *name, EVP_MD **mdp)
     if (name == NULL)
         return 1;
     if ((ret = opt_md_silent(name, mdp)) == 0)
-        opt_printf_stderr("%s: Unknown option or message digest: %s\n",
-                          prog, name);
+        opt_printf_stderr("%s: Unknown option or message digest\n",
+                          prog);
     return ret;
 }
 
@@ -732,13 +732,13 @@ int opt_verify(int opt, X509_VERIFY_PARAM *vpm)
     case OPT_V_POLICY:
         otmp = OBJ_txt2obj(opt_arg(), 0);
         if (otmp == NULL) {
-            opt_printf_stderr("%s: Invalid Policy %s\n", prog, opt_arg());
+            opt_printf_stderr("%s: Invalid Policy\n", prog);
             return 0;
         }
         if (!X509_VERIFY_PARAM_add0_policy(vpm, otmp)) {
             ASN1_OBJECT_free(otmp);
-            opt_printf_stderr("%s: Internal error adding Policy %s\n",
-                              prog, opt_arg());
+            opt_printf_stderr("%s: Internal error adding Policy\n",
+                              prog);
             return 0;
         }
         break;
@@ -746,7 +746,7 @@ int opt_verify(int opt, X509_VERIFY_PARAM *vpm)
         /* purpose name -> purpose index */
         i = X509_PURPOSE_get_by_sname(opt_arg());
         if (i < 0) {
-            opt_printf_stderr("%s: Invalid purpose %s\n", prog, opt_arg());
+            opt_printf_stderr("%s: Invalid purpose\n", prog);
             return 0;
         }
 
@@ -757,16 +757,16 @@ int opt_verify(int opt, X509_VERIFY_PARAM *vpm)
         i = X509_PURPOSE_get_id(xptmp);
 
         if (!X509_VERIFY_PARAM_set_purpose(vpm, i)) {
-            opt_printf_stderr("%s: Internal error setting purpose %s\n",
-                              prog, opt_arg());
+            opt_printf_stderr("%s: Internal error setting purpose\n",
+                              prog);
             return 0;
         }
         break;
     case OPT_V_VERIFY_NAME:
         vtmp = X509_VERIFY_PARAM_lookup(opt_arg());
         if (vtmp == NULL) {
-            opt_printf_stderr("%s: Invalid verify name %s\n",
-                              prog, opt_arg());
+            opt_printf_stderr("%s: Invalid verify name\n",
+                              prog);
             return 0;
         }
         X509_VERIFY_PARAM_set1(vpm, vtmp);
@@ -1009,8 +1009,8 @@ int opt_next(void)
                            o->valtype == 'A' ? OPT_FMT_ASN1 :
                            OPT_FMT_ANY, &ival))
                 break;
-            opt_printf_stderr("%s: Invalid format \"%s\" for option -%s\n",
-                              prog, arg, o->name);
+            opt_printf_stderr("%s: Invalid format for option -%s\n",
+                              prog, o->name);
             return -1;
         }
 
@@ -1019,14 +1019,14 @@ int opt_next(void)
     }
     if (unknown != NULL) {
         if (dunno != NULL) {
-            opt_printf_stderr("%s: Multiple %s or unknown options: -%s and -%s\n",
-                              prog, unknown_name, dunno, p);
+            opt_printf_stderr("%s: Multiple %s or unknown options\n",
+                              prog, unknown_name);
             return -1;
         }
         dunno = p;
         return unknown->retval;
     }
-    opt_printf_stderr("%s: Unknown option: -%s\n", prog, p);
+    opt_printf_stderr("%s: Unknown option\n", prog);
     return -1;
 }
 
