@@ -120,8 +120,8 @@ const char *LP_find_file(LP_DIR_CTX **ctx, const char *directory)
     }
 
 #ifdef __VMS
-    strncpy((*ctx)->previous_entry_name, (*ctx)->entry_name,
-            sizeof((*ctx)->previous_entry_name));
+    OPENSSL_strlcpy((*ctx)->previous_entry_name, (*ctx)->entry_name,
+                    sizeof((*ctx)->previous_entry_name));
 
  again:
 #endif
