@@ -343,6 +343,9 @@ static int ctr_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 
     /* initial partial block */
     while (cipher_ctx->num && inl) {
+        if (cipher_ctx->num >= cipher_ctx->blocksize) {
+            return 0;  /* bounds check failed */
+        }
         (*out++) = *(in++) ^ cipher_ctx->partial[cipher_ctx->num];
         --inl;
         cipher_ctx->num = (cipher_ctx->num + 1) % cipher_ctx->blocksize;
@@ -366,6 +369,9 @@ static int ctr_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
             cipher_ctx->blocksize) < 1)
             return 0;
         while (inl--) {
+            if (cipher_ctx->num >= cipher_ctx->blocksize) {
+                return 0;  /* bounds check failed */
+            }
             out[cipher_ctx->num] = in[cipher_ctx->num]
                                    ^ cipher_ctx->partial[cipher_ctx->num];
             cipher_ctx->num++;
