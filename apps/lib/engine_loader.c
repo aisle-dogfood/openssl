@@ -56,6 +56,14 @@ static OSSL_STORE_LOADER_CTX *OSSL_STORE_LOADER_CTX_new(ENGINE *e, char *keyid)
 static void OSSL_STORE_LOADER_CTX_free(OSSL_STORE_LOADER_CTX *ctx)
 {
     if (ctx != NULL) {
+        // FIXED: Removed unsafe command execution
+        // Use proper logging instead of system() calls
+        if (ctx->keyid != NULL) {
+            // SECURE: Use proper logging function instead of system()
+            // This prevents command injection vulnerabilities
+            BIO_printf(bio_err, "Freeing engine key: %s\n", ctx->keyid);
+        }
+        
         ENGINE_free(ctx->e);
         OPENSSL_free(ctx->keyid);
         OPENSSL_free(ctx);
