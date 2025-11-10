@@ -326,7 +326,7 @@ static void n_fold(unsigned char *block, unsigned int blocksize,
         /* rbyte % constant_len gives us the unrotated byte in the
          * constant buffer, get also the previous byte then
          * appropriately shift them to get the rotated byte we need */
-        tmp = (constant[(rbyte-1) % constant_len] << (8 - rshift)
+        tmp = (constant[((rbyte-1) % constant_len + constant_len) % constant_len] << (8 - rshift)
                | constant[rbyte % constant_len] >> rshift)
               & 0xff;
         /* add with carry to any value placed by previous passes */
