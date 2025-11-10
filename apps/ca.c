@@ -1194,6 +1194,12 @@ end_of_options:
                     crl_v2 = 1;
                 if (!BN_hex2bn(&serial, pp[DB_serial]))
                     goto end;
+                /* Check if serial number is within reasonable bounds to prevent integer overflow */
+                if (BN_num_bits(serial) > 160) {
+                    BIO_printf(bio_err, "Revoked certificate serial number too large (more than 160 bits)\n");
+                    BN_free(serial);
+                    goto end;
+                }
                 tmpser = BN_to_ASN1_INTEGER(serial, NULL);
                 BN_free(serial);
                 serial = NULL;
@@ -1229,6 +1235,11 @@ end_of_options:
                     goto end;
                 }
             if (crlnumberfile != NULL) {
+                /* Check if CRL number is within reasonable bounds to prevent integer overflow */
+                if (BN_num_bits(crlnumber) > 160) {
+                    BIO_printf(bio_err, "CRL number too large (more than 160 bits)\n");
+                    goto end;
+                }
                 tmpser = BN_to_ASN1_INTEGER(crlnumber, NULL);
                 if (!tmpser)
                     goto end;
@@ -1657,6 +1668,11 @@ static int do_body(X509 **xret, EVP_PKEY *pkey, X509 *x509,
     if ((ret = X509_new_ex(app_get0_libctx(), app_get0_propq())) == NULL)
         goto end;
 
+    /* Check if serial number is within reasonable bounds to prevent integer overflow */
+    if (BN_num_bits(serial) > 160) {
+        BIO_printf(bio_err, "Serial number too large (more than 160 bits)\n");
+        goto end;
+    }
     if (BN_to_ASN1_INTEGER(serial, X509_get_serialNumber(ret)) == NULL)
         goto end;
     if (selfsign) {
