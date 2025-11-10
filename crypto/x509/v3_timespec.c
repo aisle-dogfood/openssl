@@ -167,10 +167,20 @@ static int i2r_OSSL_DAY_TIME(X509V3_EXT_METHOD *method,
         return 0;
     if (dt->minute && !ASN1_INTEGER_get_int64(&m, dt->minute))
         return 0;
-    if (dt->minute && !ASN1_INTEGER_get_int64(&s, dt->second))
+    if (dt->second && !ASN1_INTEGER_get_int64(&s, dt->second))
         return 0;
-    return BIO_printf(out, "%02lld:%02lld:%02lld",
-                      (long long int)h, (long long int)m, (long long int)s) > 0;
+    
+    /* Print format based on which fields are present */
+    if (dt->second) {
+        return BIO_printf(out, "%02lld:%02lld:%02lld",
+                          (long long int)h, (long long int)m, (long long int)s) > 0;
+    } else if (dt->minute) {
+        return BIO_printf(out, "%02lld:%02lld",
+                          (long long int)h, (long long int)m) > 0;
+    } else {
+        return BIO_printf(out, "%02lld",
+                          (long long int)h) > 0;
+    }
 }
 
 static int i2r_OSSL_DAY_TIME_BAND(X509V3_EXT_METHOD *method,
