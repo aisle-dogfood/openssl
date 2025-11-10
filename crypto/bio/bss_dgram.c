@@ -2335,6 +2335,12 @@ static long dgram_sctp_ctrl(BIO *b, int cmd, long num, void *ptr)
          * New shared key for SCTP AUTH. Returns 0 on success, -1 otherwise.
          */
 
+        /* Validate key size */
+        if (num <= 0 || num > 65535) {
+            ret = -1;
+            break;
+        }
+
         /* Get active key */
         sockopt_len = sizeof(struct sctp_authkeyid);
         ret =
@@ -2344,7 +2350,7 @@ static long dgram_sctp_ctrl(BIO *b, int cmd, long num, void *ptr)
             break;
 
         /* Add new key */
-        sockopt_len = sizeof(struct sctp_authkey) + 64 * sizeof(uint8_t);
+        sockopt_len = sizeof(struct sctp_authkey) + num * sizeof(uint8_t);
         authkey = OPENSSL_malloc(sockopt_len);
         if (authkey == NULL) {
             ret = -1;
@@ -2362,9 +2368,9 @@ static long dgram_sctp_ctrl(BIO *b, int cmd, long num, void *ptr)
          * This field is missing in FreeBSD 8.2 and earlier, and FreeBSD 8.3
          * and higher work without it.
          */
-        authkey->sca_keylength = 64;
+        authkey->sca_keylength = num;
 #  endif
-        memcpy(&authkey->sca_key[0], ptr, 64 * sizeof(uint8_t));
+        memcpy(&authkey->sca_key[0], ptr, num * sizeof(uint8_t));
 
         ret =
             setsockopt(b->num, IPPROTO_SCTP, SCTP_AUTH_KEY, authkey,
