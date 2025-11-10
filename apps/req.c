@@ -1473,7 +1473,9 @@ static int join(char buf[], size_t buf_size, const char *name,
 {
     const size_t name_len = strlen(name), tail_len = strlen(tail);
 
-    if (name_len + tail_len + 1 > buf_size) {
+    /* Check for integer overflow in the addition */
+    if (name_len > SIZE_MAX - tail_len - 1 ||
+        name_len + tail_len + 1 > buf_size) {
         BIO_printf(bio_err, "%s '%s' too long\n", desc, name);
         return 0;
     }
