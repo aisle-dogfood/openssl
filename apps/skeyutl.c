@@ -41,7 +41,7 @@ int skeyutl_main(int argc, char **argv)
     int ret = 1;
     OPTION_CHOICE o;
     int genkey = 0;
-    char *prog, *ciphername = NULL;
+    char *prog = NULL, *ciphername = NULL;
     STACK_OF(OPENSSL_STRING) *skeyopts = NULL;
     const char *skeymgmt = NULL;
     EVP_SKEY *skey = NULL;
