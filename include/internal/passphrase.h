@@ -54,16 +54,19 @@ struct ossl_passphrase_data_st {
         struct {
             pem_password_cb *password_cb;
             void *password_cbarg;
+            void (*password_cbarg_clear)(void *);
         } pem_password;
 
         struct {
             OSSL_PASSPHRASE_CALLBACK *passphrase_cb;
             void *passphrase_cbarg;
+            void (*passphrase_cbarg_clear)(void *);
         } ossl_passphrase;
 
         struct {
             const UI_METHOD *ui_method;
             void *ui_method_data;
+            void (*ui_method_data_clear)(void *);
         } ui_method;
     } _;
 
@@ -92,10 +95,19 @@ int ossl_pw_set_passphrase(struct ossl_passphrase_data_st *data,
                            size_t passphrase_len);
 int ossl_pw_set_pem_password_cb(struct ossl_passphrase_data_st *data,
                                 pem_password_cb *cb, void *cbarg);
+int ossl_pw_set_pem_password_cb_ex(struct ossl_passphrase_data_st *data,
+                                   pem_password_cb *cb, void *cbarg,
+                                   void (*cbarg_clear)(void *));
 int ossl_pw_set_ossl_passphrase_cb(struct ossl_passphrase_data_st *data,
                                    OSSL_PASSPHRASE_CALLBACK *cb, void *cbarg);
+int ossl_pw_set_ossl_passphrase_cb_ex(struct ossl_passphrase_data_st *data,
+                                      OSSL_PASSPHRASE_CALLBACK *cb, void *cbarg,
+                                      void (*cbarg_clear)(void *));
 int ossl_pw_set_ui_method(struct ossl_passphrase_data_st *data,
                           const UI_METHOD *ui_method, void *ui_data);
+int ossl_pw_set_ui_method_ex(struct ossl_passphrase_data_st *data,
+                             const UI_METHOD *ui_method, void *ui_data,
+                             void (*ui_data_clear)(void *));
 
 int ossl_pw_enable_passphrase_caching(struct ossl_passphrase_data_st *data);
 int ossl_pw_disable_passphrase_caching(struct ossl_passphrase_data_st *data);

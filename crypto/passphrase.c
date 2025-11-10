@@ -19,6 +19,12 @@ void ossl_pw_clear_passphrase_data(struct ossl_passphrase_data_st *data)
         if (data->type == is_expl_passphrase)
             OPENSSL_clear_free(data->_.expl_passphrase.passphrase_copy,
                                data->_.expl_passphrase.passphrase_len);
+        else if (data->type == is_pem_password && data->_.pem_password.password_cbarg_clear != NULL)
+            data->_.pem_password.password_cbarg_clear(data->_.pem_password.password_cbarg);
+        else if (data->type == is_ossl_passphrase && data->_.ossl_passphrase.passphrase_cbarg_clear != NULL)
+            data->_.ossl_passphrase.passphrase_cbarg_clear(data->_.ossl_passphrase.passphrase_cbarg);
+        else if (data->type == is_ui_method && data->_.ui_method.ui_method_data_clear != NULL)
+            data->_.ui_method.ui_method_data_clear(data->_.ui_method.ui_method_data);
         ossl_pw_clear_passphrase_cache(data);
         memset(data, 0, sizeof(*data));
     }
@@ -52,6 +58,13 @@ int ossl_pw_set_passphrase(struct ossl_passphrase_data_st *data,
 int ossl_pw_set_pem_password_cb(struct ossl_passphrase_data_st *data,
                                 pem_password_cb *cb, void *cbarg)
 {
+    return ossl_pw_set_pem_password_cb_ex(data, cb, cbarg, NULL);
+}
+
+int ossl_pw_set_pem_password_cb_ex(struct ossl_passphrase_data_st *data,
+                                   pem_password_cb *cb, void *cbarg,
+                                   void (*cbarg_clear)(void *))
+{
     if (!ossl_assert(data != NULL && cb != NULL)) {
         ERR_raise(ERR_LIB_CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
         return 0;
@@ -60,11 +73,19 @@ int ossl_pw_set_pem_password_cb(struct ossl_passphrase_data_st *data,
     data->type = is_pem_password;
     data->_.pem_password.password_cb = cb;
     data->_.pem_password.password_cbarg = cbarg;
+    data->_.pem_password.password_cbarg_clear = cbarg_clear;
     return 1;
 }
 
 int ossl_pw_set_ossl_passphrase_cb(struct ossl_passphrase_data_st *data,
                                    OSSL_PASSPHRASE_CALLBACK *cb, void *cbarg)
+{
+    return ossl_pw_set_ossl_passphrase_cb_ex(data, cb, cbarg, NULL);
+}
+
+int ossl_pw_set_ossl_passphrase_cb_ex(struct ossl_passphrase_data_st *data,
+                                      OSSL_PASSPHRASE_CALLBACK *cb, void *cbarg,
+                                      void (*cbarg_clear)(void *))
 {
     if (!ossl_assert(data != NULL && cb != NULL)) {
         ERR_raise(ERR_LIB_CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
@@ -74,11 +95,19 @@ int ossl_pw_set_ossl_passphrase_cb(struct ossl_passphrase_data_st *data,
     data->type = is_ossl_passphrase;
     data->_.ossl_passphrase.passphrase_cb = cb;
     data->_.ossl_passphrase.passphrase_cbarg = cbarg;
+    data->_.ossl_passphrase.passphrase_cbarg_clear = cbarg_clear;
     return 1;
 }
 
 int ossl_pw_set_ui_method(struct ossl_passphrase_data_st *data,
                           const UI_METHOD *ui_method, void *ui_data)
+{
+    return ossl_pw_set_ui_method_ex(data, ui_method, ui_data, NULL);
+}
+
+int ossl_pw_set_ui_method_ex(struct ossl_passphrase_data_st *data,
+                             const UI_METHOD *ui_method, void *ui_data,
+                             void (*ui_data_clear)(void *))
 {
     if (!ossl_assert(data != NULL && ui_method != NULL)) {
         ERR_raise(ERR_LIB_CRYPTO, ERR_R_PASSED_NULL_PARAMETER);
@@ -88,6 +117,7 @@ int ossl_pw_set_ui_method(struct ossl_passphrase_data_st *data,
     data->type = is_ui_method;
     data->_.ui_method.ui_method = ui_method;
     data->_.ui_method.ui_method_data = ui_data;
+    data->_.ui_method.ui_method_data_clear = ui_data_clear;
     return 1;
 }
 
