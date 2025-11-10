@@ -1049,8 +1049,11 @@ int cms_main(int argc, char **argv)
                 goto end;
             if (CMS_add0_recipient_password(cms,
                                             -1, NID_undef, NID_undef,
-                                            pwri_tmp, -1, NULL) == NULL)
+                                            pwri_tmp, -1, NULL) == NULL) {
+                OPENSSL_free(pwri_tmp);
+                pwri_tmp = NULL;
                 goto end;
+            }
             pwri_tmp = NULL;
         }
         if (!(flags & CMS_STREAM)) {
