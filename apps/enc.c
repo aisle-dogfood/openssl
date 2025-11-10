@@ -350,6 +350,11 @@ int enc_main(int argc, char **argv)
     if (saltlen == 0 || pbkdf2 == 0)
         saltlen = PKCS5_SALT_LEN;
 
+    if (pbkdf2 && nosalt) {
+        BIO_printf(bio_err, "Error: -pbkdf2 and -nosalt options are incompatible. PBKDF2 requires a salt for security.\n");
+        goto end;
+    }
+
     /* Get the cipher name, either from progname (if set) or flag. */
     if (!opt_cipher(ciphername, &cipher))
         goto opthelp;
@@ -583,6 +588,11 @@ int enc_main(int argc, char **argv)
                 int ivlen = EVP_CIPHER_get_iv_length(cipher);
                 /* not needed if HASH_UPDATE() is fixed : */
                 int islen = (sptr != NULL ? saltlen : 0);
+
+                if (sptr == NULL || islen == 0) {
+                    BIO_printf(bio_err, "PBKDF2 requires a salt for security. Use -salt option or avoid -nosalt with PBKDF2.\n");
+                    goto end;
+                }
 
                 if (!PKCS5_PBKDF2_HMAC(str, str_len, sptr, islen,
                                        iter, dgst, iklen+ivlen, tmpkeyiv)) {
