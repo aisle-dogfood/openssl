@@ -653,8 +653,10 @@ static void drbg_ctr_free(void *vdrbg)
         EVP_CIPHER_CTX_free(ctr->ctx_ecb);
         EVP_CIPHER_CTX_free(ctr->ctx_ctr);
         EVP_CIPHER_CTX_free(ctr->ctx_df);
-        EVP_CIPHER_free(ctr->cipher_ecb);
-        EVP_CIPHER_free(ctr->cipher_ctr);
+        if (ctr->cipher_ecb != NULL)
+            EVP_CIPHER_free(ctr->cipher_ecb);
+        if (ctr->cipher_ctr != NULL)
+            EVP_CIPHER_free(ctr->cipher_ctr);
 
         OPENSSL_secure_clear_free(ctr, sizeof(*ctr));
     }
@@ -764,8 +766,10 @@ static int drbg_ctr_set_ctx_params_locked(void *vctx, const OSSL_PARAM params[])
             return 0;
         }
         strcpy(ecb + p->data_size - ecb_str_len, "ECB");
-        EVP_CIPHER_free(ctr->cipher_ecb);
-        EVP_CIPHER_free(ctr->cipher_ctr);
+        if (ctr->cipher_ecb != NULL)
+            EVP_CIPHER_free(ctr->cipher_ecb);
+        if (ctr->cipher_ctr != NULL)
+            EVP_CIPHER_free(ctr->cipher_ctr);
         /*
          * Try to fetch algorithms from our own provider code, fallback
          * to generic fetch only if that fails
