@@ -112,14 +112,22 @@ int pkcs8_main(int argc, char **argv)
                 goto opthelp;
             break;
         case OPT_IN:
-            infile = opt_arg();
+            infile = OPENSSL_strdup(opt_arg());
+            if (infile == NULL) {
+                BIO_printf(bio_err, "Out of memory\n");
+                goto end;
+            }
             break;
         case OPT_OUTFORM:
             if (!opt_format(opt_arg(), OPT_FMT_PEMDER, &outformat))
                 goto opthelp;
             break;
         case OPT_OUT:
-            outfile = opt_arg();
+            outfile = OPENSSL_strdup(opt_arg());
+            if (outfile == NULL) {
+                BIO_printf(bio_err, "Out of memory\n");
+                goto end;
+            }
             break;
         case OPT_TOPK8:
             topk8 = 1;
@@ -142,7 +150,11 @@ int pkcs8_main(int argc, char **argv)
             traditional = 1;
             break;
         case OPT_V2:
-            ciphername = opt_arg();
+            ciphername = OPENSSL_strdup(opt_arg());
+            if (ciphername == NULL) {
+                BIO_printf(bio_err, "Out of memory\n");
+                goto end;
+            }
             break;
         case OPT_V1:
             pbe_nid = OBJ_txt2nid(opt_arg());
@@ -387,6 +399,9 @@ int pkcs8_main(int argc, char **argv)
     BIO_free(in);
     OPENSSL_free(passin);
     OPENSSL_free(passout);
+    OPENSSL_free(infile);
+    OPENSSL_free(outfile);
+    OPENSSL_free(ciphername);
 
     return ret;
 }
