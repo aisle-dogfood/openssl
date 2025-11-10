@@ -20,6 +20,7 @@
 #include "cipher_rc4_hmac_md5.h"
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
+#include "prov/securitycheck.h"
 
 #define RC4_HMAC_MD5_FLAGS (PROV_CIPHER_FLAG_VARIABLE_LENGTH                   \
                             | PROV_CIPHER_FLAG_AEAD)
@@ -92,6 +93,24 @@ static int rc4_hmac_md5_einit(void *ctx, const unsigned char *key,
                               size_t keylen, const unsigned char *iv,
                               size_t ivlen, const OSSL_PARAM params[])
 {
+    /*
+     * RC4-HMAC-MD5 provides inadequate encryption strength due to:
+     * 1. RC4 stream cipher has known biases and vulnerabilities
+     * 2. MD5 hash function is cryptographically broken
+     * 3. The combination provides insufficient security for modern use
+     * 
+     * This cipher is deprecated and should not be used for new applications.
+     * It's only provided for legacy compatibility with existing systems.
+     * 
+     * Security mitigation: Enforce minimum key length requirements
+     */
+    
+    /* Validate key length - require at least the standard key size */
+    if (key != NULL && keylen < (RC4_HMAC_MD5_KEY_BITS / 8)) {
+        ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_KEY_LENGTH);
+        return 0;
+    }
+    
     if (!ossl_cipher_generic_einit(ctx, key, keylen, iv, ivlen, NULL))
         return 0;
     return rc4_hmac_md5_set_ctx_params(ctx, params);
@@ -101,6 +120,24 @@ static int rc4_hmac_md5_dinit(void *ctx, const unsigned char *key,
                               size_t keylen, const unsigned char *iv,
                               size_t ivlen, const OSSL_PARAM params[])
 {
+    /*
+     * RC4-HMAC-MD5 provides inadequate encryption strength due to:
+     * 1. RC4 stream cipher has known biases and vulnerabilities
+     * 2. MD5 hash function is cryptographically broken
+     * 3. The combination provides insufficient security for modern use
+     * 
+     * This cipher is deprecated and should not be used for new applications.
+     * It's only provided for legacy compatibility with existing systems.
+     * 
+     * Security mitigation: Enforce minimum key length requirements
+     */
+    
+    /* Validate key length - require at least the standard key size */
+    if (key != NULL && keylen < (RC4_HMAC_MD5_KEY_BITS / 8)) {
+        ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_KEY_LENGTH);
+        return 0;
+    }
+    
     if (!ossl_cipher_generic_dinit(ctx, key, keylen, iv, ivlen, NULL))
         return 0;
     return rc4_hmac_md5_set_ctx_params(ctx, params);
