@@ -48,6 +48,7 @@
 #include <strdef.h>
 #include <str$routines.h>
 #include <stsdef.h>
+#include <openssl/crypto.h>
 #ifndef LPDIR_H
 # include "LPdir.h"
 #endif
@@ -131,7 +132,7 @@ const char *LP_find_file(LP_DIR_CTX **ctx, const char *directory)
 # define CTX_FILESPEC ctx_filespec_32p
         /* Copy the file name to storage with a 32-bit pointer. */
         ctx_filespec_32p = ctx_filespec_32;
-        strcpy(ctx_filespec_32p, (*ctx)->filespec);
+        OPENSSL_strlcpy(ctx_filespec_32p, (*ctx)->filespec, sizeof(ctx_filespec_32));
 #else                           /* __INITIAL_POINTER_SIZE == 64 */
 # define CTX_FILESPEC (*ctx)->filespec
 #endif                          /* __INITIAL_POINTER_SIZE == 64 [else] */
