@@ -126,8 +126,8 @@ static int krb5kdf_derive(void *vctx, unsigned char *key, size_t keylen,
                           const OSSL_PARAM params[])
 {
     KRB5KDF_CTX *ctx = (KRB5KDF_CTX *)vctx;
-    const EVP_CIPHER *cipher;
-    ENGINE *engine;
+    const EVP_CIPHER *cipher = NULL;
+    ENGINE *engine = NULL;
 
     if (!ossl_prov_is_running() || !krb5kdf_set_ctx_params(ctx, params))
         return 0;
