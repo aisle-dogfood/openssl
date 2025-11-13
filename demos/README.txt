@@ -1,7 +1,15 @@
 OpenSSL Demonstration Applications
 
+**SECURITY WARNING: This directory contains DEMO PRIVATE KEYS for testing only!**
+**These keys must NEVER be used in production environments or distributed.**
+**See SECURITY-DEMO-KEYS.md in the repository root for details.**
+
 This folder contains source code that demonstrates the proper use of the OpenSSL
 library API.
+
+**IMPORTANT: Several demo subdirectories contain private keys with hard-coded
+secrets (*.pem files). These are for demonstration purposes only and must be
+excluded from any production distribution or deployment.**
 
 Note: Makefiles are provided in the demo subfolders to demonstrate how to build
 them, but are not frequently used.  Configure openssl with enable-demos to build

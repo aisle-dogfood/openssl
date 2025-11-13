@@ -1,0 +1,28 @@
+# Distribution Exclusion List
+# Files and directories that should be excluded from production distributions
+# to prevent accidental inclusion of test/demo private keys and other sensitive materials
+
+# Demo private keys - NEVER distribute these
+demos/certs/apps/*.pem
+demos/sslecho/key.pem
+
+# Test private keys and fixtures - NEVER distribute these  
+test/recipes/15-test_ml_kem_codecs_data/*.pem
+test/recipes/30-test_evp_data/evppkey_ml_kem_*_decap.txt
+
+# Entire test directories (optional - uncomment if desired)
+# test/
+# demos/
+
+# Development and build artifacts
+.git/
+.github/
+*.tmp
+*.log
+build/
+out/
+tmp/
+
+# Documentation that may reference internal details
+SECURITY-DEMO-KEYS.md
+.distignore

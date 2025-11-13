@@ -1,6 +1,10 @@
 OpenSSL Simple Echo Client/Server
 =================================
 
+**SECURITY WARNING: This demo contains a PRIVATE KEY (key.pem) for testing only!**
+**This key must NEVER be used in production environments or distributed.**
+**See SECURITY-DEMO-KEYS.md in the repository root for details.**
+
 This project implements a simple echo client/server.
 
 It is a console application, with command line parameters determining the mode
@@ -20,7 +24,11 @@ The new client code illustrates that:
   SSL_write() and SSL_read().
 - Pretty simple.
 
-The cert.pem and key.pem files included are self signed certificates with the
-"Common Name" of 'localhost'.
+**IMPORTANT: The cert.pem and key.pem files included are self signed certificates 
+with hard-coded secrets for demonstration purposes only. The key.pem file contains
+a private key that must be excluded from any production distribution or deployment.**
 
-Best to create the 'pem' files using an actual hostname.
+The certificates have the "Common Name" of 'localhost'.
+
+For production use, generate new certificates using an actual hostname and 
+never use the demo key.pem file.

@@ -9,6 +9,20 @@ Welcome to the OpenSSL Project
 ![Quic Interop](https://github.com/openssl/openssl/actions/workflows/run_quic_interop.yml/badge.svg)
 ![Daily checks](https://github.com/openssl/openssl/actions/workflows/run-checker-daily.yml/badge.svg)
 
+## Security Notice: Demo and Test Private Keys
+
+**⚠️ IMPORTANT: This repository contains private keys for testing and demonstration purposes only.**
+
+These keys are located in:
+- `demos/` directory (RSA demo keys)
+- `test/` directory (ML-KEM and other test keys)
+
+**These keys must NEVER be used in production and must be excluded from production distributions.**
+
+See [SECURITY-DEMO-KEYS.md](SECURITY-DEMO-KEYS.md) for complete details and mitigation requirements.
+
+## About OpenSSL
+
 OpenSSL is a robust, commercial-grade, full-featured Open Source Toolkit
 for the TLS (formerly SSL), DTLS and QUIC protocols.
 
