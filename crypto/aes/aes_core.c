@@ -50,7 +50,7 @@
 #include <openssl/aes.h>
 #include "aes_local.h"
 
-#if defined(OPENSSL_AES_CONST_TIME) && !defined(AES_ASM)
+#if !defined(AES_ASM)
 
 # if (defined(_WIN32) || defined(_WIN64)) && !defined(__MINGW32__)
 #  define U64(C) C##UI64
@@ -689,7 +689,7 @@ void AES_decrypt(const unsigned char *in, unsigned char *out,
 
     InvCipher(in, out, rk, key->rounds);
 }
-#elif !defined(AES_ASM)
+#elif 0 /* Disabled vulnerable T-table implementation */
 /*-
 Te0[x] = S [x].[02, 01, 01, 03];
 Te1[x] = S [x].[03, 02, 01, 01];
