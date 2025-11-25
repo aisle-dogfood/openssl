@@ -352,7 +352,7 @@
                                                                   int *err)  \
     {                                                                        \
         int e2 = 0;                                                          \
-        type x, y;                                                           \
+        type x, y, x_div_c;                                                  \
                                                                              \
         if (c == 0) {                                                        \
             *err |= 1;                                                       \
@@ -360,15 +360,16 @@
         }                                                                    \
         x = safe_mul_ ## type_name(a, b, &e2);                               \
         if (!e2)                                                             \
-            return x / c;                                                    \
+            return safe_div_ ## type_name(x, c, err);                        \
         if (b > a) {                                                         \
             x = b;                                                           \
             b = a;                                                           \
             a = x;                                                           \
         }                                                                    \
-        x = safe_mul_ ## type_name(a % c, b, err);                           \
-        y = safe_mul_ ## type_name(a / c, b, err);                           \
-        return safe_add_ ## type_name(y, x / c, err);                        \
+        x = safe_mul_ ## type_name(safe_mod_ ## type_name(a, c, err), b, err); \
+        y = safe_mul_ ## type_name(safe_div_ ## type_name(a, c, err), b, err); \
+        x_div_c = safe_div_ ## type_name(x, c, err);                         \
+        return safe_add_ ## type_name(y, x_div_c, err);                      \
     }
 
 /*
@@ -390,8 +391,10 @@
         if (b > 0 && a > 0) {                                                \
             /* Faster path: no overflow concerns */                          \
             if (a < max - b)                                                 \
-                return (a + b - 1) / b;                                      \
-            return a / b + (a % b != 0);                                     \
+                return safe_div_ ## type_name(a + b - 1, b, err);            \
+            x = safe_mod_ ## type_name(a, b, err);                           \
+            return safe_add_ ## type_name(safe_div_ ## type_name(a, b, err), \
+                                          x != 0, err);                      \
         }                                                                    \
         if (b == 0) {                                                        \
             *err |= 1;                                                       \
