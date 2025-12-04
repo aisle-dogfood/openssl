@@ -16,6 +16,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/socket.h>
+#include <string.h>
+#include <stdlib.h>
 
 #ifndef PATH_MAX
 # define PATH_MAX 255
@@ -71,6 +73,69 @@ struct h3ssl {
     size_t ldata;             /* amount of bytes to send */
     int offset_data;          /* offset to next data to send */
 };
+
+/*
+ * Validates and sanitizes a URL path to prevent directory traversal attacks.
+ * Returns 1 if the path is safe, 0 if it should be rejected.
+ * The sanitized path is written to 'output' buffer.
+ * Special exception: allows .well-known/ paths for web standards compliance.
+ */
+static int validate_and_sanitize_path(const char *input, char *output, size_t output_size)
+{
+    const char *src = input;
+    char *dst = output;
+    char *dst_end = output + output_size - 1;
+    
+    /* Clear output buffer */
+    memset(output, 0, output_size);
+    
+    /* Skip leading slashes */
+    while (*src == '/')
+        src++;
+    
+    /* Handle empty path or root path */
+    if (*src == '\0') {
+        strncpy(output, "index.html", output_size - 1);
+        return 1;
+    }
+    
+    /* Check for and reject dangerous patterns */
+    if (strstr(input, "..") != NULL) {
+        return 0; /* Reject any path containing ".." */
+    }
+    
+    /* Check for absolute paths */
+    if (input[0] == '/') {
+        /* Already handled above by skipping leading slashes */
+    }
+    
+    /* Copy and validate each character */
+    while (*src != '\0' && dst < dst_end) {
+        /* Reject null bytes and other control characters */
+        if (*src < 0x20 && *src != '\t') {
+            return 0;
+        }
+        
+        /* Reject backslashes (Windows path separators) */
+        if (*src == '\\') {
+            return 0;
+        }
+        
+        *dst++ = *src++;
+    }
+    
+    *dst = '\0';
+    
+    /* Final check: ensure the path doesn't start with a dot, 
+     * EXCEPT for .well-known/ which is a web standard */
+    if (output[0] == '.') {
+        if (strncmp(output, ".well-known/", 12) != 0) {
+            return 0;
+        }
+    }
+    
+    return 1;
+}
 
 static void make_nv(nghttp3_nv *nv, const char *name, const char *value)
 {
@@ -291,18 +356,20 @@ static int on_recv_header(nghttp3_conn *conn, int64_t stream_id, int32_t token,
     fprintf(stdout, "\n");
 
     if (token == NGHTTP3_QPACK_TOKEN__PATH) {
-        int len = (((vvalue.len) < (MAXURL)) ? (vvalue.len) : (MAXURL));
+        char temp_path[MAXURL];
+        int len = (((vvalue.len) < (MAXURL - 1)) ? (vvalue.len) : (MAXURL - 1));
 
-        memset(h3ssl->url, 0, sizeof(h3ssl->url));
-        if (vvalue.base[0] == '/') {
-            if (vvalue.base[1] == '\0') {
-                strncpy(h3ssl->url, "index.html", MAXURL);
-            } else {
-                memcpy(h3ssl->url, vvalue.base + 1, len - 1);
-                h3ssl->url[len - 1] = '\0';
-            }
-        } else {
-            memcpy(h3ssl->url, vvalue.base, len);
+        /* Copy the path to a temporary buffer and null-terminate it */
+        memset(temp_path, 0, sizeof(temp_path));
+        memcpy(temp_path, vvalue.base, len);
+        temp_path[len] = '\0';
+
+        /* Validate and sanitize the path */
+        if (!validate_and_sanitize_path(temp_path, h3ssl->url, sizeof(h3ssl->url))) {
+            /* Invalid path - set to a safe default */
+            fprintf(stderr, "Invalid path rejected: %.*s\n", len, (char*)vvalue.base);
+            strncpy(h3ssl->url, "index.html", MAXURL - 1);
+            h3ssl->url[MAXURL - 1] = '\0';
         }
     }
 
@@ -764,15 +831,45 @@ static void handle_events_from_ids(struct h3ssl *h3ssl)
     }
 }
 
+/*
+ * Safely constructs a file path by concatenating fileprefix and url.
+ * Returns 1 on success, 0 on failure (path too long or other error).
+ */
+static int construct_safe_filepath(struct h3ssl *h3ssl, char *filename, size_t filename_size)
+{
+    size_t prefix_len = 0;
+    size_t url_len = strlen(h3ssl->url);
+    
+    memset(filename, 0, filename_size);
+    
+    if (h3ssl->fileprefix != NULL) {
+        prefix_len = strlen(h3ssl->fileprefix);
+        /* Check if combined path would exceed buffer */
+        if (prefix_len + url_len + 1 >= filename_size) {
+            fprintf(stderr, "File path too long\n");
+            return 0;
+        }
+        strcpy(filename, h3ssl->fileprefix);
+    } else {
+        /* Check if URL alone would exceed buffer */
+        if (url_len + 1 >= filename_size) {
+            fprintf(stderr, "File path too long\n");
+            return 0;
+        }
+    }
+    
+    strcat(filename, h3ssl->url);
+    return 1;
+}
+
 static size_t get_file_length(struct h3ssl *h3ssl)
 {
     char filename[PATH_MAX];
     struct stat st;
 
-    memset(filename, 0, PATH_MAX);
-    if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+    if (!construct_safe_filepath(h3ssl, filename, sizeof(filename))) {
+        return 0;
+    }
 
     if (strcmp(h3ssl->url, "big") == 0) {
         printf("big!!!\n");
@@ -799,14 +896,20 @@ static char *get_file_data(struct h3ssl *h3ssl)
     if (size == 0)
         return NULL;
 
-    memset(filename, 0, PATH_MAX);
-    if (h3ssl->fileprefix != NULL)
-        strcat(filename, h3ssl->fileprefix);
-    strcat(filename, h3ssl->url);
+    if (!construct_safe_filepath(h3ssl, filename, sizeof(filename))) {
+        return NULL;
+    }
 
     res = malloc(size+1);
+    if (res == NULL) {
+        return NULL;
+    }
     res[size] = '\0';
     fd = open(filename, O_RDONLY);
+    if (fd == -1) {
+        free(res);
+        return NULL;
+    }
     if (read(fd, res, size) == -1) {
         close(fd);
         free(res);
