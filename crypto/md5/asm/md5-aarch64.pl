@@ -23,8 +23,11 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; my $dir=$1; my $xlate;
 ( $xlate="${dir}../../perlasm/arm-xlate.pl" and -f $xlate) or
 die "can't locate arm-xlate.pl";
 
-open OUT,"| \"$^X\" $xlate $flavour \"$output\""
-    or die "can't call $xlate: $1";
+my @cmd = ($^X, $xlate);
+push @cmd, $flavour if defined $flavour;
+push @cmd, $output if defined $output;
+open(OUT, "|-", @cmd)
+    or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
 $code .= <<EOF;
