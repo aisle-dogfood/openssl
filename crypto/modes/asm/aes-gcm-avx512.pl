@@ -47,8 +47,26 @@ $dir = $1;
   or ($xlate = "${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate)
   or die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1` =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-  $avx512vaes = ($1 >= 2.30);
+# Shell-escape a string for safe inclusion in shell commands
+# Implements POSIX shell single-quote escaping
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # For safety, if the argument contains only safe characters, return as-is
+    # Safe characters: alphanumeric, dash, underscore, dot, forward slash, equals, plus
+    if ($arg =~ /^[-\w.\/=+]+\z/) {
+        return $arg;
+    }
+    # Otherwise, use single-quote escaping (replace ' with '\'' )
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
+if (defined($ENV{CC})) {
+    my $quoted_cc = shell_quote($ENV{CC});
+    if (`$quoted_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1` =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+      $avx512vaes = ($1 >= 2.30);
+    }
 }
 
 if (!$avx512vaes
@@ -59,16 +77,19 @@ if (!$avx512vaes
   $avx512vaes = ($1 == 2.13 && $2 >= 3) + ($1 >= 2.14);
 }
 
-if (!$avx512vaes && `$ENV{CC} -v 2>&1`
-    =~ /(Apple)?\s*((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)\.([0-9]+)?/) {
-    my $ver = $3 + $4/100.0 + $5/10000.0; # 3.1.0->3.01, 3.10.1->3.1001
-    if ($1) {
-        # Apple conditions, they use a different version series, see
-        # https://en.wikipedia.org/wiki/Xcode#Xcode_7.0_-_10.x_(since_Free_On-Device_Development)_2
-        # clang 7.0.0 is Apple clang 10.0.1
-        $avx512vaes = ($ver>=10.0001)
-    } else {
-        $avx512vaes = ($ver>=7.0);
+if (!$avx512vaes && defined($ENV{CC})) {
+    my $quoted_cc = shell_quote($ENV{CC});
+    if (`$quoted_cc -v 2>&1`
+        =~ /(Apple)?\s*((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)\.([0-9]+)?/) {
+        my $ver = $3 + $4/100.0 + $5/10000.0; # 3.1.0->3.01, 3.10.1->3.1001
+        if ($1) {
+            # Apple conditions, they use a different version series, see
+            # https://en.wikipedia.org/wiki/Xcode#Xcode_7.0_-_10.x_(since_Free_On-Device_Development)_2
+            # clang 7.0.0 is Apple clang 10.0.1
+            $avx512vaes = ($ver>=10.0001)
+        } else {
+            $avx512vaes = ($ver>=7.0);
+        }
     }
 }
 
