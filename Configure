@@ -21,6 +21,8 @@ use OpenSSL::fallback "$FindBin::Bin/external/perl/MODULES.txt";
 use OpenSSL::Glob;
 use OpenSSL::Template;
 use OpenSSL::config;
+use IPC::Open3;
+use Symbol 'gensym';
 
 # see INSTALL.md for instructions.
 
@@ -267,6 +269,24 @@ sub read_config;
 # Resolves all the late evaluations, inheritances and so on for the
 # chosen target and any target it inherits from.
 sub resolve_config;
+
+# validate_compiler_command(cmd)
+#
+# Validates that a compiler command doesn't contain shell metacharacters
+# to prevent command injection vulnerabilities.
+sub validate_compiler_command {
+    my $cmd = shift;
+    
+    # Allow alphanumeric, underscores, hyphens, forward slashes, dots, and spaces
+    # This covers typical compiler paths and cross-compile prefixes
+    # Reject any shell metacharacters that could be used for command injection
+    if ($cmd =~ /[;&|`\$<>()\[\]{}*?~!\\'\"]/) {
+        die "Error: CC or CROSS_COMPILE contains shell metacharacters.\n" .
+            "This is a potential security risk and is not allowed.\n" .
+            "Provided value: $cmd\n";
+    }
+    return 1;
+}
 
 
 # Information collection #############################################
@@ -1726,15 +1746,35 @@ if (!$disabled{asm} && !$predefined_C{__MACH__} && $^O ne 'VMS' && !$predefined_
         push @{$config{cflags}}, "-Wa,--noexecstack", "-Qunused-arguments";
     } else {
         my $cc = $config{CROSS_COMPILE}.$config{CC};
-        open(PIPE, "$cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
-        while(<PIPE>) {
-            if (m/--noexecstack/) {
+        # Validate compiler command for security
+        validate_compiler_command($cc);
+        
+        # Use safer execution with list form to avoid shell interpolation
+        my @cmd = split(/\s+/, $cc);
+        my $null_file = "null.$$.o";
+        push @cmd, '-Wa,--help', '-c', '-o', $null_file, '-x', 'assembler', '/dev/null';
+        
+        my $err = gensym;
+        my $pid = open3(my $in, my $out, $err, @cmd);
+        close($in);
+        
+        while(my $line = <$out>) {
+            if ($line =~ m/--noexecstack/) {
                 push @{$config{cflags}}, "-Wa,--noexecstack";
                 last;
             }
         }
-        close(PIPE);
-        unlink("null.$$.o");
+        # Also check stderr
+        while(my $line = <$err>) {
+            if ($line =~ m/--noexecstack/) {
+                push @{$config{cflags}}, "-Wa,--noexecstack";
+                last;
+            }
+        }
+        waitpid($pid, 0);
+        close($out);
+        close($err);
+        unlink($null_file);
     }
 }
 
@@ -1836,13 +1876,48 @@ unless ($disabled{devcryptoeng}) {
 unless ($disabled{ktls}) {
     $config{ktls}="";
     my $cc = $config{CROSS_COMPILE}.$config{CC};
+    # Validate compiler command for security
+    validate_compiler_command($cc);
+    
     if ($target =~ m/^linux/) {
-        system("printf '#include <sys/types.h>\n#include <linux/tls.h>' | $cc -E - >/dev/null 2>&1");
+        # Use safer execution with list form to avoid shell interpolation
+        my @cmd = split(/\s+/, $cc);
+        push @cmd, '-E', '-';
+        
+        my $err = gensym;
+        my $pid = open3(my $in, my $out, $err, @cmd);
+        print $in "#include <sys/types.h>\n#include <linux/tls.h>\n";
+        close($in);
+        
+        # Read and discard output
+        while(<$out>) { }
+        while(<$err>) { }
+        
+        waitpid($pid, 0);
+        close($out);
+        close($err);
+        
         if ($? != 0) {
             disable('too-old-kernel', 'ktls');
         }
     } elsif ($target =~ m/^BSD/) {
-        system("printf '#include <sys/types.h>\n#include <sys/ktls.h>' | $cc -E - >/dev/null 2>&1");
+        # Use safer execution with list form to avoid shell interpolation
+        my @cmd = split(/\s+/, $cc);
+        push @cmd, '-E', '-';
+        
+        my $err = gensym;
+        my $pid = open3(my $in, my $out, $err, @cmd);
+        print $in "#include <sys/types.h>\n#include <sys/ktls.h>\n";
+        close($in);
+        
+        # Read and discard output
+        while(<$out>) { }
+        while(<$err>) { }
+        
+        waitpid($pid, 0);
+        close($out);
+        close($err);
+        
         if ($? != 0) {
             disable('too-old-freebsd', 'ktls');
         }
@@ -3395,18 +3470,30 @@ sub compiler_predefined {
 
     die 'compiler_predefined called without a compiler command'
         unless $cc;
+    
+    # Validate the compiler command for security
+    validate_compiler_command($cc);
 
     if (! $predefined{$cc}) {
 
         $predefined{$cc} = {};
 
         # collect compiler pre-defines from gcc or gcc-alike...
-        open(PIPE, "$cc -dM -E -x c /dev/null 2>&1 |");
-        while (my $l = <PIPE>) {
+        # Use safer execution with list form to avoid shell interpolation
+        my @cmd = split(/\s+/, $cc);
+        push @cmd, '-dM', '-E', '-x', 'c', '/dev/null';
+        
+        my $err = gensym;
+        my $pid = open3(my $in, my $out, $err, @cmd);
+        close($in);
+        
+        while (my $l = <$out>) {
             $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
             $predefined{$cc}->{$1} = $2 // '';
         }
-        close(PIPE);
+        waitpid($pid, 0);
+        close($out);
+        close($err);
     }
 
     return %{$predefined{$cc}};
