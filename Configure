@@ -21,6 +21,8 @@ use OpenSSL::fallback "$FindBin::Bin/external/perl/MODULES.txt";
 use OpenSSL::Glob;
 use OpenSSL::Template;
 use OpenSSL::config;
+use IPC::Open3;
+use Symbol 'gensym';
 
 # see INSTALL.md for instructions.
 
@@ -1545,12 +1547,25 @@ foreach my $checker (($builder_platform."-".$config{build_file}."-checker.pm",
 
 push @{$config{defines}}, "NDEBUG"    if $config{build_type} eq "release";
 
-if ($target =~ /^mingw/ && `$config{CC} --target-help 2>&1` =~ m/-mno-cygwin/m)
-        {
-        push @{$config{cflags}}, "-mno-cygwin";
-        push @{$config{cxxflags}}, "-mno-cygwin" if $config{CXX};
-        push @{$config{shared_ldflag}}, "-mno-cygwin";
+if ($target =~ /^mingw/) {
+        # Use IPC::Open3 to avoid shell injection via $config{CC}
+        my $err = gensym;
+        my $out;
+        my $output = '';
+        my $pid = eval {
+            open3(undef, $out, $err, $config{CC}, '--target-help');
+        };
+        if ($pid) {
+            $output = do { local $/; <$out> };
+            close($out);
+            waitpid($pid, 0);
         }
+        if ($output =~ m/-mno-cygwin/m) {
+            push @{$config{cflags}}, "-mno-cygwin";
+            push @{$config{cxxflags}}, "-mno-cygwin" if $config{CXX};
+            push @{$config{shared_ldflag}}, "-mno-cygwin";
+        }
+}
 
 if ($target =~ /linux.*-mips/ && !$disabled{asm}
         && !grep { $_ =~ /-m(ips|arch=)/ } (@{$config{CFLAGS}})) {
@@ -1726,14 +1741,22 @@ if (!$disabled{asm} && !$predefined_C{__MACH__} && $^O ne 'VMS' && !$predefined_
         push @{$config{cflags}}, "-Wa,--noexecstack", "-Qunused-arguments";
     } else {
         my $cc = $config{CROSS_COMPILE}.$config{CC};
-        open(PIPE, "$cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
-        while(<PIPE>) {
-            if (m/--noexecstack/) {
-                push @{$config{cflags}}, "-Wa,--noexecstack";
-                last;
+        # Use IPC::Open3 to avoid shell injection via $cc
+        my $err = gensym;
+        my $pid = eval {
+            open3(undef, \*PIPE, $err, $cc, '-Wa,--help', '-c', '-o', "null.$$.o", '-x', 'assembler', '/dev/null');
+        };
+        
+        if ($pid) {
+            while(<PIPE>) {
+                if (m/--noexecstack/) {
+                    push @{$config{cflags}}, "-Wa,--noexecstack";
+                    last;
+                }
             }
+            close(PIPE);
+            waitpid($pid, 0);
         }
-        close(PIPE);
         unlink("null.$$.o");
     }
 }
@@ -1837,12 +1860,34 @@ unless ($disabled{ktls}) {
     $config{ktls}="";
     my $cc = $config{CROSS_COMPILE}.$config{CC};
     if ($target =~ m/^linux/) {
-        system("printf '#include <sys/types.h>\n#include <linux/tls.h>' | $cc -E - >/dev/null 2>&1");
+        # Use IPC::Open3 to avoid shell injection via $cc
+        my $err = gensym;
+        my ($in, $out);
+        my $pid = eval {
+            open3($in, $out, $err, $cc, '-E', '-');
+        };
+        if ($pid) {
+            print $in "#include <sys/types.h>\n#include <linux/tls.h>\n";
+            close($in);
+            close($out);
+            waitpid($pid, 0);
+        }
         if ($? != 0) {
             disable('too-old-kernel', 'ktls');
         }
     } elsif ($target =~ m/^BSD/) {
-        system("printf '#include <sys/types.h>\n#include <sys/ktls.h>' | $cc -E - >/dev/null 2>&1");
+        # Use IPC::Open3 to avoid shell injection via $cc
+        my $err = gensym;
+        my ($in, $out);
+        my $pid = eval {
+            open3($in, $out, $err, $cc, '-E', '-');
+        };
+        if ($pid) {
+            print $in "#include <sys/types.h>\n#include <sys/ktls.h>\n";
+            close($in);
+            close($out);
+            waitpid($pid, 0);
+        }
         if ($? != 0) {
             disable('too-old-freebsd', 'ktls');
         }
@@ -3401,12 +3446,20 @@ sub compiler_predefined {
         $predefined{$cc} = {};
 
         # collect compiler pre-defines from gcc or gcc-alike...
-        open(PIPE, "$cc -dM -E -x c /dev/null 2>&1 |");
-        while (my $l = <PIPE>) {
-            $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
-            $predefined{$cc}->{$1} = $2 // '';
+        # Use IPC::Open3 to avoid shell injection via $cc
+        my $err = gensym;
+        my $pid = eval {
+            open3(undef, \*PIPE, $err, $cc, '-dM', '-E', '-x', 'c', '/dev/null');
+        };
+        
+        if ($pid) {
+            while (my $l = <PIPE>) {
+                $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
+                $predefined{$cc}->{$1} = $2 // '';
+            }
+            close(PIPE);
+            waitpid($pid, 0);
         }
-        close(PIPE);
     }
 
     return %{$predefined{$cc}};
