@@ -177,9 +177,7 @@ static int frame_new_token(BIO *bio, PACKET *pkt)
     if (!ossl_quic_wire_decode_frame_new_token(pkt, &token, &token_len))
         return 0;
 
-    BIO_puts(bio, "    Token: ");
-    put_token(bio, token, token_len);
-    BIO_puts(bio, "\n");
+    BIO_printf(bio, "    Token: <redacted> (length: %zu)\n", token_len);
 
     return 1;
 }
@@ -337,10 +335,7 @@ static int frame_new_conn_id(BIO *bio, PACKET *pkt)
                (unsigned long long)frame_data.retire_prior_to);
     BIO_puts(bio, "    Connection id: ");
     put_conn_id(bio, &frame_data.conn_id);
-    BIO_puts(bio, "\n    Stateless Reset Token: ");
-    put_data(bio, frame_data.stateless_reset.token,
-             sizeof(frame_data.stateless_reset.token));
-    BIO_puts(bio, "\n");
+    BIO_puts(bio, "\n    Stateless Reset Token: <redacted>\n");
 
     return 1;
 }
@@ -610,9 +605,8 @@ int ossl_quic_trace(int write_p, int version, int content_type,
             }
             BIO_printf(bio, "  Payload length: %zu\n", hdr.len);
             if (hdr.type == QUIC_PKT_TYPE_INITIAL) {
-                BIO_puts(bio, "  Token: ");
-                put_token(bio, hdr.token, hdr.token_len);
-                BIO_puts(bio, "\n");
+                BIO_printf(bio, "  Token: <redacted> (length: %zu)\n",
+                           hdr.token_len);
             }
             if (hdr.type != QUIC_PKT_TYPE_VERSION_NEG
                     && hdr.type != QUIC_PKT_TYPE_RETRY) {
