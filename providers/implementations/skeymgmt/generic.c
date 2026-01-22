@@ -9,6 +9,7 @@
 
 #include <openssl/core_dispatch.h>
 #include <openssl/core_names.h>
+#include <openssl/crypto.h>
 #include "crypto/types.h"
 #include "internal/skey.h"
 #include "prov/provider_ctx.h"
@@ -23,7 +24,10 @@ void generic_free(void *keydata)
     if (generic == NULL)
         return;
 
-    OPENSSL_free(generic->data);
+    if (generic->data != NULL) {
+        OPENSSL_cleanse(generic->data, generic->length);
+        OPENSSL_free(generic->data);
+    }
     OPENSSL_free(generic);
 }
 
