@@ -21,18 +21,18 @@
 # include <openssl/evp.h>
 # include "crypto/bn_srp.h"
 
-/* calculate = SHA1(PAD(x) || PAD(y)) */
+/* calculate = SHA256(PAD(x) || PAD(y)) */
 
 static BIGNUM *srp_Calc_xy(const BIGNUM *x, const BIGNUM *y, const BIGNUM *N,
                            OSSL_LIB_CTX *libctx, const char *propq)
 {
-    unsigned char digest[SHA_DIGEST_LENGTH];
+    unsigned char digest[SHA256_DIGEST_LENGTH];
     unsigned char *tmp = NULL;
     int numN = BN_num_bytes(N);
     BIGNUM *res = NULL;
-    EVP_MD *sha1 = EVP_MD_fetch(libctx, "SHA1", propq);
+    EVP_MD *sha256 = EVP_MD_fetch(libctx, "SHA256", propq);
 
-    if (sha1 == NULL)
+    if (sha256 == NULL)
         return NULL;
 
     if (x != N && BN_ucmp(x, N) >= 0)
@@ -43,11 +43,11 @@ static BIGNUM *srp_Calc_xy(const BIGNUM *x, const BIGNUM *y, const BIGNUM *N,
         goto err;
     if (BN_bn2binpad(x, tmp, numN) < 0
         || BN_bn2binpad(y, tmp + numN, numN) < 0
-        || !EVP_Digest(tmp, numN * 2, digest, NULL, sha1, NULL))
+        || !EVP_Digest(tmp, numN * 2, digest, NULL, sha256, NULL))
         goto err;
     res = BN_bin2bn(digest, sizeof(digest), NULL);
  err:
-    EVP_MD_free(sha1);
+    EVP_MD_free(sha256);
     OPENSSL_free(tmp);
     return res;
 }
@@ -56,20 +56,20 @@ static BIGNUM *srp_Calc_k(const BIGNUM *N, const BIGNUM *g,
                           OSSL_LIB_CTX *libctx,
                           const char *propq)
 {
-    /* k = SHA1(N | PAD(g)) -- tls-srp RFC 5054 */
+    /* k = SHA256(N | PAD(g)) -- upgraded from SHA1 for security */
     return srp_Calc_xy(N, g, N, libctx, propq);
 }
 
 BIGNUM *SRP_Calc_u_ex(const BIGNUM *A, const BIGNUM *B, const BIGNUM *N,
                       OSSL_LIB_CTX *libctx, const char *propq)
 {
-    /* u = SHA1(PAD(A) || PAD(B) ) -- tls-srp RFC 5054 */
+    /* u = SHA256(PAD(A) || PAD(B) ) -- upgraded from SHA1 for security */
     return srp_Calc_xy(A, B, N, libctx, propq);
 }
 
 BIGNUM *SRP_Calc_u(const BIGNUM *A, const BIGNUM *B, const BIGNUM *N)
 {
-    /* u = SHA1(PAD(A) || PAD(B) ) -- tls-srp RFC 5054 */
+    /* u = SHA256(PAD(A) || PAD(B) ) -- upgraded from SHA1 for security */
     return srp_Calc_xy(A, B, N, NULL, NULL);
 }
 
@@ -144,11 +144,11 @@ BIGNUM *SRP_Calc_B(const BIGNUM *b, const BIGNUM *N, const BIGNUM *g,
 BIGNUM *SRP_Calc_x_ex(const BIGNUM *s, const char *user, const char *pass,
                       OSSL_LIB_CTX *libctx, const char *propq)
 {
-    unsigned char dig[SHA_DIGEST_LENGTH];
+    unsigned char dig[SHA256_DIGEST_LENGTH];
     EVP_MD_CTX *ctxt;
     unsigned char *cs = NULL;
     BIGNUM *res = NULL;
-    EVP_MD *sha1 = NULL;
+    EVP_MD *sha256 = NULL;
 
     if ((s == NULL) || (user == NULL) || (pass == NULL))
         return NULL;
@@ -159,16 +159,16 @@ BIGNUM *SRP_Calc_x_ex(const BIGNUM *s, const char *user, const char *pass,
     if ((cs = OPENSSL_malloc(BN_num_bytes(s))) == NULL)
         goto err;
 
-    sha1 = EVP_MD_fetch(libctx, "SHA1", propq);
-    if (sha1 == NULL)
+    sha256 = EVP_MD_fetch(libctx, "SHA256", propq);
+    if (sha256 == NULL)
         goto err;
 
-    if (!EVP_DigestInit_ex(ctxt, sha1, NULL)
+    if (!EVP_DigestInit_ex(ctxt, sha256, NULL)
         || !EVP_DigestUpdate(ctxt, user, strlen(user))
         || !EVP_DigestUpdate(ctxt, ":", 1)
         || !EVP_DigestUpdate(ctxt, pass, strlen(pass))
         || !EVP_DigestFinal_ex(ctxt, dig, NULL)
-        || !EVP_DigestInit_ex(ctxt, sha1, NULL))
+        || !EVP_DigestInit_ex(ctxt, sha256, NULL))
         goto err;
     if (BN_bn2bin(s, cs) < 0)
         goto err;
@@ -182,7 +182,7 @@ BIGNUM *SRP_Calc_x_ex(const BIGNUM *s, const char *user, const char *pass,
     res = BN_bin2bn(dig, sizeof(dig), NULL);
 
  err:
-    EVP_MD_free(sha1);
+    EVP_MD_free(sha256);
     OPENSSL_free(cs);
     EVP_MD_CTX_free(ctxt);
     return res;

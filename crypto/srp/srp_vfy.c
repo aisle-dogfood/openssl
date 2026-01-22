@@ -557,8 +557,8 @@ SRP_user_pwd *SRP_VBASE_get_by_user(SRP_VBASE *vb, char *username)
 SRP_user_pwd *SRP_VBASE_get1_by_user(SRP_VBASE *vb, char *username)
 {
     SRP_user_pwd *user;
-    unsigned char digv[SHA_DIGEST_LENGTH];
-    unsigned char digs[SHA_DIGEST_LENGTH];
+    unsigned char digv[SHA256_DIGEST_LENGTH];
+    unsigned char digs[SHA256_DIGEST_LENGTH];
     EVP_MD_CTX *ctxt = NULL;
     EVP_MD *md = NULL;
 
@@ -582,9 +582,9 @@ SRP_user_pwd *SRP_VBASE_get1_by_user(SRP_VBASE *vb, char *username)
     if (!SRP_user_pwd_set1_ids(user, username, NULL))
         goto err;
 
-    if (RAND_priv_bytes(digv, SHA_DIGEST_LENGTH) <= 0)
+    if (RAND_priv_bytes(digv, SHA256_DIGEST_LENGTH) <= 0)
         goto err;
-    md = EVP_MD_fetch(NULL, SN_sha1, NULL);
+    md = EVP_MD_fetch(NULL, "SHA256", NULL);
     if (md == NULL)
         goto err;
     ctxt = EVP_MD_CTX_new();
@@ -599,8 +599,8 @@ SRP_user_pwd *SRP_VBASE_get1_by_user(SRP_VBASE *vb, char *username)
     EVP_MD_free(md);
     md = NULL;
     if (SRP_user_pwd_set0_sv(user,
-                             BN_bin2bn(digs, SHA_DIGEST_LENGTH, NULL),
-                             BN_bin2bn(digv, SHA_DIGEST_LENGTH, NULL)))
+                             BN_bin2bn(digs, SHA256_DIGEST_LENGTH, NULL),
+                             BN_bin2bn(digv, SHA256_DIGEST_LENGTH, NULL)))
         return user;
 
  err:
