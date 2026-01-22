@@ -23,17 +23,14 @@ plan tests => 4;
 
 # For the tests below we use the cert itself as the TBS file
 
-SKIP: {
-    skip "MD5 is not supported by this OpenSSL build", 2
-        if disabled("md5");
+# Test default digest (SHA256)
+ok(run(app([ 'openssl', 'spkac', '-key', srctop_file("test", "testrsa.pem"),
+             '-out', 'spkac-default.pem'])),
+           "SPKAC default digest");
+ok(run(app([ 'openssl', 'spkac', '-in', 'spkac-default.pem'])),
+           "SPKAC default digest verify");
 
-    ok(run(app([ 'openssl', 'spkac', '-key', srctop_file("test", "testrsa.pem"),
-                 '-out', 'spkac-md5.pem'])),
-               "SPKAC MD5");
-    ok(run(app([ 'openssl', 'spkac', '-in', 'spkac-md5.pem'])),
-               "SPKAC MD5 verify");
-}
-
+# Test explicit SHA256
 ok(run(app([ 'openssl', 'spkac', '-key', srctop_file("test", "testrsa.pem"),
              '-out', 'spkac-sha256.pem', '-digest', 'sha256'])),
            "SPKAC SHA256");
