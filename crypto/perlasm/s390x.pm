@@ -3050,11 +3050,80 @@ sub get_V {
 	return $v;
 }
 
+# Safe arithmetic expression evaluator
+# Only allows arithmetic operations on numbers and variables
+# Does not execute arbitrary Perl code like eval() would
+sub safe_eval_expr {
+	my $expr = shift;
+	return undef unless defined($expr);
+	
+	# First, validate that the expression only contains safe variable names
+	# and arithmetic operators before any evaluation
+	# Allow: word characters for variables ($var), digits, whitespace, +, -, *, /, (, ), and decimal point
+	if ($expr !~ /^[\w\s+\-*\/().\$]+$/) {
+		return undef;  # Contains unsafe characters
+	}
+	
+	# Get the caller's package for variable lookup
+	my $caller_pkg = caller(1);
+	
+	# Interpolate variables in the expression by replacing them with their values
+	# This handles Perl variables like $stdframe, $SIZE_T, etc.
+	my $interpolated = $expr;
+	
+	# Find all variables (starting with $) and replace them with their values
+	# We need to look them up in the caller's symbol table
+	while ($interpolated =~ /\$(\w+)/) {
+		my $varname = $1;  # Already validated to be word characters only
+		my $value;
+		
+		# Try to get the value from the caller's package globals
+		{
+			no strict 'refs';
+			$value = ${"${caller_pkg}::${varname}"};
+		}
+		
+		# If not found in caller's package, check if it's a lexical variable
+		# We use PadWalker-like approach via eval, but ONLY for validated variable names
+		if (!defined($value)) {
+			# Since $varname is already validated to contain only \w characters,
+			# this eval is safe and only accesses a simple variable
+			no strict 'refs';
+			my $eval_expr = "\$${varname}";
+			$value = eval($eval_expr);
+			return undef unless defined($value);
+		}
+		
+		# Validate that the value is numeric
+		unless (defined($value) && $value =~ /^-?\d+(\.\d+)?$/) {
+			return undef;  # Non-numeric value
+		}
+		
+		# Replace the variable with its value
+		$interpolated =~ s/\$$varname\b/$value/g;
+	}
+	
+	# Now validate that the expression only contains safe characters
+	# Allow: digits, whitespace, +, -, *, /, (, ), and decimal point
+	unless ($interpolated =~ /^[\d\s+\-*\/().]+$/) {
+		return undef;  # Contains unsafe characters after interpolation
+	}
+	
+	# Safe to evaluate as arithmetic expression - only numbers and operators
+	# The string is guaranteed to contain only safe arithmetic operations
+	my $result = eval($interpolated);
+	
+	# Check if eval succeeded
+	return undef if $@;
+	
+	return $result;
+}
+
 sub get_I {
 	confess(err("ARGNUM")) if ($#_!=1);
 	my ($i,$bits)=(shift,shift);
 
-	$i=defined($i)?(eval($i)):(0);
+	$i=defined($i)?(safe_eval_expr($i)):(0);
 	confess(err("PARSE")) if (!defined($i));
 	confess(err("ARGRANGE")) if (abs($i)&~(2**$bits-1));
 
@@ -3065,7 +3134,7 @@ sub get_M {
 	confess(err("ARGNUM")) if ($#_!=0);
 	my $m=shift;
 
-	$m=defined($m)?(eval($m)):(0);
+	$m=defined($m)?(safe_eval_expr($m)):(0);
 	confess(err("PARSE")) if (!defined($m));
 	confess(err("ARGRANGE")) if ($m&~0xf);
 
@@ -3081,10 +3150,10 @@ sub get_DB
 		if (!defined) {
 			($d,$b)=(0,0);
 		} elsif (/^(.+)\($GR\)$/) {
-			($d,$b)=(eval($1),$2);
+			($d,$b)=(safe_eval_expr($1),$2);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)$/) {
-			($d,$b)=(eval($1),0);
+			($d,$b)=(safe_eval_expr($1),0);
 			confess(err("PARSE")) if (!defined($d));
 		} else {
 			confess(err("PARSE"));
@@ -3104,13 +3173,13 @@ sub get_DVB
 		if (!defined) {
 			($d,$v,$b)=(0,0,0);
 		} elsif (/^(.+)\($VR,$GR\)$/) {
-			($d,$v,$b)=(eval($1),$2,$3);
+			($d,$v,$b)=(safe_eval_expr($1),$2,$3);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)\($GR\)$/) {
-			($d,$v,$b)=(eval($1),0,$2);
+			($d,$v,$b)=(safe_eval_expr($1),0,$2);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)$/) {
-			($d,$v,$b)=(eval($1),0,0);
+			($d,$v,$b)=(safe_eval_expr($1),0,0);
 			confess(err("PARSE")) if (!defined($d));
 		} else {
 			confess(err("PARSE"));
@@ -3130,13 +3199,13 @@ sub get_DXB
 		if (!defined) {
 			($d,$x,$b)=(0,0,0);
 		} elsif (/^(.+)\($GR,$GR\)$/) {
-			($d,$x,$b)=(eval($1),$2,$3);
+			($d,$x,$b)=(safe_eval_expr($1),$2,$3);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)\($GR\)$/) {
-			($d,$x,$b)=(eval($1),0,$2);
+			($d,$x,$b)=(safe_eval_expr($1),0,$2);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)$/) {
-			($d,$x,$b)=(eval($1),0,0);
+			($d,$x,$b)=(safe_eval_expr($1),0,0);
 			confess(err("PARSE")) if (!defined($d));
 		} else {
 			confess(err("PARSE"));
