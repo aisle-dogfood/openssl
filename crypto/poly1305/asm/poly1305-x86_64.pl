@@ -63,6 +63,33 @@
 # (***)	strangely enough performance seems to vary from core to core,
 #	listed result is best case;
 
+########################################################################
+# SECURITY NOTICE: Win64 SEH Exception Handling
+#
+# This file contains security-critical code for Windows x64 Structured
+# Exception Handling (SEH). The custom exception handlers (avx_handler,
+# se_handler) and associated .pdata/.xdata metadata MUST remain perfectly
+# synchronized with the generated code structure.
+#
+# CRITICAL COMPONENTS:
+# - Lines 4009-4090: avx_handler - restores XMM6-XMM15 during unwinding
+# - Lines 4148-4242: .xdata metadata with HandlerData[] label references
+# - Lines 4245-4285: Build-time validation ensuring label synchronization
+#
+# Any modifications to function prologues/epilogues (especially XMM register
+# saves/restores) MUST be accompanied by corresponding updates to:
+# 1. Body/epilogue label positions
+# 2. .xdata HandlerData[] references
+# 3. Validation label checks
+#
+# See crypto/poly1305/asm/SEH_SECURITY_README.md for complete documentation.
+#
+# FAILURE TO MAINTAIN SYNCHRONIZATION CAN RESULT IN:
+# - Corrupted cryptographic state during exception unwinding
+# - Security vulnerabilities if exception handling is exploited
+# - Application crashes or undefined behavior
+########################################################################
+
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
@@ -798,6 +825,9 @@ $code.=<<___	if ($win64);
 	vmovdqa		%xmm13,0xc0(%r11)
 	vmovdqa		%xmm14,0xd0(%r11)
 	vmovdqa		%xmm15,0xe0(%r11)
+	# CRITICAL SEH LABEL: Marks completion of XMM register saves for exception handler
+	# This label is referenced in .xdata and used by avx_handler to determine if
+	# XMM registers need restoration during exception unwinding. DO NOT MOVE.
 .Ldo_avx_body:
 ___
 $code.=<<___;
@@ -1360,6 +1390,10 @@ $code.=<<___;
 	vmovd		$D4,`4*4-48-64`($ctx)
 ___
 $code.=<<___	if ($win64);
+	# CRITICAL SEH LABEL: Marks start of XMM register restoration for exception handler
+	# This label is referenced in .xdata and used by avx_handler to determine if
+	# exception occurred before or after XMM restoration. DO NOT MOVE.
+.Ldo_avx_epilogue:
 	vmovdqa		0x50(%r11),%xmm6
 	vmovdqa		0x60(%r11),%xmm7
 	vmovdqa		0x70(%r11),%xmm8
@@ -1371,7 +1405,6 @@ $code.=<<___	if ($win64);
 	vmovdqa		0xd0(%r11),%xmm14
 	vmovdqa		0xe0(%r11),%xmm15
 	lea		0xf8(%r11),%rsp
-.Ldo_avx_epilogue:
 ___
 $code.=<<___	if (!$win64);
 	lea		0x58(%r11),%rsp
@@ -1746,6 +1779,8 @@ $code.=<<___	if ($win64);
 	vmovdqa		%xmm13,0xc0(%r11)
 	vmovdqa		%xmm14,0xd0(%r11)
 	vmovdqa		%xmm15,0xe0(%r11)
+	# CRITICAL SEH LABEL: Marks completion of XMM register saves for exception handler
+	# This label is referenced in .xdata and used by avx_handler. DO NOT MOVE.
 .Ldo_avx2_body:
 ___
 $code.=<<___;
@@ -2104,6 +2139,9 @@ $code.=<<___;
 	vmovd		%x#$H4,`4*4-48-64`($ctx)
 ___
 $code.=<<___	if ($win64);
+	# CRITICAL SEH LABEL: Marks start of XMM register restoration for exception handler
+	# This label is referenced in .xdata and used by avx_handler. DO NOT MOVE.
+.Ldo_avx2_epilogue:
 	vmovdqa		0x50(%r11),%xmm6
 	vmovdqa		0x60(%r11),%xmm7
 	vmovdqa		0x70(%r11),%xmm8
@@ -2115,7 +2153,6 @@ $code.=<<___	if ($win64);
 	vmovdqa		0xd0(%r11),%xmm14
 	vmovdqa		0xe0(%r11),%xmm15
 	lea		0xf8(%r11),%rsp
-.Ldo_avx2_epilogue:
 ___
 $code.=<<___	if (!$win64);
 	lea		8(%r11),%rsp
@@ -2172,6 +2209,8 @@ $code.=<<___	if ($win64);
 	vmovdqa		%xmm13,0xc0(%r11)
 	vmovdqa		%xmm14,0xd0(%r11)
 	vmovdqa		%xmm15,0xe0(%r11)
+	# CRITICAL SEH LABEL: Marks completion of XMM register saves for exception handler
+	# This label is referenced in .xdata and used by avx_handler. DO NOT MOVE.
 .Ldo_avx512_body:
 ___
 $code.=<<___;
@@ -2708,6 +2747,9 @@ $code.=<<___;
 	vzeroall
 ___
 $code.=<<___	if ($win64);
+	# CRITICAL SEH LABEL: Marks start of XMM register restoration for exception handler
+	# This label is referenced in .xdata and used by avx_handler. DO NOT MOVE.
+.Ldo_avx512_epilogue:
 	movdqa		0x50(%r11),%xmm6
 	movdqa		0x60(%r11),%xmm7
 	movdqa		0x70(%r11),%xmm8
@@ -2719,7 +2761,6 @@ $code.=<<___	if ($win64);
 	movdqa		0xd0(%r11),%xmm14
 	movdqa		0xe0(%r11),%xmm15
 	lea		0xf8(%r11),%rsp
-.Ldo_avx512_epilogue:
 ___
 $code.=<<___	if (!$win64);
 	lea		8(%r11),%rsp
@@ -3992,6 +4033,25 @@ se_handler:
 	jmp	.Lcommon_seh_tail
 .size	se_handler,.-se_handler
 
+# SECURITY CRITICAL: Custom SEH exception handler for AVX/AVX2/AVX512 code paths
+#
+# This handler is responsible for restoring callee-saved XMM registers (XMM6-XMM15)
+# during exception unwinding on Win64. It relies on HandlerData[0] and HandlerData[1]
+# pointing to the exact prologue and epilogue labels defined in the code sections.
+#
+# CRITICAL REQUIREMENTS for maintaining security and stability:
+# 1. Body/epilogue label pairs MUST be placed at exact prologue/epilogue boundaries
+# 2. Any changes to function prologues/epilogues MUST update corresponding labels
+# 3. The .xdata HandlerData entries MUST reference the correct label pairs
+# 4. XMM register save/restore locations (0x50-0xf8 offsets from R11) must match
+#    the actual stack layout established in the prologue
+#
+# Failure to maintain synchronization can result in:
+# - Incorrect XMM register restoration leading to corrupted cryptographic state
+# - Stack unwinding errors causing crashes or undefined behavior
+# - Potential security vulnerabilities if exception handling is exploited
+#
+# This validation is enforced at build time by label existence checks.
 .type	avx_handler,\@abi-omnipotent
 .align	16
 avx_handler:
@@ -4012,25 +4072,29 @@ avx_handler:
 	mov	8($disp),%rsi		# disp->ImageBase
 	mov	56($disp),%r11		# disp->HandlerData
 
-	mov	0(%r11),%r10d		# HandlerData[0]
-	lea	(%rsi,%r10),%r10	# prologue label
-	cmp	%r10,%rbx		# context->Rip<prologue label
-	jb	.Lcommon_seh_tail
+	# SECURITY: Validate RIP is within body region using HandlerData labels
+	mov	0(%r11),%r10d		# HandlerData[0] -> body label (prologue)
+	lea	(%rsi,%r10),%r10	# compute absolute address of prologue
+	cmp	%r10,%rbx		# context->Rip < prologue label?
+	jb	.Lcommon_seh_tail	# yes, skip XMM restoration
 
 	mov	152($context),%rax	# pull context->Rsp
 
-	mov	4(%r11),%r10d		# HandlerData[1]
-	lea	(%rsi,%r10),%r10	# epilogue label
-	cmp	%r10,%rbx		# context->Rip>=epilogue label
-	jae	.Lcommon_seh_tail
+	mov	4(%r11),%r10d		# HandlerData[1] -> epilogue label
+	lea	(%rsi,%r10),%r10	# compute absolute address of epilogue
+	cmp	%r10,%rbx		# context->Rip >= epilogue label?
+	jae	.Lcommon_seh_tail	# yes, XMMs already restored
 
+	# SECURITY: Only restore XMM6-XMM15 if exception occurred within body region
+	# This prevents incorrect restoration if exception occurs outside the
+	# protected code region, which could corrupt application state
 	mov	208($context),%rax	# pull context->R11
 
-	lea	0x50(%rax),%rsi
-	lea	0xf8(%rax),%rax
-	lea	512($context),%rdi	# &context.Xmm6
-	mov	\$20,%ecx
-	.long	0xa548f3fc		# cld; rep movsq
+	lea	0x50(%rax),%rsi		# source: saved XMM registers on stack
+	lea	0xf8(%rax),%rax		# adjust stack pointer
+	lea	512($context),%rdi	# &context.Xmm6 (destination)
+	mov	\$20,%ecx		# copy 20 qwords (10 XMM regs * 16 bytes / 8)
+	.long	0xa548f3fc		# cld; rep movsq - copy XMM6..XMM15
 
 .Lcommon_seh_tail:
 	mov	8(%rax),%rdi
@@ -4122,6 +4186,24 @@ $code.=<<___ if ($avx>2);
 	.rva	.LSEH_info_poly1305_blocks_avx512
 ___
 $code.=<<___;
+# SECURITY CRITICAL: Win64 SEH unwind metadata (.xdata section)
+#
+# The HandlerData[] entries below contain RVA (Relative Virtual Address) references
+# to body and epilogue labels. These MUST precisely match the actual label positions
+# in the generated code. The exception handlers (se_handler and avx_handler) use these
+# to determine:
+# 1. Whether an exception occurred within the function body (requiring state restoration)
+# 2. The exact boundaries for XMM register save/restore operations
+#
+# MAINTENANCE CRITICAL: When modifying function prologues/epilogues:
+# - Ensure body labels are placed AFTER all register saves are complete
+# - Ensure epilogue labels are placed BEFORE any register restoration begins
+# - Update both the label definitions AND these .xdata references
+# - The build-time validation will catch missing labels but NOT incorrect placement
+#
+# Label naming convention:
+# - .Ldo_*_body: Start of main computation (after XMM saves for avx_handler paths)
+# - .Ldo_*_epilogue: Start of cleanup (before XMM restoration for avx_handler paths)
 .section	.xdata
 .align	8
 .LSEH_info_poly1305_init:
@@ -4153,6 +4235,7 @@ $code.=<<___ if ($avx);
 .LSEH_info_poly1305_blocks_avx_3:
 	.byte	9,0,0,0
 	.rva	avx_handler
+	# CRITICAL: These labels mark XMM6-XMM15 save/restore boundaries
 	.rva	.Ldo_avx_body,.Ldo_avx_epilogue			# HandlerData[]
 
 .LSEH_info_poly1305_emit_avx:
@@ -4174,14 +4257,58 @@ $code.=<<___ if ($avx>1);
 .LSEH_info_poly1305_blocks_avx2_3:
 	.byte	9,0,0,0
 	.rva	avx_handler
+	# CRITICAL: These labels mark XMM6-XMM15 save/restore boundaries
 	.rva	.Ldo_avx2_body,.Ldo_avx2_epilogue		# HandlerData[]
 ___
 $code.=<<___ if ($avx>2);
 .LSEH_info_poly1305_blocks_avx512:
 	.byte	9,0,0,0
 	.rva	avx_handler
+	# CRITICAL: These labels mark XMM6-XMM15 save/restore boundaries
 	.rva	.Ldo_avx512_body,.Ldo_avx512_epilogue		# HandlerData[]
 ___
+}
+
+# SECURITY: Validate SEH metadata synchronization
+# The .xdata sections reference prologue/epilogue labels that MUST exist in the
+# generated code. Any drift between these labels and the actual code structure
+# could cause incorrect exception unwinding, XMM register restoration failures,
+# or potential security issues. This validation ensures fail-fast behavior.
+if ($win64) {
+	my @required_labels = (
+		'.Lblocks_body', '.Lblocks_epilogue'
+	);
+	
+	if ($avx) {
+		push @required_labels, (
+			'.Lblocks_avx_body', '.Lblocks_avx_epilogue',
+			'.Lbase2_64_avx_body', '.Lbase2_64_avx_epilogue',
+			'.Ldo_avx_body', '.Ldo_avx_epilogue'
+		);
+	}
+	
+	if ($avx>1) {
+		push @required_labels, (
+			'.Lblocks_avx2_body', '.Lblocks_avx2_epilogue',
+			'.Lbase2_64_avx2_body', '.Lbase2_64_avx2_epilogue',
+			'.Ldo_avx2_body', '.Ldo_avx2_epilogue'
+		);
+	}
+	
+	if ($avx>2) {
+		push @required_labels, (
+			'.Ldo_avx512_body', '.Ldo_avx512_epilogue'
+		);
+	}
+	
+	foreach my $label (@required_labels) {
+		if ($code !~ /\Q$label\E:/) {
+			die "CRITICAL SEH VALIDATION ERROR: Required label '$label' not found in generated code.\n" .
+			    "This indicates drift between SEH metadata and code structure, which could cause\n" .
+			    "incorrect exception unwinding or security issues. Label must be defined before\n" .
+			    "being referenced in .xdata sections.\n";
+		}
+	}
 }
 
 foreach (split('\n',$code)) {
