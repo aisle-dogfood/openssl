@@ -884,13 +884,6 @@ int capi_rsa_sign(int dtype, const unsigned char *m, unsigned int m_len,
         alg = CALG_SHA1;
         break;
 
-    case NID_md5:
-        alg = CALG_MD5;
-        break;
-
-    case NID_md5_sha1:
-        alg = CALG_SSL3_SHAMD5;
-        break;
     default:
         {
             char algstr[10];
