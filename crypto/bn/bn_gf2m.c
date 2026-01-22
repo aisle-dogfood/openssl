@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include "internal/cryptlib.h"
+#include "internal/constant_time.h"
 #include "bn_local.h"
 
 #ifndef OPENSSL_NO_EC2M
@@ -554,6 +555,199 @@ int BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
  * Modified Almost Inverse Algorithm (Algorithm 10) from Hankerson, D.,
  * Hernandez, J.L., and Menezes, A.  "Software Implementation of Elliptic
  * Curve Cryptography Over Binary Fields".
+ * This is a constant-time implementation.
+ */
+static int BN_GF2m_mod_inv_ct(BIGNUM *r, const BIGNUM *a,
+                              const BIGNUM *p, BN_CTX *ctx)
+{
+    BIGNUM *b, *c = NULL, *u = NULL, *v = NULL;
+    int ret = 0;
+    int i, j;
+    int top;
+    BN_ULONG *udp, *bdp, *vdp, *cdp;
+    int max_iterations;
+
+    bn_check_top(a);
+    bn_check_top(p);
+
+    BN_CTX_start(ctx);
+
+    b = BN_CTX_get(ctx);
+    c = BN_CTX_get(ctx);
+    u = BN_CTX_get(ctx);
+    v = BN_CTX_get(ctx);
+    if (v == NULL)
+        goto err;
+
+    if (!BN_GF2m_mod(u, a, p))
+        goto err;
+    if (BN_is_zero(u))
+        goto err;
+
+    if (!BN_copy(v, p))
+        goto err;
+
+    top = p->top;
+
+    /* Expand all BIGNUMs to same size */
+    if (!bn_wexpand(u, top))
+        goto err;
+    udp = u->d;
+    for (i = u->top; i < top; i++)
+        udp[i] = 0;
+    u->top = top;
+
+    if (!bn_wexpand(b, top))
+        goto err;
+    bdp = b->d;
+    bdp[0] = 1;
+    for (i = 1; i < top; i++)
+        bdp[i] = 0;
+    b->top = top;
+
+    if (!bn_wexpand(c, top))
+        goto err;
+    cdp = c->d;
+    for (i = 0; i < top; i++)
+        cdp[i] = 0;
+    c->top = top;
+
+    vdp = v->d;
+
+    /*
+     * Run the algorithm for a fixed number of iterations.
+     * The maximum number of iterations is 2 * degree(p).
+     * We use top * BN_BITS2 * 2 as a safe upper bound.
+     */
+    max_iterations = top * BN_BITS2 * 2;
+
+    for (j = 0; j < max_iterations; j++) {
+        BN_ULONG u_is_even, b_lsb, swap_mask, u_is_one, do_ops;
+        BN_ULONG u0, u1, b0, b1, mask;
+
+        /*
+         * Check if u == 1 (algorithm has converged).
+         * If u == 1, we should stop doing operations but continue iterations
+         * to maintain constant time.
+         */
+        u_is_one = constant_time_eq_bn(udp[0], 1);
+        for (i = 1; i < top; i++) {
+            u_is_one &= constant_time_is_zero_bn(udp[i]);
+        }
+        /* do_ops = ~u_is_one (if u is one, don't do ops) */
+        do_ops = ~u_is_one;
+
+        /* Check if u is even (LSB is 0) */
+        u_is_even = constant_time_is_zero_bn(udp[0] & 1);
+        /* Only shift if u is even AND we haven't converged */
+        u_is_even &= do_ops;
+
+        /* Conditionally shift u and update b if u is even */
+        u0 = udp[0];
+        b0 = bdp[0];
+        
+        /* mask = all 1s if b is odd, all 0s otherwise */
+        b_lsb = b0 & 1;
+        mask = (BN_ULONG)0 - b_lsb;
+        
+        /* Conditionally add p to b (in GF(2^m), addition is XOR) */
+        b0 = constant_time_select_bn(u_is_even, b0 ^ (p->d[0] & mask), b0);
+        
+        for (i = 0; i < top - 1; i++) {
+            u1 = udp[i + 1];
+            b1 = bdp[i + 1];
+            
+            /* Conditionally XOR p[i+1] into b[i+1] if u is even and b was odd */
+            b1 = constant_time_select_bn(u_is_even, b1 ^ (p->d[i + 1] & mask), b1);
+            
+            /* Conditionally right-shift u and b if u is even */
+            udp[i] = constant_time_select_bn(u_is_even,
+                                             ((u0 >> 1) | (u1 << (BN_BITS2 - 1))) & BN_MASK2,
+                                             udp[i]);
+            bdp[i] = constant_time_select_bn(u_is_even,
+                                             ((b0 >> 1) | (b1 << (BN_BITS2 - 1))) & BN_MASK2,
+                                             bdp[i]);
+            u0 = u1;
+            b0 = b1;
+        }
+        
+        udp[i] = constant_time_select_bn(u_is_even, u0 >> 1, udp[i]);
+        bdp[i] = constant_time_select_bn(u_is_even, b0 >> 1, bdp[i]);
+
+        /*
+         * Now perform the swap and addition step in constant time.
+         * We need to swap (u,b) with (v,c) if u < v (in terms of magnitude).
+         * In constant time, we compute the swap condition and use select operations.
+         * Only do this if we haven't converged.
+         */
+        
+        /* 
+         * Compute if u < v by comparing from MSB down.
+         * Start with swap_mask = 0 (meaning don't swap).
+         * For each word from MSB to LSB, if this is the first word where they differ,
+         * set swap_mask based on whether u < v at that position.
+         */
+        swap_mask = 0;
+        for (i = top - 1; i >= 0; i--) {
+            BN_ULONG u_val = udp[i];
+            BN_ULONG v_val = vdp[i];
+            BN_ULONG diff = u_val ^ v_val;
+            BN_ULONG values_equal = constant_time_is_zero_bn(diff);
+            BN_ULONG u_lt_v = constant_time_lt_bn(u_val, v_val);
+            
+            /*
+             * If values are equal at this position, keep current swap_mask.
+             * If values differ, update swap_mask to u_lt_v.
+             * Use: swap_mask = values_equal ? swap_mask : u_lt_v
+             */
+            swap_mask = constant_time_select_bn(values_equal, swap_mask, u_lt_v);
+        }
+        /* Only swap if we haven't converged */
+        swap_mask &= do_ops;
+        
+        /* Conditionally swap u with v and b with c using constant-time select */
+        for (i = 0; i < top; i++) {
+            BN_ULONG u_new = constant_time_select_bn(swap_mask, vdp[i], udp[i]);
+            BN_ULONG v_new = constant_time_select_bn(swap_mask, udp[i], vdp[i]);
+            udp[i] = u_new;
+            vdp[i] = v_new;
+            
+            BN_ULONG b_new = constant_time_select_bn(swap_mask, cdp[i], bdp[i]);
+            BN_ULONG c_new = constant_time_select_bn(swap_mask, bdp[i], cdp[i]);
+            bdp[i] = b_new;
+            cdp[i] = c_new;
+        }
+        
+        /* Add v to u and c to b (XOR in GF(2^m)), only if we haven't converged */
+        for (i = 0; i < top; i++) {
+            BN_ULONG u_add = udp[i] ^ vdp[i];
+            BN_ULONG b_add = bdp[i] ^ cdp[i];
+            udp[i] = constant_time_select_bn(do_ops, u_add, udp[i]);
+            bdp[i] = constant_time_select_bn(do_ops, b_add, bdp[i]);
+        }
+    }
+
+    bn_correct_top(b);
+
+    if (!BN_copy(r, b))
+        goto err;
+    bn_check_top(r);
+    ret = 1;
+
+ err:
+# ifdef BN_DEBUG
+    /* BN_CTX_end would complain about the expanded form */
+    bn_correct_top(c);
+    bn_correct_top(u);
+    bn_correct_top(v);
+# endif
+    BN_CTX_end(ctx);
+    return ret;
+}
+
+/*
+ * Variable-time inversion (kept for compatibility, but should not be used
+ * with secret data).
  */
 static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
                                    const BIGNUM *p, BN_CTX *ctx)
@@ -723,42 +917,23 @@ static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
 }
 
 /*-
- * Wrapper for BN_GF2m_mod_inv_vartime that blinds the input before calling.
- * This is not constant time.
- * But it does eliminate first order deduction on the input.
+ * Constant-time modular inversion in GF(2^m).
+ * This uses a constant-time implementation to prevent timing side-channel attacks.
  */
 int BN_GF2m_mod_inv(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 {
-    BIGNUM *b = NULL;
     int ret = 0;
     int numbits;
 
     BN_CTX_start(ctx);
-    if ((b = BN_CTX_get(ctx)) == NULL)
-        goto err;
 
     /* Fail on a non-sensical input p value */
     numbits = BN_num_bits(p);
     if (numbits <= 1)
         goto err;
 
-    /* generate blinding value */
-    do {
-        if (!BN_priv_rand_ex(b, numbits - 1,
-                             BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY, 0, ctx))
-            goto err;
-    } while (BN_is_zero(b));
-
-    /* r := a * b */
-    if (!BN_GF2m_mod_mul(r, a, b, p, ctx))
-        goto err;
-
-    /* r := 1/(a * b) */
-    if (!BN_GF2m_mod_inv_vartime(r, r, p, ctx))
-        goto err;
-
-    /* r := b/(a * b) = 1/a */
-    if (!BN_GF2m_mod_mul(r, r, b, p, ctx))
+    /* Use constant-time inversion */
+    if (!BN_GF2m_mod_inv_ct(r, a, p, ctx))
         goto err;
 
     ret = 1;

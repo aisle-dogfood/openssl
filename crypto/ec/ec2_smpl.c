@@ -924,7 +924,7 @@ int ec_GF2m_simple_points_mul(const EC_GROUP *group, EC_POINT *r,
 /*-
  * Computes the multiplicative inverse of a in GF(2^m), storing the result in r.
  * If a is zero (or equivalent), you'll get an EC_R_CANNOT_INVERT error.
- * SCA hardening is with blinding: BN_GF2m_mod_inv does that.
+ * SCA hardening: BN_GF2m_mod_inv uses constant-time implementation.
  */
 static int ec_GF2m_simple_field_inv(const EC_GROUP *group, BIGNUM *r,
                                     const BIGNUM *a, BN_CTX *ctx)
