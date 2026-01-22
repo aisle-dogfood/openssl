@@ -6,6 +6,9 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
+use IPC::Open3;
+use Symbol 'gensym';
+
 #
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -68,34 +71,83 @@
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
 $flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
 
-$win64=0; $win64=1 if ($flavour =~ /[nm]asm|mingw64/ || $output =~ /\.asm$/);
+$win64=0; $win64=1 if ((defined($flavour) && $flavour =~ /[nm]asm|mingw64/) || (defined($output) && $output =~ /\.asm$/));
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}x86_64-xlate.pl" and -f $xlate ) or
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
+if (defined($ENV{CC})) {
+	# Use IPC::Open3 to safely execute compiler probe without shell injection
+	my $err = gensym;
+	my $pid = eval {
+		open3(my $in, my $out, $err, $ENV{CC}, '-Wa,-v', '-c', '-o', '/dev/null', '-x', 'assembler', '/dev/null');
+	};
+	if ($pid) {
+		close $in;
+		my $cc_output = do { local $/; <$err> };
+		waitpid($pid, 0);
+		if ($cc_output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+			$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
+		}
+	}
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
-	$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
-	$avx += 2 if ($1==2.11 && $2>=8);
+if (!$avx && $win64 && ((defined($flavour) && $flavour =~ /nasm/) || (defined($ENV{ASM}) && $ENV{ASM} =~ /nasm/))) {
+	# Use IPC::Open3 to safely execute nasm probe
+	my $err = gensym;
+	my $pid = eval {
+		open3(my $in, my $out, $err, 'nasm', '-v');
+	};
+	if ($pid) {
+		close $in;
+		my $nasm_output = do { local $/; <$err> };
+		waitpid($pid, 0);
+		if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
+			$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
+			$avx += 2 if ($1==2.11 && $2>=8);
+		}
+	}
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	   `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=12);
+if (!$avx && $win64 && ((defined($flavour) && $flavour =~ /masm/) || (defined($ENV{ASM}) && $ENV{ASM} =~ /ml64/))) {
+	# Use IPC::Open3 to safely execute ml64 probe
+	my $err = gensym;
+	my $pid = eval {
+		open3(my $in, my $out, $err, 'ml64');
+	};
+	if ($pid) {
+		close $in;
+		my $ml64_output = do { local $/; <$err> };
+		waitpid($pid, 0);
+		if ($ml64_output =~ /Version ([0-9]+)\./) {
+			$avx = ($1>=10) + ($1>=12);
+		}
+	}
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
-	$avx = ($2>=3.0) + ($2>3.0);
+if (!$avx && defined($ENV{CC})) {
+	# Use IPC::Open3 to safely execute compiler version check
+	my $err = gensym;
+	my $pid = eval {
+		open3(my $in, my $out, $err, $ENV{CC}, '-v');
+	};
+	if ($pid) {
+		close $in;
+		my $cc_output = do { local $/; <$err> };
+		waitpid($pid, 0);
+		if ($cc_output =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+			$avx = ($2>=3.0) + ($2>3.0);
+		}
+	}
 }
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
+# Use list-form open to avoid shell injection with $flavour and $output
+my @cmd = ($^X, $xlate);
+push @cmd, $flavour if defined($flavour);
+push @cmd, $output if defined($output);
+open OUT, "|-", @cmd
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
