@@ -25,6 +25,23 @@
 #include "sha_local.h"
 #include "crypto/sha.h"
 
+/*
+ * LEGACY ONLY: SHA-1 control path for SSLv3 master secret processing.
+ * 
+ * WARNING: This function implements the legacy SSLv3 client authentication
+ * mechanism using SHA-1, which is a cryptographically weak hash function.
+ * This code path exists solely for backward compatibility with very old
+ * SSLv3 implementations and should NOT be used in:
+ * - FIPS mode or FIPS-compliant contexts
+ * - Modern TLS protocols (TLS 1.0+)
+ * - Any new protocol or API designs
+ * 
+ * For all new implementations, use SHA-2 family (SHA-256, SHA-384, SHA-512)
+ * or SHA-3 algorithms instead.
+ * 
+ * This function will fail (return 0) when called in a FIPS-enabled context
+ * to prevent use of weak cryptography in security-critical environments.
+ */
 int ossl_sha1_ctrl(SHA_CTX *sha1, int cmd, int mslen, void *ms)
 {
     unsigned char padtmp[40];

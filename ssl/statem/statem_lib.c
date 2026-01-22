@@ -367,6 +367,16 @@ CON_FUNC_RETURN tls_construct_cert_verify(SSL_CONNECTION *s, WPACKET *pkt)
     }
     if (s->version == SSL3_VERSION) {
         /*
+         * LEGACY: SSLv3 uses SHA-1 for client authentication.
+         * This code path is blocked in FIPS mode because SSLv3 uses
+         * the weak SHA-1 hash function. Modern applications should
+         * use TLS 1.2+ which supports stronger hash algorithms.
+         */
+        if (EVP_default_properties_is_fips_enabled(sctx->libctx)) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_UNSUPPORTED_PROTOCOL);
+            goto err;
+        }
+        /*
          * Here we use EVP_DigestSignUpdate followed by EVP_DigestSignFinal
          * in order to add the EVP_CTRL_SSL3_MASTER_SECRET call between them.
          */
@@ -561,6 +571,16 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL_CONNECTION *s, PACKET *pkt)
         }
     }
     if (s->version == SSL3_VERSION) {
+        /*
+         * LEGACY: SSLv3 uses SHA-1 for signature verification.
+         * This code path is blocked in FIPS mode because SSLv3 uses
+         * the weak SHA-1 hash function. Modern applications should
+         * use TLS 1.2+ which supports stronger hash algorithms.
+         */
+        if (EVP_default_properties_is_fips_enabled(sctx->libctx)) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_UNSUPPORTED_PROTOCOL);
+            goto err;
+        }
         if (EVP_DigestVerifyUpdate(mctx, hdata, hdatalen) <= 0
                 || EVP_MD_CTX_ctrl(mctx, EVP_CTRL_SSL3_MASTER_SECRET,
                                    (int)s->session->master_key_length,
