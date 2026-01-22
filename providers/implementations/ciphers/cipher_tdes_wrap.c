@@ -8,6 +8,21 @@
  */
 
 /*
+ * SECURITY WARNING: This 3DES key wrap implementation uses SHA-1 for integrity
+ * checking (ICV computation and verification). SHA-1 is cryptographically weak
+ * and is NOT approved for use in FIPS-approved key wrapping modes.
+ *
+ * This implementation is provided ONLY for legacy compatibility with existing
+ * systems and should NOT be used in new designs. For secure key wrapping,
+ * use modern, FIPS-approved algorithms such as:
+ *   - AES Key Wrap (AES-KW) as defined in RFC 3394 and NIST SP 800-38F
+ *   - AES Key Wrap with Padding (AES-KWP) as defined in RFC 5649
+ *
+ * This algorithm is available only in the legacy provider to clearly signal
+ * its deprecated status and discourage use in new applications.
+ */
+
+/*
  * DES and SHA-1 low level APIs are deprecated for public use, but still ok for
  * internal use.
  */
@@ -18,7 +33,6 @@
 #include <openssl/proverr.h>
 #include "cipher_tdes_default.h"
 #include "crypto/evp.h"
-#include "crypto/sha.h"
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
 
@@ -64,9 +78,21 @@ static int des_ede3_unwrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
     /* Decrypt again using new IV */
     ctx->hw->cipher(ctx, out, out, inl - 16);
     ctx->hw->cipher(ctx, icv, icv, 8);
-    if (ossl_sha1(out, inl - 16, sha1tmp) /* Work out hash of first portion */
-            && CRYPTO_memcmp(sha1tmp, icv, 8) == 0)
-        rv = inl - 16;
+    /*
+     * LEGACY: Compute SHA-1 hash for integrity verification.
+     * Only the first 8 bytes of SHA-1 are used as the ICV.
+     * This is NOT FIPS-approved and cryptographically weak.
+     */
+    {
+        SHA_CTX sha_ctx;
+        if (SHA1_Init(&sha_ctx)) {
+            SHA1_Update(&sha_ctx, out, inl - 16);
+            SHA1_Final(sha1tmp, &sha_ctx);
+            OPENSSL_cleanse(&sha_ctx, sizeof(sha_ctx));
+            if (CRYPTO_memcmp(sha1tmp, icv, 8) == 0)
+                rv = inl - 16;
+        }
+    }
     OPENSSL_cleanse(icv, 8);
     OPENSSL_cleanse(sha1tmp, SHA_DIGEST_LENGTH);
     OPENSSL_cleanse(iv, 8);
@@ -90,9 +116,19 @@ static int des_ede3_wrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
 
     /* Copy input to output buffer + 8 so we have space for IV */
     memmove(out + ivlen, in, inl);
-    /* Work out ICV */
-    if (!ossl_sha1(in, inl, sha1tmp))
-        return 0;
+    /*
+     * LEGACY: Compute SHA-1 hash to generate the ICV (Integrity Check Value).
+     * Only the first 8 bytes of the SHA-1 hash are used.
+     * This is NOT FIPS-approved and cryptographically weak.
+     */
+    {
+        SHA_CTX sha_ctx;
+        if (!SHA1_Init(&sha_ctx))
+            return 0;
+        SHA1_Update(&sha_ctx, in, inl);
+        SHA1_Final(sha1tmp, &sha_ctx);
+        OPENSSL_cleanse(&sha_ctx, sizeof(sha_ctx));
+    }
     memcpy(out + inl + ivlen, sha1tmp, icvlen);
     OPENSSL_cleanse(sha1tmp, SHA_DIGEST_LENGTH);
     /* Generate random IV */

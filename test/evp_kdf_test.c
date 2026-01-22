@@ -1795,8 +1795,11 @@ static int test_kdf_get_kdf(void)
 #if !defined(OPENSSL_NO_CMS) && !defined(OPENSSL_NO_DES)
 static int test_kdf_x942_asn1(void)
 {
-    int ret;
+    int ret = 0;
     EVP_KDF_CTX *kctx = NULL;
+    OSSL_LIB_CTX *libctx = NULL;
+    OSSL_PROVIDER *legacyprov = NULL;
+    OSSL_PROVIDER *defprov = NULL;
     OSSL_PARAM params[4], *p = params;
     const char *cek_alg = SN_id_smime_alg_CMS3DESwrap;
     unsigned char out[24];
@@ -1811,6 +1814,19 @@ static int test_kdf_x942_asn1(void)
         0xb6,0x7f,0x5f,0x1e,0xf6,0x3e,0xb5,0xfb
     };
 
+    if (!TEST_ptr(libctx = OSSL_LIB_CTX_new()))
+        goto err;
+
+    /* DES3-WRAP is now only available in the legacy provider */
+    legacyprov = OSSL_PROVIDER_load(libctx, "legacy");
+    if (legacyprov == NULL) {
+        OSSL_LIB_CTX_free(libctx);
+        return TEST_skip("DES3-WRAP only available in legacy provider");
+    }
+
+    if (!TEST_ptr(defprov = OSSL_PROVIDER_load(libctx, "default")))
+        goto err;
+
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST,
                                             (char *)"sha1", 0);
     *p++ = OSSL_PARAM_construct_octet_string(OSSL_KDF_PARAM_KEY, z,
@@ -1820,11 +1836,15 @@ static int test_kdf_x942_asn1(void)
     *p = OSSL_PARAM_construct_end();
 
     ret =
-        TEST_ptr(kctx = get_kdfbyname(OSSL_KDF_NAME_X942KDF_ASN1))
+        TEST_ptr(kctx = get_kdfbyname_libctx(libctx, OSSL_KDF_NAME_X942KDF_ASN1))
         && TEST_int_gt(EVP_KDF_derive(kctx, out, sizeof(out), params), 0)
         && TEST_mem_eq(out, sizeof(out), expected, sizeof(expected));
 
+err:
     EVP_KDF_CTX_free(kctx);
+    OSSL_PROVIDER_unload(defprov);
+    OSSL_PROVIDER_unload(legacyprov);
+    OSSL_LIB_CTX_free(libctx);
     return ret;
 }
 #endif /* OPENSSL_NO_CMS */

@@ -36,8 +36,6 @@ FIPS provider:
 
 =item "DES-EDE-CFB"
 
-=item "DES3-WRAP"
-
 =back
 
 The following algorithms are available in the legacy provider:
@@ -53,6 +51,13 @@ The following algorithms are available in the legacy provider:
 =item "DES-CFB", "DES-CFB1" and "DES-CFB8"
 
 =item "DESX-CBC"
+
+=item "DES3-WRAP"
+
+B<WARNING:> DES3-WRAP uses SHA-1 for integrity checking, which is cryptographically
+weak and not FIPS-approved. This algorithm is provided only for legacy compatibility
+and should not be used in new systems. Use modern key wrapping algorithms such as
+AES-KW (RFC 3394) or AES-KWP (RFC 5649) instead.
 
 =back
 

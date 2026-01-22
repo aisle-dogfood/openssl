@@ -77,6 +77,10 @@ information.
 This parameter sets the CEK wrapping algorithm name.
 Valid values are "AES-128-WRAP", "AES-192-WRAP", "AES-256-WRAP" and "DES3-WRAP".
 
+B<WARNING:> DES3-WRAP uses SHA-1 for integrity checking, which is cryptographically
+weak and not FIPS-approved. It is provided only for legacy compatibility.
+Use AES-WRAP variants (AES-128-WRAP, AES-192-WRAP, or AES-256-WRAP) for new systems.
+
 =back
 
 The OpenSSL FIPS provider also supports the following parameters:
