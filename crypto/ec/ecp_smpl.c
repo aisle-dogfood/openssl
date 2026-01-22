@@ -1444,15 +1444,13 @@ int ossl_ec_GFp_simple_blind_coordinates(const EC_GROUP *group, EC_POINT *p,
 
     /*-
      * Make sure lambda is not zero.
-     * If the RNG fails, we cannot blind but nevertheless want
-     * code to continue smoothly and not clobber the error stack.
+     * If the RNG fails, we must report failure to maintain side-channel
+     * protection - returning success without blinding would give a false
+     * sense of security to callers expecting coordinate blinding.
      */
     do {
-        ERR_set_mark();
-        ret = BN_priv_rand_range_ex(lambda, group->field, 0, ctx);
-        ERR_pop_to_mark();
-        if (ret == 0) {
-            ret = 1;
+        if (!BN_priv_rand_range_ex(lambda, group->field, 0, ctx)) {
+            ERR_raise(ERR_LIB_EC, EC_R_RANDOM_NUMBER_GENERATION_FAILED);
             goto end;
         }
     } while (BN_is_zero(lambda));
