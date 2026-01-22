@@ -1,0 +1,38 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  ⚠️  SECURITY WARNING: EMBEDDED TEST PRIVATE KEYS - DO NOT DISTRIBUTE  ⚠️   ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+The following files contain EMBEDDED ML-KEM private keys in test vectors:
+
+  • evppkey_ml_kem_512_decap.txt
+  • evppkey_ml_kem_768_decap.txt
+  • evppkey_ml_kem_1024_decap.txt
+
+These files contain EncodedPrivateKey values for ML-KEM decapsulation Known
+Answer Tests (KATs). The embedded private keys are PUBLICLY ACCESSIBLE.
+
+⚠️  CRITICAL SECURITY RISK ⚠️
+
+These test vectors MUST:
+  ✓ Remain in repository for EVP test validation
+  ✗ NEVER be installed in production systems
+  ✗ NEVER be used outside automated testing
+  ✗ NEVER be included in binary distributions
+
+FOR PACKAGE MAINTAINERS:
+
+These *_decap.txt files are marked as export-ignore in .gitattributes and
+MUST be excluded from all production packages.
+
+While these test vectors are required for the test suite, they contain
+sensitive cryptographic material and must not be distributed.
+
+REFERENCES:
+  • CWE-321: Use of Hard-coded Cryptographic Key
+  • See demos/SECURITY.md for complete security guidance
+
+═══════════════════════════════════════════════════════════════════════════
+
+Test data with embedded secrets must never be installed in production.

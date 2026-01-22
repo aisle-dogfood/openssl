@@ -1,0 +1,38 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║     ⚠️  SECURITY WARNING: TEST PRIVATE KEYS - DO NOT USE IN PRODUCTION  ⚠️    ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+This directory contains ML-KEM (Kyber) private key test fixtures that are
+PUBLICLY ACCESSIBLE. These are test vectors for Known Answer Tests (KATs)
+and codec validation ONLY.
+
+AFFECTED FILES:
+  • prv-512-*.pem   - ML-KEM-512 test private keys
+  • prv-768-*.pem   - ML-KEM-768 test private keys
+  • prv-1024-*.pem  - ML-KEM-1024 test private keys
+
+⚠️  CRITICAL SECURITY RISK ⚠️
+
+These test vectors MUST:
+  ✓ Remain in repository for test suite validation
+  ✗ NEVER be installed in production systems
+  ✗ NEVER be used outside automated testing
+  ✗ NEVER be included in binary distributions
+
+FOR PACKAGE MAINTAINERS:
+
+These files are marked as export-ignore in .gitattributes and MUST be
+excluded from all production packages and installations.
+
+The test suite requires these fixtures for validation, but they must
+remain in the source tree only.
+
+REFERENCES:
+  • CWE-321: Use of Hard-coded Cryptographic Key
+  • See demos/SECURITY.md for complete security guidance
+
+═══════════════════════════════════════════════════════════════════════════
+
+Test fixtures should never leave the test environment.

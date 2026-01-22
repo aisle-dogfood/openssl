@@ -1,0 +1,25 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  ⚠️  SECURITY WARNING: HARD-CODED DEMO KEYS - DO NOT USE IN PRODUCTION  ⚠️  ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+The files key.pem and cert.pem in this directory are PUBLICLY ACCESSIBLE
+hard-coded credentials for demonstration purposes only.
+
+⚠️  NEVER USE THESE IN PRODUCTION ⚠️
+
+PROPER USAGE:
+
+Before running the sslecho demo, generate fresh keys:
+
+  $ ./generate_keys.sh
+
+This will create ephemeral key.pem and cert.pem files for testing.
+
+For production, use properly issued certificates from a trusted CA.
+
+═══════════════════════════════════════════════════════════════════════════
+
+See demos/SECURITY.md for complete security guidance.
+CWE-321: Use of Hard-coded Cryptographic Key

@@ -160,6 +160,11 @@ Demos
 There are numerous source code demos for using various OpenSSL capabilities in the
 [demos subfolder](./demos).
 
+**Security Note:** The demos directory contains hard-coded private keys for
+demonstration purposes only. These must never be used in production. See
+[demos/SECURITY.md](./demos/SECURITY.md) and [INSTALL-SECURITY.md](./INSTALL-SECURITY.md)
+for important security information.
+
 Wiki
 ----
 
