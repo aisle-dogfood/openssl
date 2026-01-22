@@ -27,6 +27,9 @@
 /apps/tsget.pl
 /apps/md4.c
 
+# Prevent re-committing removed private keys
+/apps/s512-key.pem
+
 # Auto generated headers
 /crypto/buildinf.h
 /include/crypto/*_conf.h
