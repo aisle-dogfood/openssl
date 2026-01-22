@@ -40,13 +40,13 @@ my @autowarntext = (
         . (scalar(@ARGV) > 0 ? " from " .join(", ", @ARGV) : "")
 );
 
+# NOTE: The -s option is not currently parsed by getopt('oi', \%opts) above.
+# This code block is unreachable but kept for historical reference.
+# If -s support is needed in the future, it should be implemented with
+# proper input validation and safer alternatives to eval (e.g., JSON/INI parsing).
 if (defined($opts{s})) {
-    local $/ = undef;
-    open VARS, $opts{s} or die "Couldn't open $opts{s}, $!";
-    my $contents = <VARS>;
-    close VARS;
-    eval $contents;
-    die $@ if $@;
+    die "ERROR: -s option is not supported for security reasons.\n" .
+        "Configuration variables should be passed via -Mconfigdata instead.\n";
 }
 die "Must have input files"
    if defined($opts{i}) and scalar(@ARGV) == 0;
