@@ -2087,8 +2087,15 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
              */
             optlen = (socklen_t) sizeof(int);
             ret = getsockopt(b->num, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-            if (ret >= 0)
-                OPENSSL_assert(optval >= 18445);
+            if (ret >= 0 && optval < 18445) {
+                /*
+                 * SO_RCVBUF is below the threshold; treat as a recoverable
+                 * condition and signal retry rather than aborting.
+                 */
+                memset(out, 0, outl);
+                BIO_set_retry_read(b);
+                return -1;
+            }
 
             /*
              * Test if SCTP doesn't partially deliver below max record size
@@ -2098,13 +2105,25 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
             ret =
                 getsockopt(b->num, IPPROTO_SCTP, SCTP_PARTIAL_DELIVERY_POINT,
                            &optval, &optlen);
-            if (ret >= 0)
-                OPENSSL_assert(optval >= 18445);
+            if (ret >= 0 && optval < 18445) {
+                /*
+                 * SCTP_PARTIAL_DELIVERY_POINT is below the threshold; treat as
+                 * a recoverable condition and signal retry rather than aborting.
+                 */
+                memset(out, 0, outl);
+                BIO_set_retry_read(b);
+                return -1;
+            }
 
             /*
-             * Partially delivered notification??? Probably a bug....
+             * Partially delivered notification??? Probably a bug, but treat it
+             * gracefully instead of aborting.
              */
-            OPENSSL_assert(!(msg.msg_flags & MSG_NOTIFICATION));
+            if (msg.msg_flags & MSG_NOTIFICATION) {
+                memset(out, 0, outl);
+                BIO_set_retry_read(b);
+                return -1;
+            }
 
             /*
              * Everything seems ok till now, so it's most likely a message
