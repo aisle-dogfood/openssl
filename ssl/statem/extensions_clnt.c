@@ -1338,15 +1338,15 @@ int tls_parse_stoc_renegotiate(SSL_CONNECTION *s, PACKET *pkt,
     }
 
     if (!PACKET_get_bytes(pkt, &data, s->s3.previous_client_finished_len)
-        || memcmp(data, s->s3.previous_client_finished,
-                  s->s3.previous_client_finished_len) != 0) {
+        || CRYPTO_memcmp(data, s->s3.previous_client_finished,
+                         s->s3.previous_client_finished_len) != 0) {
         SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_RENEGOTIATION_MISMATCH);
         return 0;
     }
 
     if (!PACKET_get_bytes(pkt, &data, s->s3.previous_server_finished_len)
-        || memcmp(data, s->s3.previous_server_finished,
-                  s->s3.previous_server_finished_len) != 0) {
+        || CRYPTO_memcmp(data, s->s3.previous_server_finished,
+                         s->s3.previous_server_finished_len) != 0) {
         SSLfatal(s, SSL_AD_ILLEGAL_PARAMETER, SSL_R_RENEGOTIATION_MISMATCH);
         return 0;
     }
