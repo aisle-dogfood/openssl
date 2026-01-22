@@ -194,6 +194,13 @@ AES_Te:
 .word	0x1B000000, 0x36000000, 0, 0, 0, 0, 0, 0
 .size	AES_Te,.-AES_Te
 
+#ifndef OPENSSL_DISABLE_ARMV4_AES_ASM
+@ WARNING: The following AES_encrypt implementation uses secret-dependent
+@ T-table lookups, which are vulnerable to cache-timing side-channel attacks.
+@ This code should NOT be used in security-sensitive or FIPS contexts.
+@ Prefer hardware AES (AESE/AESMC), VPAES, or BSAES implementations.
+@ Define OPENSSL_DISABLE_ARMV4_AES_ASM to exclude this vulnerable code.
+
 @ void AES_encrypt(const unsigned char *in, unsigned char *out,
 @ 		 const AES_KEY *key) {
 .global AES_encrypt
@@ -444,6 +451,9 @@ _armv4_AES_encrypt:
 	sub	$tbl,$tbl,#2
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_encrypt,.-_armv4_AES_encrypt
+
+@ WARNING: The AES_set_encrypt_key function sets up keys for the vulnerable
+@ T-table-based AES implementation. See warnings for AES_encrypt/AES_decrypt.
 
 .global AES_set_encrypt_key
 .type   AES_set_encrypt_key,%function
@@ -751,6 +761,9 @@ _armv4_AES_set_encrypt_key:
 #endif
 .size	AES_set_encrypt_key,.-AES_set_encrypt_key
 
+@ WARNING: The AES_set_decrypt_key function sets up keys for the vulnerable
+@ T-table-based AES implementation. See warnings for AES_encrypt/AES_decrypt.
+
 .global AES_set_decrypt_key
 .type   AES_set_decrypt_key,%function
 .align	5
@@ -765,6 +778,9 @@ AES_set_decrypt_key:
 	mov	r1,r2			@ which is AES_KEY *key
 	b	_armv4_AES_set_enc2dec_key
 .size	AES_set_decrypt_key,.-AES_set_decrypt_key
+
+@ WARNING: The AES_set_enc2dec_key function is part of the vulnerable
+@ T-table-based AES implementation. See warnings for AES_encrypt/AES_decrypt.
 
 @ void AES_set_enc2dec_key(const AES_KEY *inp,AES_KEY *out)
 .global	AES_set_enc2dec_key
@@ -969,6 +985,11 @@ AES_Td:
 .byte	0x17, 0x2b, 0x04, 0x7e, 0xba, 0x77, 0xd6, 0x26
 .byte	0xe1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0c, 0x7d
 .size	AES_Td,.-AES_Td
+
+@ WARNING: The following AES_decrypt implementation uses secret-dependent
+@ T-table lookups, which are vulnerable to cache-timing side-channel attacks.
+@ This code should NOT be used in security-sensitive or FIPS contexts.
+@ Prefer hardware AES (AESE/AESMC), VPAES, or BSAES implementations.
 
 @ void AES_decrypt(const unsigned char *in, unsigned char *out,
 @ 		 const AES_KEY *key) {
@@ -1229,6 +1250,7 @@ _armv4_AES_decrypt:
 	sub	$tbl,$tbl,#1024
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_decrypt,.-_armv4_AES_decrypt
+#endif  @ OPENSSL_DISABLE_ARMV4_AES_ASM
 .asciz	"AES for ARMv4, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 ___
