@@ -389,6 +389,11 @@ if (defined env($local_config_envname)) {
         $pattern = catfile(env($local_config_envname), '*.conf');
     }
 
+    # Warn about loading external configuration files
+    # Users should only set OPENSSL_LOCAL_CONFIG_DIR to trusted locations
+    warn "Loading configuration files from $local_config_envname: " . env($local_config_envname) . "\n";
+    warn "WARNING: Only use trusted configuration directories. Configuration files are executed as Perl code.\n";
+
     foreach (sort glob($pattern)) {
         &read_config($_);
     }
@@ -3187,6 +3192,11 @@ sub read_eval_file {
     {
         local $@;
 
+        # NOTE: Configuration files are executed as Perl code by design for
+        # platform detection and conditional configuration. This is a known
+        # limitation that allows arbitrary code execution from config files.
+        # Only load configuration files from trusted sources.
+        
         @result = ( eval $content );
         warn $@ if $@;
     }
