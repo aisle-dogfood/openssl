@@ -18,13 +18,17 @@ SSL_SESSION_print_keylog
 =head1 DESCRIPTION
 
 SSL_SESSION_print() prints summary information about the session provided in
-B<ses> to the BIO B<fp>.
+B<ses> to the BIO B<fp>. For security reasons, sensitive key material such as
+the Session-ID, Master-Key (TLS 1.2 and below), and Resumption PSK (TLS 1.3)
+are redacted in the output.
 
 SSL_SESSION_print_fp() does the same as SSL_SESSION_print() except it prints it
 to the FILE B<fp>.
 
 SSL_SESSION_print_keylog() prints session information to the provided BIO <bp>
-in NSS keylog format.
+in NSS keylog format, with sensitive key material redacted. For proper key
+logging functionality, use the SSLKEYLOGFILE environment variable or the
+SSL_CTX_set_keylog_callback() API instead.
 
 =head1 RETURN VALUES
 
