@@ -9,21 +9,21 @@
 use warnings;
 use strict;
 use Config;
+use IPC::Open3;
+use Symbol 'gensym';
 
 my $expectedsyms=$ARGV[0];
 
 shift(@ARGV);
 
 my $objlist;
-my $objfilelist = join(" ", @ARGV);
+my @objfiles = @ARGV;
 my $expsyms;
 my $exps;
 my $OBJFH;
-my $cmd;
 
 if ($Config{osname} eq "MSWin32") {
         my $currentdll = "";
-        $cmd = "dumpbin /imports " . $objfilelist;
         my @symlist;
         open $expsyms, '<', $expectedsyms or die;
         {
@@ -31,7 +31,10 @@ if ($Config{osname} eq "MSWin32") {
             $exps=<$expsyms>;
         }
         close($expsyms);
-        open($OBJFH, "$cmd|") or die "Cannot open process: $!";
+        
+        # Use list-form open3 to avoid shell interpolation
+        my $pid = open3(undef, $OBJFH, gensym, 'dumpbin', '/imports', @objfiles);
+        
         while (<$OBJFH>)
         {
             chomp;
@@ -51,6 +54,10 @@ if ($Config{osname} eq "MSWin32") {
                 }
             }
         }
+        close($OBJFH);
+        waitpid($pid, 0);
+        die "dumpbin failed with exit code " . ($? >> 8) if $? != 0;
+        
         foreach (@symlist) {
             if (index($exps, $_) < 0) {
                 print "Symbol $_ not in the allowed platform symbols list\n";
@@ -60,10 +67,6 @@ if ($Config{osname} eq "MSWin32") {
         exit 0;
     }
 else {
-        $cmd = "objdump -t " . $objfilelist . " | grep UND | grep -v \@OPENSSL";
-        $cmd = $cmd . " | awk '{print \$NF}' |";
-        $cmd = $cmd . " sed -e\"s/@.*\$//\" | sort | uniq";
-
         open $expsyms, '<', $expectedsyms or die;
         {
             local $/;
@@ -71,14 +74,40 @@ else {
         }
         close($expsyms);
 
-        open($OBJFH, "$cmd|") or die "Cannot open process: $!";
+        # Use list-form open3 to avoid shell interpolation
+        # Run objdump with safe argument list
+        my $pid = open3(undef, $OBJFH, gensym, 'objdump', '-t', @objfiles);
+        
+        # Process objdump output in Perl instead of using shell pipeline
+        my %symbols;
         while (<$OBJFH>)
         {
-                if (index($exps, $_) < 0) {
-                    print "Symbol $_ not in the allowed platform symbols list\n";
-                    exit 1;
-                }
+            # Filter for undefined symbols (UND), excluding @OPENSSL
+            next unless /\bUND\b/;
+            next if /\@OPENSSL/;
+            
+            # Extract the last field (symbol name)
+            my @fields = split(/\s+/);
+            next unless @fields;
+            my $symbol = $fields[-1];
+            
+            # Remove version suffix (everything after @)
+            $symbol =~ s/@.*$//;
+            
+            # Store unique symbols
+            $symbols{$symbol} = 1;
         }
         close($OBJFH);
+        waitpid($pid, 0);
+        die "objdump failed with exit code " . ($? >> 8) if $? != 0;
+        
+        # Check each symbol against allowed list
+        foreach my $symbol (sort keys %symbols)
+        {
+            if (index($exps, $symbol . "\n") < 0 && index($exps, $symbol) < 0) {
+                print "Symbol $symbol not in the allowed platform symbols list\n";
+                exit 1;
+            }
+        }
         exit 0;
     }
