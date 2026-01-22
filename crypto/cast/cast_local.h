@@ -11,6 +11,8 @@
 # include <stdlib.h>
 #endif
 
+#include "internal/constant_time.h"
+
 /* NOTE - c is not incremented as per n2l */
 #define n2ln(c,l1,l2,n) { \
                         c+=n; \
@@ -80,58 +82,36 @@
 #define C_2     6L
 #define C_3     2L              /* left shift */
 
-/* The rotate has an extra 16 added to it to help the x86 asm */
-#if defined(CAST_PTR)
-# define E_CAST(n,key,L,R,OP1,OP2,OP3) \
-        { \
-        int i; \
-        t=(key[n*2] OP1 R)&0xffffffffL; \
-        i=key[n*2+1]; \
-        t=ROTL(t,i); \
-        L^= (((((*(CAST_LONG *)((unsigned char *) \
-                        CAST_S_table0+((t>>C_2)&C_M)) OP2 \
-                *(CAST_LONG *)((unsigned char *) \
-                        CAST_S_table1+((t<<C_3)&C_M)))&0xffffffffL) OP3 \
-                *(CAST_LONG *)((unsigned char *) \
-                        CAST_S_table2+((t>>C_0)&C_M)))&0xffffffffL) OP1 \
-                *(CAST_LONG *)((unsigned char *) \
-                        CAST_S_table3+((t>>C_1)&C_M)))&0xffffffffL; \
-        }
-#elif defined(CAST_PTR2)
-# define E_CAST(n,key,L,R,OP1,OP2,OP3) \
-        { \
-        int i; \
-        CAST_LONG u,v,w; \
-        w=(key[n*2] OP1 R)&0xffffffffL; \
-        i=key[n*2+1]; \
-        w=ROTL(w,i); \
-        u=w>>C_2; \
-        v=w<<C_3; \
-        u&=C_M; \
-        v&=C_M; \
-        t= *(CAST_LONG *)((unsigned char *)CAST_S_table0+u); \
-        u=w>>C_0; \
-        t=(t OP2 *(CAST_LONG *)((unsigned char *)CAST_S_table1+v))&0xffffffffL;\
-        v=w>>C_1; \
-        u&=C_M; \
-        v&=C_M; \
-        t=(t OP3 *(CAST_LONG *)((unsigned char *)CAST_S_table2+u)&0xffffffffL);\
-        t=(t OP1 *(CAST_LONG *)((unsigned char *)CAST_S_table3+v)&0xffffffffL);\
-        L^=(t&0xffffffff); \
-        }
-#else
-# define E_CAST(n,key,L,R,OP1,OP2,OP3) \
+/*
+ * Constant-time S-box lookup helper to mitigate cache-timing attacks.
+ * Looks up value from a 256-entry S-box table using constant_time_lookup.
+ */
+static ossl_inline CAST_LONG CAST_sbox_lookup_ct(const CAST_LONG *table,
+                                                   unsigned int idx)
+{
+    CAST_LONG result;
+    /* Ensure index is in valid range [0, 255] */
+    idx &= 0xff;
+    constant_time_lookup(&result, table, sizeof(CAST_LONG), 256, idx);
+    return result;
+}
+
+/*
+ * The E_CAST macro now uses constant-time S-box lookups to prevent
+ * cache-timing side-channel attacks. This ensures that table accesses
+ * do not leak information about secret key material or plaintext.
+ */
+#define E_CAST(n,key,L,R,OP1,OP2,OP3) \
         { \
         CAST_LONG a,b,c,d; \
         t=(key[n*2] OP1 R)&0xffffffff; \
         t=ROTL(t,(key[n*2+1])); \
-        a=CAST_S_table0[(t>> 8)&0xff]; \
-        b=CAST_S_table1[(t    )&0xff]; \
-        c=CAST_S_table2[(t>>24)&0xff]; \
-        d=CAST_S_table3[(t>>16)&0xff]; \
+        a=CAST_sbox_lookup_ct(CAST_S_table0, (t>> 8)); \
+        b=CAST_sbox_lookup_ct(CAST_S_table1, (t    )); \
+        c=CAST_sbox_lookup_ct(CAST_S_table2, (t>>24)); \
+        d=CAST_sbox_lookup_ct(CAST_S_table3, (t>>16)); \
         L^=(((((a OP2 b)&0xffffffffL) OP3 c)&0xffffffffL) OP1 d)&0xffffffffL; \
         }
-#endif
 
 extern const CAST_LONG CAST_S_table0[256];
 extern const CAST_LONG CAST_S_table1[256];
