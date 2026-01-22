@@ -266,7 +266,8 @@ static void free_oldmd(void *arg)
     struct ht_internal_value_st *v;
 
     for (i = 0; i < neighborhood_len; i++) {
-        PREFETCH_NEIGHBORHOOD(oldmd->neighborhoods[i + 1]);
+        if (i + 1 < neighborhood_len)
+            PREFETCH_NEIGHBORHOOD(oldmd->neighborhoods[i + 1]);
         for (j = 0; j < NEIGHBORHOOD_LEN; j++) {
             if (oldmd->neighborhoods[i].entries[j].value != NULL) {
                 v = oldmd->neighborhoods[i].entries[j].value;
@@ -349,7 +350,8 @@ void ossl_ht_foreach_until(HT *h, int (*cb)(HT_VALUE *obj, void *arg),
 
     md = ossl_rcu_deref(&h->md);
     for (i = 0; i < md->neighborhood_mask + 1; i++) {
-        PREFETCH_NEIGHBORHOOD(md->neighborhoods[i + 1]);
+        if (i + 1 < md->neighborhood_mask + 1)
+            PREFETCH_NEIGHBORHOOD(md->neighborhoods[i + 1]);
         for (j = 0; j < NEIGHBORHOOD_LEN; j++) {
             if (md->neighborhoods[i].entries[j].value != NULL) {
                 if (!cb((HT_VALUE *)md->neighborhoods[i].entries[j].value, arg))
@@ -382,7 +384,8 @@ HT_VALUE_LIST *ossl_ht_filter(HT *h, size_t max_len,
 
     md = ossl_rcu_deref(&h->md);
     for (i = 0; i < md->neighborhood_mask + 1; i++) {
-        PREFETCH_NEIGHBORHOOD(md->neighborhoods[i+1]);
+        if (i + 1 < md->neighborhood_mask + 1)
+            PREFETCH_NEIGHBORHOOD(md->neighborhoods[i+1]);
         for (j = 0; j < NEIGHBORHOOD_LEN; j++) {
             v = md->neighborhoods[i].entries[j].value;
             if (v != NULL && filter((HT_VALUE *)v, arg)) {
@@ -450,7 +453,8 @@ static int grow_hashtable(HT *h, size_t oldsize)
      * mutable data hasn't been published
      */
     for (oldi = 0; oldi < h->wpd.neighborhood_len; oldi++) {
-        PREFETCH_NEIGHBORHOOD(oldmd->neighborhoods[oldi + 1]);
+        if (oldi + 1 < h->wpd.neighborhood_len)
+            PREFETCH_NEIGHBORHOOD(oldmd->neighborhoods[oldi + 1]);
         for (oldj = 0; oldj < NEIGHBORHOOD_LEN; oldj++) {
             oldv = oldmd->neighborhoods[oldi].entries[oldj].value;
             if (oldv == NULL)
