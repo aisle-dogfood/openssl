@@ -293,6 +293,74 @@ static int module_run(const CONF *cnf, const char *name, const char *value,
     return ret;
 }
 
+/*
+ * Validate DSO path to prevent arbitrary code execution
+ * Returns 1 if path is safe, 0 otherwise
+ */
+static int validate_dso_path(const char *path)
+{
+    const char *p;
+    const char *modulesdir;
+
+    if (path == NULL || path[0] == '\0')
+        return 0;
+
+    /*
+     * Security: Block directory traversal patterns to prevent loading
+     * DSOs from arbitrary locations outside the intended directory
+     */
+    p = path;
+    while ((p = strstr(p, "..")) != NULL) {
+        /* Check if ".." is a complete path component */
+        if ((p == path || p[-1] == '/' || p[-1] == '\\') &&
+            (p[2] == '\0' || p[2] == '/' || p[2] == '\\')) {
+            return 0; /* Path traversal detected */
+        }
+        p += 2;
+    }
+
+    /*
+     * Security: For absolute paths, verify they are within the trusted
+     * modules directory. Relative paths are assumed to be resolved
+     * against the modules directory by the DSO loading mechanism.
+     */
+    if (ossl_is_absolute_path(path)) {
+        modulesdir = ossl_get_modulesdir();
+        if (modulesdir != NULL) {
+            size_t modulesdir_len = strlen(modulesdir);
+            /*
+             * Check if the absolute path starts with the modules directory.
+             * This prevents loading DSOs from arbitrary system locations.
+             */
+            if (strncmp(path, modulesdir, modulesdir_len) != 0) {
+                return 0; /* Absolute path outside modules directory */
+            }
+            /*
+             * Additional check: ensure that if modulesdir doesn't end with
+             * a separator, the next char in path is a separator or we're at
+             * the exact end of modulesdir. This prevents prefix attacks like:
+             * modulesdir="/usr/lib/modules" but path="/usr/lib/modules_evil/..."
+             */
+            if (modulesdir_len > 0 &&
+                modulesdir[modulesdir_len - 1] != '/' &&
+                modulesdir[modulesdir_len - 1] != '\\' &&
+                path[modulesdir_len] != '\0' &&
+                path[modulesdir_len] != '/' &&
+                path[modulesdir_len] != '\\') {
+                return 0; /* Path doesn't properly extend modules directory */
+            }
+        } else {
+            /*
+             * If we can't determine the modules directory,
+             * reject absolute paths as a security precaution
+             */
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 /* Load a module from a DSO */
 static CONF_MODULE *module_load_dso(const CONF *cnf,
                                     const char *name, const char *value)
@@ -309,6 +377,21 @@ static CONF_MODULE *module_load_dso(const CONF *cnf,
     if (path == NULL) {
         path = name;
     }
+
+    /*
+     * Security: Validate the DSO path before loading to prevent arbitrary
+     * code execution via malicious configuration files. This blocks:
+     * - Directory traversal attacks (../)
+     * - Loading from absolute paths outside the trusted modules directory
+     */
+    if (!validate_dso_path(path)) {
+        errcode = CONF_R_ERROR_LOADING_DSO;
+        ERR_raise_data(ERR_LIB_CONF, errcode,
+                       "invalid or untrusted DSO path: module=%s, path=%s",
+                       name, path);
+        return NULL;
+    }
+
     dso = DSO_load(NULL, path, NULL, 0);
     if (dso == NULL) {
         errcode = CONF_R_ERROR_LOADING_DSO;
