@@ -160,6 +160,7 @@ static int provider_remove_child_cb(const OSSL_CORE_HANDLE *prov, void *cbdata)
     struct child_prov_globals *gbl;
     const char *provname;
     OSSL_PROVIDER *cprov;
+    int ret = 1;
 
     gbl = ossl_lib_ctx_get_data(ctx, OSSL_LIB_CTX_CHILD_PROVIDER_INDEX);
     if (gbl == NULL)
@@ -170,15 +171,15 @@ static int provider_remove_child_cb(const OSSL_CORE_HANDLE *prov, void *cbdata)
     if (cprov == NULL)
         return 0;
     /*
-     * ossl_provider_find ups the ref count, so we free it again here. We can
-     * rely on the provider store reference count.
+     * ossl_provider_find ups the ref count, so we must hold the reference
+     * while using cprov, then free it when we're done.
      */
-    ossl_provider_free(cprov);
     if (ossl_provider_is_child(cprov)
             && !ossl_provider_deactivate(cprov, 1))
-        return 0;
+        ret = 0;
 
-    return 1;
+    ossl_provider_free(cprov);
+    return ret;
 }
 
 static int provider_global_props_cb(const char *props, void *cbdata)
