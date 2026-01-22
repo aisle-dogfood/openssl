@@ -155,6 +155,19 @@ my $t0=@T[($j)%4],$t1=@T[($j+1)%4],$t2=@T[($j+2)%4],$t3=@T[($j+3)%4];
 	&blindpop($Tbl);
 	&lea	($Tbl,&DWP(&label("Camellia_SBOX")."-".&label("pic_point"),$Tbl));
 
+	# Prefetch S-box tables to mitigate cache-timing attacks
+	# Note: this is a partial mitigation, not a complete fix
+	&mov	("ecx",32);
+	&set_label("enc_rounds_prefetch_sbox");
+	&mov	("eax",&DWP(0,$Tbl));
+	&mov	("eax",&DWP(32,$Tbl));
+	&mov	("eax",&DWP(64,$Tbl));
+	&mov	("eax",&DWP(96,$Tbl));
+	&lea	($Tbl,&DWP(128,$Tbl));
+	&dec	("ecx");
+	&jnz	(&label("enc_rounds_prefetch_sbox"));
+	&sub	($Tbl,4096);
+
 	&mov	(@T[0],&DWP(0,$idx));	# load plaintext
 	&mov	(@T[1],&DWP(4,$idx));
 	&mov	(@T[2],&DWP(8,$idx));
@@ -219,6 +232,19 @@ if ($OPENSSL) {
 	&set_label("pic_point");
 	&blindpop($Tbl);
 	&lea	($Tbl,&DWP(&label("Camellia_SBOX")."-".&label("pic_point"),$Tbl));
+
+	# Prefetch S-box tables to mitigate cache-timing attacks
+	# Note: this is a partial mitigation, not a complete fix
+	&mov	("ecx",32);
+	&set_label("enc_prefetch_sbox_2");
+	&mov	("eax",&DWP(0,$Tbl));
+	&mov	("eax",&DWP(32,$Tbl));
+	&mov	("eax",&DWP(64,$Tbl));
+	&mov	("eax",&DWP(96,$Tbl));
+	&lea	($Tbl,&DWP(128,$Tbl));
+	&dec	("ecx");
+	&jnz	(&label("enc_prefetch_sbox_2"));
+	&sub	($Tbl,4096);
 
 	&mov	(@T[0],&DWP(0,$idx));	# load plaintext
 	&mov	(@T[1],&DWP(4,$idx));
@@ -330,6 +356,19 @@ if ($OPENSSL) {
 	&blindpop($Tbl);
 	&lea	($Tbl,&DWP(&label("Camellia_SBOX")."-".&label("pic_point"),$Tbl));
 
+	# Prefetch S-box tables to mitigate cache-timing attacks
+	# Note: this is a partial mitigation, not a complete fix
+	&mov	("ecx",32);
+	&set_label("dec_rounds_prefetch_sbox");
+	&mov	("eax",&DWP(0,$Tbl));
+	&mov	("eax",&DWP(32,$Tbl));
+	&mov	("eax",&DWP(64,$Tbl));
+	&mov	("eax",&DWP(96,$Tbl));
+	&lea	($Tbl,&DWP(128,$Tbl));
+	&dec	("ecx");
+	&jnz	(&label("dec_rounds_prefetch_sbox"));
+	&sub	($Tbl,4096);
+
 	&mov	(@T[0],&DWP(0,$idx));	# load ciphertext
 	&mov	(@T[1],&DWP(4,$idx));
 	&mov	(@T[2],&DWP(8,$idx));
@@ -394,6 +433,19 @@ if ($OPENSSL) {
 	&set_label("pic_point");
 	&blindpop($Tbl);
 	&lea	($Tbl,&DWP(&label("Camellia_SBOX")."-".&label("pic_point"),$Tbl));
+
+	# Prefetch S-box tables to mitigate cache-timing attacks
+	# Note: this is a partial mitigation, not a complete fix
+	&mov	("ecx",32);
+	&set_label("dec_prefetch_sbox_2");
+	&mov	("eax",&DWP(0,$Tbl));
+	&mov	("eax",&DWP(32,$Tbl));
+	&mov	("eax",&DWP(64,$Tbl));
+	&mov	("eax",&DWP(96,$Tbl));
+	&lea	($Tbl,&DWP(128,$Tbl));
+	&dec	("ecx");
+	&jnz	(&label("dec_prefetch_sbox_2"));
+	&sub	($Tbl,4096);
 
 	&mov	(@T[0],&DWP(0,$idx));	# load ciphertext
 	&mov	(@T[1],&DWP(4,$idx));
