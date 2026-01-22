@@ -7,11 +7,32 @@
  * https://www.openssl.org/source/license.html
  */
 
+/*
+ * ============================================================================
+ * WARNING: INSECURE TEST-ONLY CRYPTOGRAPHIC KEYS
+ * ============================================================================
+ * This file contains hard-coded DSA private keys intended EXCLUSIVELY for
+ * performance benchmarking and testing purposes within the OpenSSL test suite.
+ *
+ * CRITICAL SECURITY WARNINGS:
+ * 1. These keys are PUBLIC KNOWLEDGE and provide NO SECURITY whatsoever
+ * 2. NEVER use these keys in production, staging, or any real-world system
+ * 3. These keys MUST NOT be included in production builds or distributions
+ * 4. Any data encrypted/signed with these keys should be considered COMPROMISED
+ * 5. Using these keys outside of testing constitutes a critical security flaw
+ *    (CWE-321: Use of Hard-coded Cryptographic Key)
+ *    (CWE-798: Use of Hard-coded Credentials)
+ *
+ * This file is intended ONLY for use by apps/speed.c for performance testing.
+ * ============================================================================
+ */
+
 #include <openssl/param_build.h>
 
 /* used by speed.c */
 EVP_PKEY *get_dsa(int);
 
+/* TEST-ONLY 512-bit DSA private key - DO NOT USE IN PRODUCTION */
 static unsigned char dsa512_priv[] = {
     0x65, 0xe5, 0xc7, 0x38, 0x60, 0x24, 0xb5, 0x89, 0xd4, 0x9c, 0xeb, 0x4c,
     0x9c, 0x1d, 0x7a, 0x22, 0xbd, 0xd1, 0xc2, 0xd2,
@@ -49,6 +70,7 @@ static unsigned char dsa512_g[] = {
     0xA2, 0x03, 0x9D, 0x20,
 };
 
+/* TEST-ONLY 1024-bit DSA private key - DO NOT USE IN PRODUCTION */
 static unsigned char dsa1024_priv[] = {
     0x7d, 0x21, 0xda, 0xbb, 0x62, 0x15, 0x47, 0x36, 0x07, 0x67, 0x12, 0xe8,
     0x8c, 0xaa, 0x1c, 0xcd, 0x38, 0x12, 0x61, 0x18,
@@ -101,6 +123,7 @@ static unsigned char dsa1024_g[] = {
     0x6A, 0x7E, 0xD8, 0x32, 0xED, 0x0E, 0x02, 0xB8,
 };
 
+/* TEST-ONLY 2048-bit DSA private key - DO NOT USE IN PRODUCTION */
 static unsigned char dsa2048_priv[] = {
     0x32, 0x67, 0x92, 0xf6, 0xc4, 0xe2, 0xe2, 0xe8, 0xa0, 0x8b, 0x6b, 0x45,
     0x0c, 0x8a, 0x76, 0xb0, 0xee, 0xcf, 0x91, 0xa7,

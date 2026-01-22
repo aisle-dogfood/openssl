@@ -75,6 +75,11 @@ EVP_ED_Signature_demo.c   Compute and verify an ED25519 signature.
 rsa_pss_direct.c          Compute and verify an RSA-PSS signature from a hash
 rsa_pss_hash.c            Compute and verify an RSA-PSS signature over a buffer
 
+WARNING: The signature/ and encrypt/ demo header files contain hard-coded
+         private keys intended ONLY for demonstration purposes. These keys
+         are PUBLIC KNOWLEDGE and provide NO SECURITY. Never use them in
+         production systems. See individual header files for detailed warnings.
+
 smime:                 Demonstrations related to S/MIME
 
 sslecho:
