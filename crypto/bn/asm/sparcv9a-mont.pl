@@ -431,8 +431,9 @@ $fname:
 		faddd	$dota,$nloa,$nloa
 	srlx	%o3,16,%g1		! 34-bit carry
 		faddd	$dotb,$nlob,$nlob
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	stx	%o0,[$tp]		! tp[j-1]=
 
@@ -486,8 +487,9 @@ $fname:
 	addcc	%g1,%o0,%o0
 	ldx	[%sp+$bias+$frame+40],%o5
 	srlx	%o3,16,%g1		! 34-bit carry
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	stx	%o0,[$tp]		! tp[j-1]=
 	add	$tp,8,$tp
@@ -499,8 +501,9 @@ $fname:
 	or	%o7,%o4,%o4
 	addcc	%g1,%o4,%o4
 	srlx	%o5,48,%g1
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	mov	%g1,$carry
 	stx	%o4,[$tp]		! tp[num-1]=
@@ -653,8 +656,9 @@ $fname:
 		faddd	$nlod,$nhib,$nlod
 	srlx	%o3,16,%g1		! 34-bit carry
 		fdtox	$nloa,$nloa
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	fdtox	$nlob,$nlob
 	fdtox	$nloc,$nloc
@@ -728,13 +732,15 @@ $fname:
 		faddd	$nlod,$nhib,$nlod
 	srlx	%o3,16,%g1		! 34-bit carry
 		fdtox	$nloa,$nloa
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 		fdtox	$nlob,$nlob
 	addcc	%o7,%o0,%o0
 		fdtox	$nloc,$nloc
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	stx	%o0,[$tp]		! tp[j-1]
 		fdtox	$nlod,$nlod
@@ -778,12 +784,14 @@ $fname:
 	addcc	%g1,%o0,%o0
 	ldx	[$tp+8],%o7		! tp[j]
 	srlx	%o3,16,%g1		! 34-bit carry
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	addcc	%o7,%o0,%o0
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	stx	%o0,[$tp]		! tp[j-1]
 	add	$tp,8,$tp
@@ -795,14 +803,16 @@ $fname:
 	or	%o7,%o4,%o4
 	addcc	%g1,%o4,%o4
 	srlx	%o5,48,%g1
-	bcs,a	%xcc,.+8
-	add	%g1,1,%g1
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	%g1,%g2,%g1
 
 	addcc	$carry,%o4,%o4
 	stx	%o4,[$tp]		! tp[num-1]
 	mov	%g1,$carry
-	bcs,a	%xcc,.+8
-	add	$carry,1,$carry
+	mov	0,%g2
+	movcs	%xcc,1,%g2
+	add	$carry,%g2,$carry
 
 	addcc	$i,8,$i
 	bnz	%icc,.Louter
