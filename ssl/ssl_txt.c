@@ -62,12 +62,8 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
                                                   : x->cipher->name)) <= 0)
             goto err;
     }
-    if (BIO_puts(bp, "    Session-ID: ") <= 0)
+    if (BIO_puts(bp, "    Session-ID: [REDACTED]") <= 0)
         goto err;
-    for (i = 0; i < x->session_id_length; i++) {
-        if (BIO_printf(bp, "%02X", x->session_id[i]) <= 0)
-            goto err;
-    }
     if (BIO_puts(bp, "\n    Session-ID-ctx: ") <= 0)
         goto err;
     for (i = 0; i < x->sid_ctx_length; i++) {
@@ -75,14 +71,10 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
             goto err;
     }
     if (istls13) {
-        if (BIO_puts(bp, "\n    Resumption PSK: ") <= 0)
+        if (BIO_puts(bp, "\n    Resumption PSK: [REDACTED]") <= 0)
             goto err;
-    } else if (BIO_puts(bp, "\n    Master-Key: ") <= 0)
+    } else if (BIO_puts(bp, "\n    Master-Key: [REDACTED]") <= 0)
         goto err;
-    for (i = 0; i < x->master_key_length; i++) {
-        if (BIO_printf(bp, "%02X", x->master_key[i]) <= 0)
-            goto err;
-    }
 #ifndef OPENSSL_NO_PSK
     if (BIO_puts(bp, "\n    PSK identity: ") <= 0)
         goto err;
@@ -165,13 +157,11 @@ int SSL_SESSION_print(BIO *bp, const SSL_SESSION *x)
 }
 
 /*
- * print session id and master key in NSS keylog format (RSA
- * Session-ID:<session id> Master-Key:<master key>)
+ * print session information in NSS keylog format with sensitive data redacted
+ * (RSA Session-ID:[REDACTED] Master-Key:[REDACTED])
  */
 int SSL_SESSION_print_keylog(BIO *bp, const SSL_SESSION *x)
 {
-    size_t i;
-
     if (x == NULL)
         goto err;
     if (x->session_id_length == 0 || x->master_key_length == 0)
@@ -185,18 +175,10 @@ int SSL_SESSION_print_keylog(BIO *bp, const SSL_SESSION *x)
     if (BIO_puts(bp, "RSA ") <= 0)
         goto err;
 
-    if (BIO_puts(bp, "Session-ID:") <= 0)
+    if (BIO_puts(bp, "Session-ID:[REDACTED]") <= 0)
         goto err;
-    for (i = 0; i < x->session_id_length; i++) {
-        if (BIO_printf(bp, "%02X", x->session_id[i]) <= 0)
-            goto err;
-    }
-    if (BIO_puts(bp, " Master-Key:") <= 0)
+    if (BIO_puts(bp, " Master-Key:[REDACTED]") <= 0)
         goto err;
-    for (i = 0; i < x->master_key_length; i++) {
-        if (BIO_printf(bp, "%02X", x->master_key[i]) <= 0)
-            goto err;
-    }
     if (BIO_puts(bp, "\n") <= 0)
         goto err;
 
