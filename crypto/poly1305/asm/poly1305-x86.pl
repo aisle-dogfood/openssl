@@ -51,6 +51,46 @@ $output=pop and open STDOUT,">$output";
 
 &asm_init($ARGV[0],$ARGV[$#ARGV] eq "386");
 
+# Safe command execution helper to prevent command injection
+# Uses multi-argument open to avoid shell interpolation
+sub safe_exec {
+    my @cmd = @_;
+    my $output = "";
+    
+    # Validate that command elements don't contain shell metacharacters
+    # This is defense in depth - the main protection is using list form
+    foreach my $arg (@cmd) {
+        # Skip validation if undefined
+        next unless defined $arg;
+        # Check for shell metacharacters
+        if ($arg =~ /[;&|`\$<>(){}!*?\[\]~\n]/) {
+            warn "Warning: Command argument contains shell metacharacters: $arg\n";
+            return "";
+        }
+    }
+    
+    # Use list form of open to avoid shell interpretation
+    # Redirect stderr to stdout to capture both streams (like 2>&1)
+    my $pid = open(my $pipe, "-|");
+    if (!defined $pid) {
+        return "";
+    }
+    
+    if ($pid == 0) {
+        # Child process: redirect stderr to stdout and exec command
+        open(STDERR, ">&STDOUT") or die "Can't redirect stderr: $!";
+        exec { $cmd[0] } @cmd or die "Can't exec $cmd[0]: $!";
+    }
+    
+    # Parent process: read command output
+    while (<$pipe>) {
+        $output .= $_;
+    }
+    close($pipe);
+    
+    return $output;
+}
+
 $sse2=$avx=0;
 for (@ARGV) { $sse2=1 if (/-DOPENSSL_IA32_SSE2/); }
 
@@ -60,18 +100,24 @@ if ($sse2) {
 	&static_label("enter_emit");
 	&external_label("OPENSSL_ia32cap_P");
 
-	if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-			=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+	my $cc = $ENV{CC} || "cc";
+	my $probe_output = safe_exec($cc, "-Wa,-v", "-c", "-o", "/dev/null", "-x", "assembler", "/dev/null");
+	if ($probe_output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 		$avx = ($1>=2.19) + ($1>=2.22);
 	}
 
-	if (!$avx && $ARGV[0] eq "win32n" &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.09) + ($1>=2.10);
+	if (!$avx && $ARGV[0] eq "win32n") {
+		my $nasm_output = safe_exec("nasm", "-v");
+		if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)/) {
+			$avx = ($1>=2.09) + ($1>=2.10);
+		}
 	}
 
-	if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
-		$avx = ($2>=3.0) + ($2>3.0);
+	if (!$avx) {
+		my $cc_version = safe_exec($cc, "-v");
+		if ($cc_version =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
+			$avx = ($2>=3.0) + ($2>3.0);
+		}
 	}
 }
 
