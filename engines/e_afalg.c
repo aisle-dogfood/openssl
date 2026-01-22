@@ -851,6 +851,7 @@ static int afalg_chk_platform(void)
     int kver[3] = { -1, -1, -1 };
     int sock;
     char *str;
+    char *saveptr;
     struct utsname ut;
 
     ret = uname(&ut);
@@ -860,10 +861,10 @@ static int afalg_chk_platform(void)
         return 0;
     }
 
-    str = strtok(ut.release, ".");
+    str = strtok_r(ut.release, ".", &saveptr);
     for (i = 0; i < 3 && str != NULL; i++) {
         kver[i] = atoi(str);
-        str = strtok(NULL, ".");
+        str = strtok_r(NULL, ".", &saveptr);
     }
 
     if (KERNEL_VERSION(kver[0], kver[1], kver[2])
