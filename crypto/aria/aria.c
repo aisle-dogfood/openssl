@@ -20,6 +20,7 @@
 
 #include <openssl/e_os2.h>
 #include "crypto/aria.h"
+#include "internal/constant_time.h"
 
 #include <assert.h>
 #include <string.h>
@@ -341,6 +342,23 @@ static const uint32_t X2[256] = {
     0x03030300, 0xa2a2a200, 0xacacac00, 0x60606000
 };
 
+/*
+ * Constant-time table lookup to prevent cache-timing side channels.
+ * Scans the entire table and uses constant_time_select to pick the value
+ * corresponding to the given index without leaking which index was accessed.
+ */
+static ossl_inline uint32_t ct_lookup_u32(const uint32_t *table, uint8_t index)
+{
+    uint32_t result = 0;
+    unsigned int i;
+
+    for (i = 0; i < 256; i++) {
+        uint32_t mask = constant_time_eq(i, (unsigned int)index);
+        result = constant_time_select_32(mask, table[i], result);
+    }
+    return result;
+}
+
 /* Key XOR Layer */
 #define ARIA_ADD_ROUND_KEY(RK, T0, T1, T2, T3)  \
     do {                                        \
@@ -350,54 +368,54 @@ static const uint32_t X2[256] = {
         (T3) ^= (RK)->u[3];                     \
     } while(0)
 
-/* S-Box Layer 1 + M */
+/* S-Box Layer 1 + M (constant-time) */
 #define ARIA_SBOX_LAYER1_WITH_PRE_DIFF(T0, T1, T2, T3)  \
     do {                                                \
         (T0) =                                          \
-            S1[GET_U8_BE(T0, 0)] ^                      \
-            S2[GET_U8_BE(T0, 1)] ^                      \
-            X1[GET_U8_BE(T0, 2)] ^                      \
-            X2[GET_U8_BE(T0, 3)];                       \
+            ct_lookup_u32(S1, GET_U8_BE(T0, 0)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T0, 1)) ^       \
+            ct_lookup_u32(X1, GET_U8_BE(T0, 2)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T0, 3));        \
         (T1) =                                          \
-            S1[GET_U8_BE(T1, 0)] ^                      \
-            S2[GET_U8_BE(T1, 1)] ^                      \
-            X1[GET_U8_BE(T1, 2)] ^                      \
-            X2[GET_U8_BE(T1, 3)];                       \
+            ct_lookup_u32(S1, GET_U8_BE(T1, 0)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T1, 1)) ^       \
+            ct_lookup_u32(X1, GET_U8_BE(T1, 2)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T1, 3));        \
         (T2) =                                          \
-            S1[GET_U8_BE(T2, 0)] ^                      \
-            S2[GET_U8_BE(T2, 1)] ^                      \
-            X1[GET_U8_BE(T2, 2)] ^                      \
-            X2[GET_U8_BE(T2, 3)];                       \
+            ct_lookup_u32(S1, GET_U8_BE(T2, 0)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T2, 1)) ^       \
+            ct_lookup_u32(X1, GET_U8_BE(T2, 2)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T2, 3));        \
         (T3) =                                          \
-            S1[GET_U8_BE(T3, 0)] ^                      \
-            S2[GET_U8_BE(T3, 1)] ^                      \
-            X1[GET_U8_BE(T3, 2)] ^                      \
-            X2[GET_U8_BE(T3, 3)];                       \
+            ct_lookup_u32(S1, GET_U8_BE(T3, 0)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T3, 1)) ^       \
+            ct_lookup_u32(X1, GET_U8_BE(T3, 2)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T3, 3));        \
     } while(0)
 
-/* S-Box Layer 2 + M */
+/* S-Box Layer 2 + M (constant-time) */
 #define ARIA_SBOX_LAYER2_WITH_PRE_DIFF(T0, T1, T2, T3)  \
     do {                                                \
         (T0) =                                          \
-            X1[GET_U8_BE(T0, 0)] ^                      \
-            X2[GET_U8_BE(T0, 1)] ^                      \
-            S1[GET_U8_BE(T0, 2)] ^                      \
-            S2[GET_U8_BE(T0, 3)];                       \
+            ct_lookup_u32(X1, GET_U8_BE(T0, 0)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T0, 1)) ^       \
+            ct_lookup_u32(S1, GET_U8_BE(T0, 2)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T0, 3));        \
         (T1) =                                          \
-            X1[GET_U8_BE(T1, 0)] ^                      \
-            X2[GET_U8_BE(T1, 1)] ^                      \
-            S1[GET_U8_BE(T1, 2)] ^                      \
-            S2[GET_U8_BE(T1, 3)];                       \
+            ct_lookup_u32(X1, GET_U8_BE(T1, 0)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T1, 1)) ^       \
+            ct_lookup_u32(S1, GET_U8_BE(T1, 2)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T1, 3));        \
         (T2) =                                          \
-            X1[GET_U8_BE(T2, 0)] ^                      \
-            X2[GET_U8_BE(T2, 1)] ^                      \
-            S1[GET_U8_BE(T2, 2)] ^                      \
-            S2[GET_U8_BE(T2, 3)];                       \
+            ct_lookup_u32(X1, GET_U8_BE(T2, 0)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T2, 1)) ^       \
+            ct_lookup_u32(S1, GET_U8_BE(T2, 2)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T2, 3));        \
         (T3) =                                          \
-            X1[GET_U8_BE(T3, 0)] ^                      \
-            X2[GET_U8_BE(T3, 1)] ^                      \
-            S1[GET_U8_BE(T3, 2)] ^                      \
-            S2[GET_U8_BE(T3, 3)];                       \
+            ct_lookup_u32(X1, GET_U8_BE(T3, 0)) ^       \
+            ct_lookup_u32(X2, GET_U8_BE(T3, 1)) ^       \
+            ct_lookup_u32(S1, GET_U8_BE(T3, 2)) ^       \
+            ct_lookup_u32(S2, GET_U8_BE(T3, 3));        \
     } while(0)
 
 /* Word-level diffusion */
@@ -509,25 +527,25 @@ void ossl_aria_encrypt(const unsigned char *in, unsigned char *out,
     }
 
     reg0 = rk->u[0] ^ MAKE_U32(
-        (uint8_t)(X1[GET_U8_BE(reg0, 0)]     ),
-        (uint8_t)(X2[GET_U8_BE(reg0, 1)] >> 8),
-        (uint8_t)(S1[GET_U8_BE(reg0, 2)]     ),
-        (uint8_t)(S2[GET_U8_BE(reg0, 3)]     ));
+        (uint8_t)(ct_lookup_u32(X1, GET_U8_BE(reg0, 0))     ),
+        (uint8_t)(ct_lookup_u32(X2, GET_U8_BE(reg0, 1)) >> 8),
+        (uint8_t)(ct_lookup_u32(S1, GET_U8_BE(reg0, 2))     ),
+        (uint8_t)(ct_lookup_u32(S2, GET_U8_BE(reg0, 3))     ));
     reg1 = rk->u[1] ^ MAKE_U32(
-        (uint8_t)(X1[GET_U8_BE(reg1, 0)]     ),
-        (uint8_t)(X2[GET_U8_BE(reg1, 1)] >> 8),
-        (uint8_t)(S1[GET_U8_BE(reg1, 2)]     ),
-        (uint8_t)(S2[GET_U8_BE(reg1, 3)]     ));
+        (uint8_t)(ct_lookup_u32(X1, GET_U8_BE(reg1, 0))     ),
+        (uint8_t)(ct_lookup_u32(X2, GET_U8_BE(reg1, 1)) >> 8),
+        (uint8_t)(ct_lookup_u32(S1, GET_U8_BE(reg1, 2))     ),
+        (uint8_t)(ct_lookup_u32(S2, GET_U8_BE(reg1, 3))     ));
     reg2 = rk->u[2] ^ MAKE_U32(
-        (uint8_t)(X1[GET_U8_BE(reg2, 0)]     ),
-        (uint8_t)(X2[GET_U8_BE(reg2, 1)] >> 8),
-        (uint8_t)(S1[GET_U8_BE(reg2, 2)]     ),
-        (uint8_t)(S2[GET_U8_BE(reg2, 3)]     ));
+        (uint8_t)(ct_lookup_u32(X1, GET_U8_BE(reg2, 0))     ),
+        (uint8_t)(ct_lookup_u32(X2, GET_U8_BE(reg2, 1)) >> 8),
+        (uint8_t)(ct_lookup_u32(S1, GET_U8_BE(reg2, 2))     ),
+        (uint8_t)(ct_lookup_u32(S2, GET_U8_BE(reg2, 3))     ));
     reg3 = rk->u[3] ^ MAKE_U32(
-        (uint8_t)(X1[GET_U8_BE(reg3, 0)]     ),
-        (uint8_t)(X2[GET_U8_BE(reg3, 1)] >> 8),
-        (uint8_t)(S1[GET_U8_BE(reg3, 2)]     ),
-        (uint8_t)(S2[GET_U8_BE(reg3, 3)]     ));
+        (uint8_t)(ct_lookup_u32(X1, GET_U8_BE(reg3, 0))     ),
+        (uint8_t)(ct_lookup_u32(X2, GET_U8_BE(reg3, 1)) >> 8),
+        (uint8_t)(ct_lookup_u32(S1, GET_U8_BE(reg3, 2))     ),
+        (uint8_t)(ct_lookup_u32(S2, GET_U8_BE(reg3, 3))     ));
 
     PUT_U32_BE(out, 0, reg0);
     PUT_U32_BE(out, 1, reg1);
@@ -893,6 +911,25 @@ static const unsigned char sb4[256] = {
     0xf7, 0x4c, 0x11, 0x33, 0x03, 0xa2, 0xac, 0x60
 };
 
+/*
+ * Constant-time table lookup to prevent cache-timing side channels.
+ * Scans the entire table and uses constant_time_select to pick the value
+ * corresponding to the given index without leaking which index was accessed.
+ */
+static ossl_inline unsigned char ct_lookup_u8(const unsigned char *table,
+                                              unsigned char index)
+{
+    unsigned char result = 0;
+    unsigned int i;
+
+    for (i = 0; i < 256; i++) {
+        unsigned char mask = constant_time_eq_8((unsigned int)i,
+                                                (unsigned int)index);
+        result = constant_time_select_8(mask, table[i], result);
+    }
+    return result;
+}
+
 static const ARIA_u128 c1 = {{
     0x51, 0x7c, 0xc1, 0xb7, 0x27, 0x22, 0x0a, 0x94,
     0xfe, 0x13, 0xab, 0xe8, 0xfa, 0x9a, 0x6e, 0xe0
@@ -985,32 +1022,32 @@ static void rot19l(ARIA_u128 *o, const ARIA_u128 *xor, const ARIA_u128 *z)
 }
 
 /*
- * First substitution and xor layer, used for odd steps.
+ * First substitution and xor layer, used for odd steps (constant-time).
  * It is safe for the input and output to be the same.
  */
 static void sl1(ARIA_u128 *o, const ARIA_u128 *x, const ARIA_u128 *y)
 {
     unsigned int i;
     for (i = 0; i < ARIA_BLOCK_SIZE; i += 4) {
-        o->c[i    ] = sb1[x->c[i    ] ^ y->c[i    ]];
-        o->c[i + 1] = sb2[x->c[i + 1] ^ y->c[i + 1]];
-        o->c[i + 2] = sb3[x->c[i + 2] ^ y->c[i + 2]];
-        o->c[i + 3] = sb4[x->c[i + 3] ^ y->c[i + 3]];
+        o->c[i    ] = ct_lookup_u8(sb1, x->c[i    ] ^ y->c[i    ]);
+        o->c[i + 1] = ct_lookup_u8(sb2, x->c[i + 1] ^ y->c[i + 1]);
+        o->c[i + 2] = ct_lookup_u8(sb3, x->c[i + 2] ^ y->c[i + 2]);
+        o->c[i + 3] = ct_lookup_u8(sb4, x->c[i + 3] ^ y->c[i + 3]);
     }
 }
 
 /*
- * Second substitution and xor layer, used for even steps.
+ * Second substitution and xor layer, used for even steps (constant-time).
  * It is safe for the input and output to be the same.
  */
 static void sl2(ARIA_c128 o, const ARIA_u128 *x, const ARIA_u128 *y)
 {
     unsigned int i;
     for (i = 0; i < ARIA_BLOCK_SIZE; i += 4) {
-        o[i    ] = sb3[x->c[i    ] ^ y->c[i    ]];
-        o[i + 1] = sb4[x->c[i + 1] ^ y->c[i + 1]];
-        o[i + 2] = sb1[x->c[i + 2] ^ y->c[i + 2]];
-        o[i + 3] = sb2[x->c[i + 3] ^ y->c[i + 3]];
+        o[i    ] = ct_lookup_u8(sb3, x->c[i    ] ^ y->c[i    ]);
+        o[i + 1] = ct_lookup_u8(sb4, x->c[i + 1] ^ y->c[i + 1]);
+        o[i + 2] = ct_lookup_u8(sb1, x->c[i + 2] ^ y->c[i + 2]);
+        o[i + 3] = ct_lookup_u8(sb2, x->c[i + 3] ^ y->c[i + 3]);
     }
 }
 
