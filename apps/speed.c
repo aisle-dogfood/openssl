@@ -69,6 +69,12 @@ VirtualLock(
 
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
+/*
+ * WARNING: testrsa.h and testdsa.h contain INSECURE hard-coded test keys.
+ * These keys are PUBLIC KNOWLEDGE and provide NO SECURITY. They are used
+ * ONLY for performance benchmarking. See TEST-KEYS-README.md for details.
+ * NEVER use these keys in production systems (CWE-321, CWE-798).
+ */
 #include "./testrsa.h"
 #ifndef OPENSSL_NO_DH
 # include <openssl/dh.h>

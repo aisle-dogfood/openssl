@@ -7,7 +7,27 @@
  * https://www.openssl.org/source/license.html
  */
 
-/* Private RSA key used for decryption */
+/*
+ * ============================================================================
+ * WARNING: INSECURE TEST-ONLY CRYPTOGRAPHIC KEY
+ * ============================================================================
+ * This file contains a hard-coded RSA private key intended EXCLUSIVELY for
+ * demonstration and testing purposes.
+ *
+ * CRITICAL SECURITY WARNINGS:
+ * 1. This key is PUBLIC KNOWLEDGE and provides NO SECURITY whatsoever
+ * 2. NEVER use this key in production, staging, or any real-world system
+ * 3. This key MUST NOT be included in production builds or distributions
+ * 4. Any data encrypted/signed with this key should be considered COMPROMISED
+ * 5. Using this key outside of demonstration constitutes a critical security flaw
+ *    (CWE-321: Use of Hard-coded Cryptographic Key)
+ *    (CWE-798: Use of Hard-coded Credentials)
+ *
+ * This file is intended ONLY for demonstration of RSA encryption/decryption APIs.
+ * ============================================================================
+ */
+
+/* TEST-ONLY RSA private key (DER-encoded) - DO NOT USE IN PRODUCTION */
 static const unsigned char priv_key_der[] = {
     0x30, 0x82, 0x04, 0xa4, 0x02, 0x01, 0x00, 0x02, 0x82, 0x01, 0x01, 0x00,
     0xc2, 0x44, 0xbc, 0xcf, 0x5b, 0xca, 0xcd, 0x80, 0x77, 0xae, 0xf9, 0x7a,

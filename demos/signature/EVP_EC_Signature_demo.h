@@ -7,7 +7,27 @@
  * https://www.openssl.org/source/license.html
  */
 
-/* Signers private EC key */
+/*
+ * ============================================================================
+ * WARNING: INSECURE TEST-ONLY CRYPTOGRAPHIC KEY
+ * ============================================================================
+ * This file contains a hard-coded EC private key intended EXCLUSIVELY for
+ * demonstration and testing purposes.
+ *
+ * CRITICAL SECURITY WARNINGS:
+ * 1. This key is PUBLIC KNOWLEDGE and provides NO SECURITY whatsoever
+ * 2. NEVER use this key in production, staging, or any real-world system
+ * 3. This key MUST NOT be included in production builds or distributions
+ * 4. Any data encrypted/signed with this key should be considered COMPROMISED
+ * 5. Using this key outside of demonstration constitutes a critical security flaw
+ *    (CWE-321: Use of Hard-coded Cryptographic Key)
+ *    (CWE-798: Use of Hard-coded Credentials)
+ *
+ * This file is intended ONLY for demonstration of EVP signature APIs.
+ * ============================================================================
+ */
+
+/* TEST-ONLY EC private key (DER-encoded) - DO NOT USE IN PRODUCTION */
 static const unsigned char priv_key_der[] = {
 0x30, 0x82, 0x01, 0x68, 0x02, 0x01, 0x01, 0x04, 0x20, 0x51, 0x77, 0xae,
 0xf4, 0x18, 0xf4, 0x6b, 0xc4, 0xe5, 0xbb, 0xe9, 0xe6, 0x9e, 0x6d, 0xb0,
