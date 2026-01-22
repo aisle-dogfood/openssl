@@ -73,6 +73,12 @@ sub create_curl {
     $curl->setopt(CURLOPT_RANDOM_FILE, $options{r}) if defined($options{r});
     $curl->setopt(CURLOPT_EGDSOCKET, $options{g}) if defined($options{g});
 
+    # Timeout options to prevent indefinite hangs.
+    my $connect_timeout = defined($options{T}) ? $options{T} : 30;
+    my $timeout = defined($options{t}) ? $options{t} : 120;
+    $curl->setopt(CURLOPT_CONNECTTIMEOUT, $connect_timeout);
+    $curl->setopt(CURLOPT_TIMEOUT, $timeout);
+
     # Setting destination.
     $curl->setopt(CURLOPT_URL, $url);
 
@@ -122,7 +128,8 @@ sub usage {
     print STDERR "usage: $0 -h <server_url> [-e <extension>] [-o <output>] ";
     print STDERR "[-v] [-d] [-k <private_key.pem>] [-p <key_password>] ";
     print STDERR "[-c <client_cert.pem>] [-C <CA_certs.pem>] [-P <CA_path>] ";
-    print STDERR "[-r <file:file...>] [-g <EGD_socket>] [<request>]...\n";
+    print STDERR "[-r <file:file...>] [-g <EGD_socket>] ";
+    print STDERR "[-T <connect_timeout>] [-t <timeout>] [<request>]...\n";
     exit 1;
 }
 
@@ -131,7 +138,7 @@ sub usage {
 # ----------------------------------------------------------------------
 
 # Getting command-line options (default comes from TSGET environment variable).
-my $getopt_arg =  "h:e:o:vdk:p:c:C:P:r:g:";
+my $getopt_arg =  "h:e:o:vdk:p:c:C:P:r:g:T:t:";
 if (exists $ENV{TSGET}) {
     my @old_argv = @ARGV;
     @ARGV = split /\s+/, $ENV{TSGET};

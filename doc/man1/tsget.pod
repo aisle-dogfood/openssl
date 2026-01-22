@@ -19,6 +19,8 @@ B<-h> I<server_url>
 [B<-P> I<CA_path>]
 [B<-r> I<files>]
 [B<-g> I<EGD_socket>]
+[B<-T> I<connect_timeout>]
+[B<-t> I<timeout>]
 [I<request> ...]
 
 =head1 DESCRIPTION
@@ -118,6 +120,19 @@ See L<openssl(1)/Random State Options> for more information.
 =item B<-g> I<EGD_socket>
 
 The name of an EGD socket to get random data from. (Optional)
+
+=item B<-T> I<connect_timeout>
+
+Maximum time in seconds allowed for the connection to the server to be
+established. A value of zero disables the timeout (not recommended). If not
+specified, a default timeout of 30 seconds is used. (Optional)
+
+=item B<-t> I<timeout>
+
+Maximum time in seconds allowed for the entire request/response operation. This
+includes connection establishment, sending the request, and receiving the
+response. A value of zero disables the timeout (not recommended). If not
+specified, a default timeout of 120 seconds is used. (Optional)
 
 =item I<request> ...
 
