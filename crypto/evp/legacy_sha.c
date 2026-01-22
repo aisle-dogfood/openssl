@@ -14,6 +14,7 @@
 #include "internal/deprecated.h"
 
 #include <openssl/sha.h>         /* diverse SHA macros */
+#include <openssl/evp.h>         /* EVP_default_properties_is_fips_enabled */
 #include "internal/sha3.h"       /* KECCAK1600_WIDTH */
 #include "crypto/evp.h"
 /* Used by legacy methods */
@@ -64,8 +65,30 @@ IMPLEMENT_LEGACY_EVP_MD_METH(sha512_256_int, sha512_256)
 IMPLEMENT_LEGACY_EVP_MD_METH_SHA3(sha3_int, ossl_sha3, '\x06')
 IMPLEMENT_LEGACY_EVP_MD_METH_SHAKE(shake, ossl_sha3, '\x1f')
 
+/*
+ * LEGACY ONLY: SHA-1 control wrapper for SSLv3 compatibility.
+ * 
+ * This control function is a legacy interface that should only be used
+ * with very old SSLv3 implementations. It is blocked in FIPS mode to
+ * prevent use of the weak SHA-1 hash function in security-sensitive contexts.
+ * 
+ * For modern applications, use TLS 1.2+ with SHA-2 or SHA-3 based algorithms.
+ */
 static int sha1_int_ctrl(EVP_MD_CTX *ctx, int cmd, int p1, void *p2)
 {
+    /*
+     * Block EVP_CTRL_SSL3_MASTER_SECRET in FIPS mode to prevent
+     * use of SHA-1 in SSLv3 legacy authentication flows.
+     * This ensures FIPS-compliant applications cannot fall back
+     * to weak cryptography.
+     */
+    if (cmd == EVP_CTRL_SSL3_MASTER_SECRET) {
+        if (EVP_default_properties_is_fips_enabled(NULL)) {
+            /* Fail in FIPS mode - SHA-1 with SSLv3 is not allowed */
+            return 0;
+        }
+    }
+    
     return ossl_sha1_ctrl(ctx != NULL ? EVP_MD_CTX_get0_md_data(ctx) : NULL,
                           cmd, p1, p2);
 }
