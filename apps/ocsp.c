@@ -1168,7 +1168,11 @@ static void make_ocsp_response(BIO *err, OCSP_RESPONSE **resp, OCSP_REQUEST *req
 
     if (badsig) {
         const ASN1_OCTET_STRING *sig = OCSP_resp_get0_signature(bs);
-        corrupt_signature(sig);
+        if (sig != NULL && sig->length > 0 && sig->data != NULL) {
+            corrupt_signature(sig);
+        } else {
+            BIO_printf(bio_err, "Warning: Signature is NULL or zero-length, cannot corrupt\n");
+        }
     }
 
     *resp = OCSP_response_create(OCSP_RESPONSE_STATUS_SUCCESSFUL, bs);
