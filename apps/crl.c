@@ -285,7 +285,11 @@ int crl_main(int argc, char **argv)
         const ASN1_BIT_STRING *sig;
 
         X509_CRL_get0_signature(x, &sig, NULL);
-        corrupt_signature(sig);
+        if (sig != NULL && sig->length > 0 && sig->data != NULL) {
+            corrupt_signature(sig);
+        } else {
+            BIO_printf(bio_err, "Warning: Signature is NULL or zero-length, cannot corrupt\n");
+        }
     }
 
     if (num) {

@@ -949,7 +949,11 @@ int x509_main(int argc, char **argv)
         const ASN1_BIT_STRING *signature;
 
         X509_get0_signature(&signature, NULL, x);
-        corrupt_signature(signature);
+        if (signature != NULL && signature->length > 0 && signature->data != NULL) {
+            corrupt_signature(signature);
+        } else {
+            BIO_printf(bio_err, "Warning: Signature is NULL or zero-length, cannot corrupt\n");
+        }
     }
 
     /* Process print options in the given order, as indicated by index i */
