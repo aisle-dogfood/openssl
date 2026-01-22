@@ -250,7 +250,7 @@ ENGINE_register_all_ciphers             254	3_0_0	EXIST::FUNCTION:DEPRECATEDIN_3
 SXNET_new                               255	3_0_0	EXIST::FUNCTION:
 EVP_camellia_256_ctr                    256	3_0_0	EXIST::FUNCTION:CAMELLIA
 d2i_PKCS8_PRIV_KEY_INFO                 257	3_0_0	EXIST::FUNCTION:
-EVP_md2                                 259	3_0_0	EXIST::FUNCTION:MD2
+EVP_md2                                 259	3_0_0	NOEXIST::FUNCTION:MD2
 RC2_ecb_encrypt                         260	3_0_0	EXIST::FUNCTION:DEPRECATEDIN_3_0,RC2
 ENGINE_register_DH                      261	3_0_0	EXIST::FUNCTION:DEPRECATEDIN_3_0,ENGINE
 ASN1_NULL_free                          262	3_0_0	EXIST::FUNCTION:

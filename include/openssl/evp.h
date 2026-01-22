@@ -952,7 +952,12 @@ __owur int BIO_set_cipher(BIO *b, const EVP_CIPHER *c, const unsigned char *k,
 
 const EVP_MD *EVP_md_null(void);
 # ifndef OPENSSL_NO_MD2
-const EVP_MD *EVP_md2(void);
+/*
+ * EVP_md2() has been removed due to MD2 being cryptographically broken.
+ * MD2 is only accessible via the legacy provider: EVP_MD_fetch(NULL, "MD2", NULL)
+ * Applications must explicitly load the legacy provider to use MD2.
+ * Migration to SHA-256 or higher is strongly recommended.
+ */
 # endif
 # ifndef OPENSSL_NO_MD4
 const EVP_MD *EVP_md4(void);
