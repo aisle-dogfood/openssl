@@ -61,8 +61,15 @@ if ($flavour && $flavour ne "void") {
     ( $xlate="${dir}../../perlasm/arm-xlate.pl" and -f $xlate) or
     die "can't locate arm-xlate.pl";
 
-    open STDOUT,"| \"$^X\" $xlate $flavour \"$output\""
-        or die "can't call $xlate: $!";
+    # Use list-form open to avoid shell interpretation
+    my $pid = open(STDOUT, "|-");
+    die "can't fork: $!" unless defined $pid;
+    if ($pid == 0) {
+        # Child process: exec the translator with safe argument list
+        my @args = ($xlate, $flavour);
+        push @args, $output if defined $output;
+        exec $^X, @args or die "can't exec $xlate: $!";
+    }
 } else {
     $output and open STDOUT,">$output";
 }
