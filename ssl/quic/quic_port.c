@@ -132,8 +132,7 @@ static int port_init(QUIC_PORT *port)
 {
     size_t rx_short_dcid_len = (port->is_multi_conn ? INIT_DCID_LEN : 0);
     int key_len;
-    EVP_CIPHER *cipher = NULL;
-    unsigned char *token_key = NULL;
+    EVP_CIPHER_CTX *tmp_ctx = NULL;
     int ret = 0;
 
     if (port->engine == NULL || port->channel_ctx == NULL)
@@ -168,20 +167,29 @@ static int port_init(QUIC_PORT *port)
     port->bio_changed       = 1;
 
     /* Generate random key for token encryption */
-    if ((port->token_ctx = EVP_CIPHER_CTX_new()) == NULL
-        || (cipher = EVP_CIPHER_fetch(port->engine->libctx,
-                                      "AES-256-GCM", NULL)) == NULL
-        || !EVP_EncryptInit_ex(port->token_ctx, cipher, NULL, NULL, NULL)
-        || (key_len = EVP_CIPHER_CTX_get_key_length(port->token_ctx)) <= 0
-        || (token_key = OPENSSL_malloc(key_len)) == NULL
-        || !RAND_bytes_ex(port->engine->libctx, token_key, key_len, 0)
-        || !EVP_EncryptInit_ex(port->token_ctx, NULL, NULL, token_key, NULL))
+    port->token_cipher = EVP_CIPHER_fetch(port->engine->libctx,
+                                          "AES-256-GCM", NULL);
+    if (port->token_cipher == NULL)
+        goto err;
+
+    /* Create temporary context to determine key length */
+    if ((tmp_ctx = EVP_CIPHER_CTX_new()) == NULL
+        || !EVP_EncryptInit_ex(tmp_ctx, port->token_cipher, NULL, NULL, NULL)
+        || (key_len = EVP_CIPHER_CTX_get_key_length(tmp_ctx)) <= 0)
+        goto err;
+
+    EVP_CIPHER_CTX_free(tmp_ctx);
+    tmp_ctx = NULL;
+
+    /* Allocate and generate random key */
+    port->token_key_len = key_len;
+    if ((port->token_key = OPENSSL_secure_zalloc(key_len)) == NULL
+        || !RAND_bytes_ex(port->engine->libctx, port->token_key, key_len, 0))
         goto err;
 
     ret = 1;
 err:
-    EVP_CIPHER_free(cipher);
-    OPENSSL_free(token_key);
+    EVP_CIPHER_CTX_free(tmp_ctx);
     if (!ret)
         port_cleanup(port);
     return ret;
@@ -208,8 +216,14 @@ static void port_cleanup(QUIC_PORT *port)
         port->on_engine_list = 0;
     }
 
-    EVP_CIPHER_CTX_free(port->token_ctx);
-    port->token_ctx = NULL;
+    if (port->token_key != NULL) {
+        OPENSSL_secure_clear_free(port->token_key, port->token_key_len);
+        port->token_key = NULL;
+        port->token_key_len = 0;
+    }
+
+    EVP_CIPHER_free(port->token_cipher);
+    port->token_cipher = NULL;
 }
 
 static void port_transition_failed(QUIC_PORT *port)
@@ -945,9 +959,16 @@ static int encrypt_validation_token(const QUIC_PORT *port,
     int iv_len, len, ret = 0;
     size_t tag_len;
     unsigned char *iv = ciphertext, *data, *tag;
+    EVP_CIPHER_CTX *ctx = NULL;
 
-    if ((tag_len = EVP_CIPHER_CTX_get_tag_length(port->token_ctx)) == 0
-        || (iv_len = EVP_CIPHER_CTX_get_iv_length(port->token_ctx)) <= 0)
+    /* Create a new context for this operation to avoid race conditions */
+    if ((ctx = EVP_CIPHER_CTX_new()) == NULL
+        || !EVP_EncryptInit_ex(ctx, port->token_cipher, NULL,
+                               port->token_key, NULL))
+        goto err;
+
+    if ((tag_len = EVP_CIPHER_CTX_get_tag_length(ctx)) == 0
+        || (iv_len = EVP_CIPHER_CTX_get_iv_length(ctx)) <= 0)
         goto err;
 
     *ct_len = iv_len + pt_len + tag_len + QUIC_RETRY_INTEGRITY_TAG_LEN;
@@ -960,14 +981,15 @@ static int encrypt_validation_token(const QUIC_PORT *port,
     tag = data + pt_len;
 
     if (!RAND_bytes_ex(port->engine->libctx, ciphertext, iv_len, 0)
-        || !EVP_EncryptInit_ex(port->token_ctx, NULL, NULL, NULL, iv)
-        || !EVP_EncryptUpdate(port->token_ctx, data, &len, plaintext, pt_len)
-        || !EVP_EncryptFinal_ex(port->token_ctx, data + pt_len, &len)
-        || !EVP_CIPHER_CTX_ctrl(port->token_ctx, EVP_CTRL_GCM_GET_TAG, tag_len, tag))
+        || !EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv)
+        || !EVP_EncryptUpdate(ctx, data, &len, plaintext, pt_len)
+        || !EVP_EncryptFinal_ex(ctx, data + pt_len, &len)
+        || !EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_GET_TAG, tag_len, tag))
         goto err;
 
     ret = 1;
 err:
+    EVP_CIPHER_CTX_free(ctx);
     return ret;
 }
 
@@ -995,9 +1017,16 @@ static int decrypt_validation_token(const QUIC_PORT *port,
     int iv_len, len = 0, ret = 0;
     size_t tag_len;
     const unsigned char *iv = ciphertext, *data, *tag;
+    EVP_CIPHER_CTX *ctx = NULL;
 
-    if ((tag_len = EVP_CIPHER_CTX_get_tag_length(port->token_ctx)) == 0
-        || (iv_len = EVP_CIPHER_CTX_get_iv_length(port->token_ctx)) <= 0)
+    /* Create a new context for this operation to avoid race conditions */
+    if ((ctx = EVP_CIPHER_CTX_new()) == NULL
+        || !EVP_DecryptInit_ex(ctx, port->token_cipher, NULL,
+                               port->token_key, NULL))
+        goto err;
+
+    if ((tag_len = EVP_CIPHER_CTX_get_tag_length(ctx)) == 0
+        || (iv_len = EVP_CIPHER_CTX_get_iv_length(ctx)) <= 0)
         goto err;
 
     /* Prevent decryption of a buffer that is not within reasonable bounds */
@@ -1013,17 +1042,18 @@ static int decrypt_validation_token(const QUIC_PORT *port,
     data = ciphertext + iv_len;
     tag = ciphertext + ct_len - tag_len;
 
-    if (!EVP_DecryptInit_ex(port->token_ctx, NULL, NULL, NULL, iv)
-        || !EVP_DecryptUpdate(port->token_ctx, plaintext, &len, data,
+    if (!EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, iv)
+        || !EVP_DecryptUpdate(ctx, plaintext, &len, data,
                               ct_len - iv_len - tag_len)
-        || !EVP_CIPHER_CTX_ctrl(port->token_ctx, EVP_CTRL_GCM_SET_TAG, tag_len,
+        || !EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_GCM_SET_TAG, tag_len,
                                 (void *)tag)
-        || !EVP_DecryptFinal_ex(port->token_ctx, plaintext + len, &len))
+        || !EVP_DecryptFinal_ex(ctx, plaintext + len, &len))
         goto err;
 
     ret = 1;
 
 err:
+    EVP_CIPHER_CTX_free(ctx);
     return ret;
 }
 
