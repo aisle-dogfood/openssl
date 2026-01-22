@@ -8,10 +8,17 @@ EVP_MD-MD2 - The MD2 EVP_MD implementation
 
 Support for computing MD2 digests through the B<EVP_MD> API.
 
+B<WARNING: MD2 is cryptographically broken and should not be used.>
+This implementation is provided only for backward compatibility with
+legacy applications. New applications should use SHA-256 or higher.
+
 =head2 Identity
 
 This implementation is only available with the legacy provider, and is
 identified with the name "MD2".
+
+The legacy provider must be explicitly loaded to access MD2.
+Use EVP_MD_fetch(NULL, "MD2", NULL) after loading the legacy provider.
 
 =head2 Gettable Parameters
 

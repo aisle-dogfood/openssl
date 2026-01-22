@@ -17,18 +17,14 @@
 #include "crypto/evp.h"
 #include "legacy_meth.h"
 
-IMPLEMENT_LEGACY_EVP_MD_METH(md2, MD2)
-
-static const EVP_MD md2_md = {
-    NID_md2,
-    NID_md2WithRSAEncryption,
-    MD2_DIGEST_LENGTH,
-    0,
-    EVP_ORIG_GLOBAL,
-    LEGACY_EVP_MD_METH_TABLE(md2_init, md2_update, md2_final, NULL, MD2_BLOCK)
-};
-
-const EVP_MD *EVP_md2(void)
-{
-    return &md2_md;
-}
+/*
+ * MD2 is a cryptographically broken hash function (CWE-327/CWE-328).
+ * EVP_md2() accessor has been removed to prevent accidental usage.
+ * MD2 is only available through the legacy provider for explicit
+ * backward compatibility requirements. Applications should migrate
+ * to secure hash functions (SHA-256 or higher).
+ *
+ * To access MD2 when absolutely necessary:
+ * 1. Load the legacy provider explicitly
+ * 2. Use EVP_MD_fetch(NULL, "MD2", NULL)
+ */

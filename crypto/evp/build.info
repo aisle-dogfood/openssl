@@ -33,7 +33,8 @@ IF[{- !$disabled{'rsa'} -}]
   SOURCE[../../libcrypto]=p_open.c
 ENDIF
 IF[{- !$disabled{md2} -}]
-  SOURCE[../../libcrypto]=legacy_md2.c
+  # MD2 EVP accessor removed - MD2 only available via legacy provider
+  # See crypto/evp/legacy_md2.c for migration guidance
 ENDIF
 IF[{- !$disabled{md4} -}]
   SOURCE[../../libcrypto]=legacy_md4.c
