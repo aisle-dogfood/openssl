@@ -291,7 +291,6 @@ static const OSSL_ALGORITHM_CAPABLE deflt_ciphers[] = {
     ALG(PROV_NAMES_DES_EDE3_CFB, ossl_tdes_ede3_cfb_functions),
     ALG(PROV_NAMES_DES_EDE3_CFB8, ossl_tdes_ede3_cfb8_functions),
     ALG(PROV_NAMES_DES_EDE3_CFB1, ossl_tdes_ede3_cfb1_functions),
-    ALG(PROV_NAMES_DES3_WRAP, ossl_tdes_wrap_cbc_functions),
     ALG(PROV_NAMES_DES_EDE_ECB, ossl_tdes_ede2_ecb_functions),
     ALG(PROV_NAMES_DES_EDE_CBC, ossl_tdes_ede2_cbc_functions),
     ALG(PROV_NAMES_DES_EDE_OFB, ossl_tdes_ede2_ofb_functions),
