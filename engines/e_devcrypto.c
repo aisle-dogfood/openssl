@@ -27,6 +27,13 @@
 #include "crypto/cryptodev.h"
 #include "internal/nelem.h"
 
+/*
+ * ENGINE_DEVCRYPTO_DEBUG: When defined, enables diagnostic features including
+ * the DUMP_INFO control command which outputs cipher/digest driver information
+ * to stderr. This should NOT be defined in production builds as it may leak
+ * sensitive environment information (driver names, acceleration status, etc.)
+ * via logs.
+ */
 /* #define ENGINE_DEVCRYPTO_DEBUG */
 
 #if CRYPTO_ALGORITHM_MIN < CRYPTO_ALGORITHM_MAX
@@ -647,6 +654,13 @@ static int cryptodev_select_cipher_cb(const char *str, int len, void *usr)
     return 1;
 }
 
+/*
+ * dump_cipher_info() is a diagnostic function that prints cipher driver
+ * information to stderr. It is only available when ENGINE_DEVCRYPTO_DEBUG
+ * is defined at compile time. This function should not be used in production
+ * environments as it may leak sensitive environment information via logs.
+ */
+#ifdef ENGINE_DEVCRYPTO_DEBUG
 static void dump_cipher_info(void)
 {
     size_t i;
@@ -680,6 +694,7 @@ static void dump_cipher_info(void)
     }
     fprintf(stderr, "\n");
 }
+#endif /* ENGINE_DEVCRYPTO_DEBUG */
 
 /*
  * We only support digests if the cryptodev implementation supports multiple
@@ -1077,6 +1092,13 @@ static int cryptodev_select_digest_cb(const char *str, int len, void *usr)
     return 1;
 }
 
+/*
+ * dump_digest_info() is a diagnostic function that prints digest driver
+ * information to stderr. It is only available when ENGINE_DEVCRYPTO_DEBUG
+ * is defined at compile time. This function should not be used in production
+ * environments as it may leak sensitive environment information via logs.
+ */
+#ifdef ENGINE_DEVCRYPTO_DEBUG
 static void dump_digest_info(void)
 {
     size_t i;
@@ -1113,6 +1135,7 @@ static void dump_digest_info(void)
     }
     fprintf(stderr, "\n");
 }
+#endif /* ENGINE_DEVCRYPTO_DEBUG */
 
 #endif
 
@@ -1152,10 +1175,12 @@ static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
     ENGINE_CMD_FLAG_STRING},
 #endif
 
+#ifdef ENGINE_DEVCRYPTO_DEBUG
    {DEVCRYPTO_CMD_DUMP_INFO,
     "DUMP_INFO",
-    "dump info about each algorithm to stderr; use 'openssl engine -pre DUMP_INFO devcrypto'",
+    "dump info about each algorithm to stderr; use 'openssl engine -pre DUMP_INFO devcrypto' (diagnostic only, not for production)",
     ENGINE_CMD_FLAG_NO_INPUT},
+#endif
 
    {0, NULL, NULL, 0}
 };
@@ -1225,12 +1250,14 @@ static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
         return 1;
 #endif /* IMPLEMENT_DIGEST */
 
+#ifdef ENGINE_DEVCRYPTO_DEBUG
     case DEVCRYPTO_CMD_DUMP_INFO:
         dump_cipher_info();
 #ifdef IMPLEMENT_DIGEST
         dump_digest_info();
 #endif
         return 1;
+#endif /* ENGINE_DEVCRYPTO_DEBUG */
 
     default:
         break;
