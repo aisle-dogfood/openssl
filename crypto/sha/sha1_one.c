@@ -23,10 +23,9 @@
 unsigned char *ossl_sha1(const unsigned char *d, size_t n, unsigned char *md)
 {
     SHA_CTX c;
-    static unsigned char m[SHA_DIGEST_LENGTH];
 
     if (md == NULL)
-        md = m;
+        return NULL;
     if (!SHA1_Init(&c))
         return NULL;
     SHA1_Update(&c, d, n);
@@ -37,10 +36,8 @@ unsigned char *ossl_sha1(const unsigned char *d, size_t n, unsigned char *md)
 
 unsigned char *SHA1(const unsigned char *d, size_t n, unsigned char *md)
 {
-    static unsigned char m[SHA_DIGEST_LENGTH];
-
     if (md == NULL)
-        md = m;
+        return NULL;
     return EVP_Q_digest(NULL, "SHA1", NULL, d, n, md, NULL) ? md : NULL;
 }
 
