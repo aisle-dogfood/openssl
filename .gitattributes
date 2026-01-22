@@ -17,3 +17,15 @@ krb5                                    export-ignore
 pyca-cryptography                       export-ignore
 dev                                     export-ignore
 gost-engine                             export-ignore
+
+# Exclude hard-coded demo and test private keys from distribution (CWE-321)
+# These are test-only fixtures and must never be installed in production
+demos/certs/apps/ckey.pem               export-ignore
+demos/certs/apps/skey.pem               export-ignore
+demos/certs/apps/skey2.pem              export-ignore
+demos/certs/apps/intkey.pem             export-ignore
+demos/certs/apps/rootkey.pem            export-ignore
+demos/sslecho/key.pem                   export-ignore
+demos/sslecho/cert.pem                  export-ignore
+test/recipes/15-test_ml_kem_codecs_data/prv-*.pem  export-ignore
+test/recipes/30-test_evp_data/evppkey_ml_kem_*_decap.txt  export-ignore

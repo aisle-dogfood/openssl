@@ -1,12 +1,23 @@
 #!/bin/sh
 
 # Recreate the demo certificates in the apps directory.
+# This script generates ephemeral private keys at runtime to avoid
+# using hard-coded keys in production environments.
 
 opensslcmd() {
     LD_LIBRARY_PATH=../../.. ../../../apps/openssl $@
 }
 
 opensslcmd version
+
+echo "Generating ephemeral private keys for demo purposes..."
+
+# Generate ephemeral private keys
+opensslcmd genrsa -out rootkey.pem 2048 2>/dev/null
+opensslcmd genrsa -out intkey.pem 2048 2>/dev/null
+opensslcmd genrsa -out ckey.pem 2048 2>/dev/null
+opensslcmd genrsa -out skey.pem 2048 2>/dev/null
+opensslcmd genrsa -out skey2.pem 2048 2>/dev/null
 
 # Root CA: create certificate directly
 CN="OpenSSL Test Root CA" opensslcmd req -config apps.cnf -x509 -nodes \

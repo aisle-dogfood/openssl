@@ -1,0 +1,46 @@
+╔═══════════════════════════════════════════════════════════════════════════╗
+║                                                                           ║
+║  ⚠️  SECURITY WARNING: HARD-CODED DEMO KEYS - DO NOT USE IN PRODUCTION  ⚠️  ║
+║                                                                           ║
+╚═══════════════════════════════════════════════════════════════════════════╝
+
+This directory contains RSA PRIVATE KEYS that are PUBLICLY ACCESSIBLE in the
+OpenSSL source repository. These keys are FOR DEMONSTRATION PURPOSES ONLY.
+
+AFFECTED FILES:
+  • ckey.pem      - Demo client private key
+  • skey.pem      - Demo server private key
+  • skey2.pem     - Demo server #2 private key
+  • intkey.pem    - Demo intermediate CA private key
+  • rootkey.pem   - Demo root CA private key
+
+⚠️  CRITICAL SECURITY RISK ⚠️
+
+Using these keys in ANY production environment would result in:
+  ✗ Complete compromise of encrypted communications
+  ✗ Unauthorized access to your systems
+  ✗ Ability for attackers to impersonate your services
+  ✗ Violation of security compliance requirements
+
+PROPER USAGE:
+
+1. For Demonstrations:
+   Run ./mkacerts.sh to generate EPHEMERAL keys at runtime
+   
+2. For Production:
+   NEVER use these keys. Generate unique keys:
+   
+   $ openssl genrsa -out mykey.pem 2048
+   
+3. For Package Maintainers:
+   These .pem files MUST be excluded from distributions.
+   They are marked as export-ignore in .gitattributes
+
+REFERENCES:
+  • CWE-321: Use of Hard-coded Cryptographic Key
+  • See demos/SECURITY.md for complete security guidance
+  • See demos/certs/apps/SECURITY.md for detailed instructions
+
+═══════════════════════════════════════════════════════════════════════════
+
+Last Updated: 2024 - OpenSSL Security Team

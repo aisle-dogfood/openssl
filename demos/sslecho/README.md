@@ -20,7 +20,22 @@ The new client code illustrates that:
   SSL_write() and SSL_read().
 - Pretty simple.
 
-The cert.pem and key.pem files included are self signed certificates with the
-"Common Name" of 'localhost'.
+## Security Warning
 
-Best to create the 'pem' files using an actual hostname.
+**WARNING**: The key.pem and cert.pem files in this directory are hard-coded
+demo credentials that are publicly accessible. **NEVER use these in production!**
+
+For security, generate fresh keys before running the demo:
+
+```bash
+./generate_keys.sh
+```
+
+This will create ephemeral key.pem and cert.pem files with the "Common Name"
+of 'localhost'.
+
+For production use or actual hostname, create proper certificates:
+
+```bash
+openssl req -new -x509 -key key.pem -out cert.pem -days 365 -subj "/CN=yourhostname"
+```
