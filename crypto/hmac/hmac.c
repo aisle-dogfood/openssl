@@ -17,10 +17,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include "internal/cryptlib.h"
+#include "internal/thread_arch.h"
+#include "internal/thread_once.h"
 #include <openssl/opensslconf.h>
 #include <openssl/hmac.h>
 #include <openssl/core_names.h>
 #include "hmac_local.h"
+
+/* Mutex to protect the static buffer in HMAC() when md == NULL */
+static CRYPTO_ONCE hmac_static_md_init = CRYPTO_ONCE_STATIC_INIT;
+static CRYPTO_MUTEX *hmac_static_md_lock = NULL;
+
+DEFINE_RUN_ONCE_STATIC(do_hmac_static_md_init)
+{
+    hmac_static_md_lock = ossl_crypto_mutex_new();
+    return hmac_static_md_lock != NULL;
+}
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len,
                  const EVP_MD *md, ENGINE *impl)
@@ -253,13 +265,27 @@ unsigned char *HMAC(const EVP_MD *evp_md, const void *key, int key_len,
     int size = EVP_MD_get_size(evp_md);
     size_t temp_md_len = 0;
     unsigned char *ret = NULL;
+    int use_static_buffer = (md == NULL);
 
     if (size > 0) {
+        /*
+         * Protect access to the static buffer with a mutex when md == NULL.
+         * This prevents race conditions in multi-threaded environments.
+         */
+        if (use_static_buffer) {
+            if (!RUN_ONCE(&hmac_static_md_init, do_hmac_static_md_init))
+                return NULL;
+            ossl_crypto_mutex_lock(hmac_static_md_lock);
+        }
+
         ret = EVP_Q_mac(NULL, "HMAC", NULL, EVP_MD_get0_name(evp_md), NULL,
                         key, key_len, data, data_len,
-                        md == NULL ? static_md : md, size, &temp_md_len);
+                        use_static_buffer ? static_md : md, size, &temp_md_len);
         if (md_len != NULL)
             *md_len = (unsigned int)temp_md_len;
+
+        if (use_static_buffer)
+            ossl_crypto_mutex_unlock(hmac_static_md_lock);
     }
     return ret;
 }
