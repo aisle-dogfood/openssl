@@ -52,14 +52,32 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
+# Shell-escape a string for safe inclusion in shell commands
+# Implements POSIX shell single-quote escaping
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # For safety, if the argument contains only safe characters, return as-is
+    # Safe characters: alphanumeric, dash, underscore, dot, forward slash, equals, plus
+    if ($arg =~ /^[-\w.\/=+]+\z/) {
+        return $arg;
+    }
+    # Otherwise, use single-quote escaping (replace ' with '\'' )
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
 open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+if (defined($ENV{CC})) {
+    my $quoted_cc = shell_quote($ENV{CC});
+    if (`$quoted_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.19) + ($1>=2.22);
 	$addx = ($1>=2.23);
+    }
 }
 
 if (!$addx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
@@ -74,10 +92,13 @@ if (!$addx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
 	$addx = ($1>=12);
 }
 
-if (!$addx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
+if (!$addx && defined($ENV{CC})) {
+    my $quoted_cc = shell_quote($ENV{CC});
+    if (`$quoted_cc -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
 	my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
 	$avx = ($ver>=3.0) + ($ver>=3.01);
 	$addx = ($ver>=3.03);
+    }
 }
 
 $code.=<<___;

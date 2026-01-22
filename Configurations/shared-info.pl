@@ -11,14 +11,31 @@
 # shared libraries, currently on any Unix variant, including Unix like
 # environments on Windows.
 
+# Shell-escape a string for safe inclusion in shell commands
+# Implements POSIX shell single-quote escaping
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # For safety, if the argument contains only safe characters, return as-is
+    # Safe characters: alphanumeric, dash, underscore, dot, forward slash, equals, plus
+    if ($arg =~ /^[-\w.\/=+]+\z/) {
+        return $arg;
+    }
+    # Otherwise, use single-quote escaping (replace ' with '\'' )
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
 sub detect_gnu_ld {
+    my $quoted_cc = shell_quote("$config{CROSS_COMPILE}$config{CC}");
     my @lines =
-        `$config{CROSS_COMPILE}$config{CC} -Wl,-V /dev/null 2>&1`;
+        `$quoted_cc -Wl,-V /dev/null 2>&1`;
     return grep /^GNU ld/, @lines;
 }
 sub detect_gnu_cc {
+    my $quoted_cc = shell_quote("$config{CROSS_COMPILE}$config{CC}");
     my @lines =
-        `$config{CROSS_COMPILE}$config{CC} -v 2>&1`;
+        `$quoted_cc -v 2>&1`;
     return grep /gcc/, @lines;
 }
 

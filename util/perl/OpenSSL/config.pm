@@ -53,14 +53,16 @@ my @cc_version =
     (
      clang => sub {
          return undef unless IPC::Cmd::can_run("$CROSS_COMPILE$CC");
-         my $v = `$CROSS_COMPILE$CC -v 2>&1`;
+         my $quoted_cc = shell_quote("$CROSS_COMPILE$CC");
+         my $v = `$quoted_cc -v 2>&1`;
          $v =~ m/(?:(?:clang|LLVM) version|.*based on LLVM)\s+([0-9]+\.[0-9]+)/;
          return $1;
      },
      gnu => sub {
          return undef unless IPC::Cmd::can_run("$CROSS_COMPILE$CC");
          my $nul = File::Spec->devnull();
-         my $v = `$CROSS_COMPILE$CC -dumpversion 2> $nul`;
+         my $quoted_cc = shell_quote("$CROSS_COMPILE$CC");
+         my $v = `$quoted_cc -dumpversion 2> $nul`;
          # Strip off whatever prefix egcs prepends the number with.
          # Hopefully, this will work for any future prefixes as well.
          $v =~ s/^[a-zA-Z]*\-//;
@@ -179,6 +181,21 @@ my $guess_patterns = [
 
     [ sub { -d '/usr/apollo' },     'whatever-apollo-whatever' ],
 ];
+
+# Shell-escape a string for safe inclusion in shell commands
+# Implements POSIX shell single-quote escaping
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # For safety, if the argument contains only safe characters, return as-is
+    # Safe characters: alphanumeric, dash, underscore, dot, forward slash, equals, plus
+    if ($arg =~ /^[-\w.\/=+]+\z/) {
+        return $arg;
+    }
+    # Otherwise, use single-quote escaping (replace ' with '\'' )
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
 
 # Run a command, return true if exit zero else false.
 # Multiple args are glued together into a pipeline.
@@ -444,8 +461,9 @@ _____
         if ( $CCVER >= 300 ) {
             # PA64 support only came in with gcc 3.0.x.
             # We check if the preprocessor symbol __LP64__ is defined.
+            my $quoted_cc = shell_quote($CC);
             if ( okrun('echo __LP64__',
-                       "$CC -v -E -x c - 2>/dev/null",
+                       "$quoted_cc -v -E -x c - 2>/dev/null",
                        'grep "^__LP64__" 2>&1 >/dev/null') ) {
                 # __LP64__ has slipped through, it therefore is not defined
             } else {
@@ -458,7 +476,8 @@ _____
         if ( $CCVER >= 300 ) {
             # 64-bit ABI isn't officially supported in gcc 3.0, but seems
             # to be working; at the very least 'make test' passes.
-            if ( okrun("$CC -v -E -x c /dev/null 2>&1",
+            my $quoted_cc = shell_quote($CC);
+            if ( okrun("$quoted_cc -v -E -x c /dev/null 2>&1",
                        'grep __arch64__ >/dev/null') ) {
                 $GCC_ARCH = "-m64"
             } else {
@@ -716,8 +735,9 @@ EOF
       ],
       [ 'x86_64-.*-linux.',
         sub {
+            my $quoted_cc = shell_quote($CC);
             return { target => "linux-x32" }
-                if okrun("$CC -dM -E -x c /dev/null 2>&1",
+                if okrun("$quoted_cc -dM -E -x c /dev/null 2>&1",
                          'grep -q ILP32 >/dev/null');
             return { target => "linux-x86_64" };
         }
@@ -726,8 +746,9 @@ EOF
         sub {
             # On machines where the compiler understands -m32, prefer a
             # config target that uses it
+            my $quoted_cc = shell_quote($CC);
             return { target => "linux-x86" }
-                if okrun("$CC -m32 -E -x c /dev/null >/dev/null 2>&1");
+                if okrun("$quoted_cc -m32 -E -x c /dev/null >/dev/null 2>&1");
             return { target => "linux-elf" };
         }
       ],

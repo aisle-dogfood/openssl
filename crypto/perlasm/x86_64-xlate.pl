@@ -83,12 +83,28 @@ my $PTR=" PTR";
 my $nasmref=2.03;
 my $nasm=0;
 
+# Shell-escape a string for safe inclusion in shell commands
+# Implements POSIX shell single-quote escaping
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # For safety, if the argument contains only safe characters, return as-is
+    # Safe characters: alphanumeric, dash, underscore, dot, forward slash, equals, plus
+    if ($arg =~ /^[-\w.\/=+]+\z/) {
+        return $arg;
+    }
+    # Otherwise, use single-quote escaping (replace ' with '\'' )
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
 # GNU as indicator, as opposed to $gas, which indicates acceptable
 # syntax
 my $gnuas=0;
 
 if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
-				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
+				  my $quoted_cc = shell_quote($ENV{CC});
+				  $prefix=`echo __USER_LABEL_PREFIX__ | $quoted_cc -E -P -`;
 				  $prefix =~ s|\R$||; # Better chomp
 				}
 elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
@@ -105,20 +121,23 @@ elsif (!$gas)
     $decor="\$L\$";
 }
 # Find out if we're using GNU as
-elsif (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+elsif (defined($ENV{CC})) {
+    my $quoted_cc = shell_quote($ENV{CC});
+    if (`$quoted_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/)
-{
-    $gnuas=1;
-}
-elsif (`$ENV{CC} --version 2>/dev/null`
+    {
+        $gnuas=1;
+    }
+    elsif (`$quoted_cc --version 2>/dev/null`
 		=~ /(clang .*|Intel.*oneAPI .*)/)
-{
-    $gnuas=1;
-}
-elsif (`$ENV{CC} -V 2>/dev/null`
+    {
+        $gnuas=1;
+    }
+    elsif (`$quoted_cc -V 2>/dev/null`
 		=~ /nvc .*/)
-{
-    $gnuas=1;
+    {
+        $gnuas=1;
+    }
 }
 
 my $cet_property;
