@@ -339,16 +339,17 @@ void ossl_sm4_encrypt(const uint8_t *in, uint8_t *out, const SM4_KEY *ks)
     uint32_t B3 = load_u32_be(in, 3);
 
     /*
-     * Uses byte-wise sbox in the first and last rounds to provide some
-     * protection from cache based side channels.
+     * Uses byte-wise sbox in all rounds to provide protection from
+     * cache based side channels. The previous T-table approach used
+     * secret-dependent lookups that could leak via cache timing.
      */
     SM4_RNDS( 0,  1,  2,  3, SM4_T_slow);
-    SM4_RNDS( 4,  5,  6,  7, SM4_T);
-    SM4_RNDS( 8,  9, 10, 11, SM4_T);
-    SM4_RNDS(12, 13, 14, 15, SM4_T);
-    SM4_RNDS(16, 17, 18, 19, SM4_T);
-    SM4_RNDS(20, 21, 22, 23, SM4_T);
-    SM4_RNDS(24, 25, 26, 27, SM4_T);
+    SM4_RNDS( 4,  5,  6,  7, SM4_T_slow);
+    SM4_RNDS( 8,  9, 10, 11, SM4_T_slow);
+    SM4_RNDS(12, 13, 14, 15, SM4_T_slow);
+    SM4_RNDS(16, 17, 18, 19, SM4_T_slow);
+    SM4_RNDS(20, 21, 22, 23, SM4_T_slow);
+    SM4_RNDS(24, 25, 26, 27, SM4_T_slow);
     SM4_RNDS(28, 29, 30, 31, SM4_T_slow);
 
     store_u32_be(B3, out);
@@ -364,13 +365,18 @@ void ossl_sm4_decrypt(const uint8_t *in, uint8_t *out, const SM4_KEY *ks)
     uint32_t B2 = load_u32_be(in, 2);
     uint32_t B3 = load_u32_be(in, 3);
 
+    /*
+     * Uses byte-wise sbox in all rounds to provide protection from
+     * cache based side channels. The previous T-table approach used
+     * secret-dependent lookups that could leak via cache timing.
+     */
     SM4_RNDS(31, 30, 29, 28, SM4_T_slow);
-    SM4_RNDS(27, 26, 25, 24, SM4_T);
-    SM4_RNDS(23, 22, 21, 20, SM4_T);
-    SM4_RNDS(19, 18, 17, 16, SM4_T);
-    SM4_RNDS(15, 14, 13, 12, SM4_T);
-    SM4_RNDS(11, 10,  9,  8, SM4_T);
-    SM4_RNDS( 7,  6,  5,  4, SM4_T);
+    SM4_RNDS(27, 26, 25, 24, SM4_T_slow);
+    SM4_RNDS(23, 22, 21, 20, SM4_T_slow);
+    SM4_RNDS(19, 18, 17, 16, SM4_T_slow);
+    SM4_RNDS(15, 14, 13, 12, SM4_T_slow);
+    SM4_RNDS(11, 10,  9,  8, SM4_T_slow);
+    SM4_RNDS( 7,  6,  5,  4, SM4_T_slow);
     SM4_RNDS( 3,  2,  1,  0, SM4_T_slow);
 
     store_u32_be(B3, out);
