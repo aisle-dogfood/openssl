@@ -1006,8 +1006,12 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 .L128_enc_tail:								@ TAIL
 
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes left
+	b.lt	.L128_enc_tail_partial_load				@ handle partial block load
+
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - load plaintext
 
+.L128_enc_tail_resume:
 	mov	$t1.16b, $rk10
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
@@ -1268,6 +1272,28 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-1 block - low
+
+.L128_enc_tail_partial_load:						@ less than 16 bytes to load
+	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ adjust counter
+	movi	$ctr_t0.16b, #0						@ zero the temp register
+	tbz	$main_end_input_ptr, #3, .L128_ptload_4		@ check if at least 8 bytes
+	ldr	$ctr_t0d, [$input_ptr], #8				@ load 8 bytes
+	ext	$ctr_t0.16b, $ctr_t0.16b, $ctr_t0.16b, #8		@ shift to upper half
+.L128_ptload_4:
+	tbz	$main_end_input_ptr, #2, .L128_ptload_2		@ check if at least 4 bytes
+	ld1	{$ctr_t0.s}[2], [$input_ptr], #4			@ load 4 bytes
+.L128_ptload_2:
+	tbz	$main_end_input_ptr, #1, .L128_ptload_1		@ check if at least 2 bytes
+	ld1	{$ctr_t0.h}[6], [$input_ptr], #2			@ load 2 bytes
+.L128_ptload_1:
+	tbz	$main_end_input_ptr, #0, .L128_ptload_done	@ check if at least 1 byte
+	ld1	{$ctr_t0.b}[14], [$input_ptr], #1			@ load 1 byte
+.L128_ptload_done:
+	rev64	$ctr_t0.16b, $ctr_t0.16b				@ reverse to correct byte order
+	mov	$t1.16b, $rk10
+	eor3	$res1b, $ctr_t0b, $ctr0b, $t1.16b			@ AES block - result
+	b	.L128_enc_blocks_less_than_1				@ jump to partial block handler
+
 .L128_enc_blocks_less_than_1:						@ blocks left <= 1
 
 	rev32	$rtmp_ctr.16b, $rtmp_ctr.16b
@@ -2095,14 +2121,18 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 
 .L128_dec_tail:								@ TAIL
 
-	mov	$t1.16b, $rk10
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes left
+	b.lt	.L128_dec_tail_partial_load				@ handle partial block load
 
+	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
+
+.L128_dec_tail_resume:
+	mov	$t1.16b, $rk10
 	cmp	$main_end_input_ptr, #112
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
 	ext     $h8.16b, $h8.16b, $h8.16b, #8
-	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
 
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
@@ -2356,6 +2386,28 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-1 block - low
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
+
+.L128_dec_tail_partial_load:						@ less than 16 bytes to load
+	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ adjust counter
+	movi	$res1.16b, #0						@ zero the temp register
+	tbz	$main_end_input_ptr, #3, .L128_dec_ptload_4	@ check if at least 8 bytes
+	ldr	$res1d, [$input_ptr], #8				@ load 8 bytes
+	ext	$res1.16b, $res1.16b, $res1.16b, #8			@ shift to upper half
+.L128_dec_ptload_4:
+	tbz	$main_end_input_ptr, #2, .L128_dec_ptload_2	@ check if at least 4 bytes
+	ld1	{$res1.s}[2], [$input_ptr], #4				@ load 4 bytes
+.L128_dec_ptload_2:
+	tbz	$main_end_input_ptr, #1, .L128_dec_ptload_1	@ check if at least 2 bytes
+	ld1	{$res1.h}[6], [$input_ptr], #2				@ load 2 bytes
+.L128_dec_ptload_1:
+	tbz	$main_end_input_ptr, #0, .L128_dec_ptload_done	@ check if at least 1 byte
+	ld1	{$res1.b}[14], [$input_ptr], #1				@ load 1 byte
+.L128_dec_ptload_done:
+	rev64	$res1.16b, $res1.16b					@ reverse to correct byte order
+	mov	$t1.16b, $rk10
+	eor3	$res4b, $res1b, $ctr0b, $t1.16b				@ AES block - result
+	b	.L128_dec_blocks_less_than_1				@ jump to partial block handler
+
 .L128_dec_blocks_less_than_1:						@ blocks left <= 1
 
 	and	$bit_length, $bit_length, #127				@ bit_length %= 128
@@ -3321,11 +3373,15 @@ unroll8_eor3_aes_gcm_enc_192_kernel:
 
 .L192_enc_tail:								@ TAIL
 
+	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes left
+	b.lt	.L192_enc_tail_partial_load				@ handle partial block load
+
+	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - load plaintext
+
+.L192_enc_tail_resume:
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
         ext     $h5.16b, $h5.16b, $h5.16b, #8
-	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
-
-	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - l3ad plaintext
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
         ext     $h8.16b, $h8.16b, $h8.16b, #8
@@ -3582,6 +3638,28 @@ unroll8_eor3_aes_gcm_enc_192_kernel:
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-1 block - high
+
+.L192_enc_tail_partial_load:						@ less than 16 bytes to load
+	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ adjust counter
+	movi	$ctr_t0.16b, #0						@ zero the temp register
+	tbz	$main_end_input_ptr, #3, .L192_ptload_4		@ check if at least 8 bytes
+	ldr	$ctr_t0d, [$input_ptr], #8				@ load 8 bytes
+	ext	$ctr_t0.16b, $ctr_t0.16b, $ctr_t0.16b, #8		@ shift to upper half
+.L192_ptload_4:
+	tbz	$main_end_input_ptr, #2, .L192_ptload_2		@ check if at least 4 bytes
+	ld1	{$ctr_t0.s}[2], [$input_ptr], #4			@ load 4 bytes
+.L192_ptload_2:
+	tbz	$main_end_input_ptr, #1, .L192_ptload_1		@ check if at least 2 bytes
+	ld1	{$ctr_t0.h}[6], [$input_ptr], #2			@ load 2 bytes
+.L192_ptload_1:
+	tbz	$main_end_input_ptr, #0, .L192_ptload_done	@ check if at least 1 byte
+	ld1	{$ctr_t0.b}[14], [$input_ptr], #1			@ load 1 byte
+.L192_ptload_done:
+	rev64	$ctr_t0.16b, $ctr_t0.16b				@ reverse to correct byte order
+	mov	$t1.16b, $rk12
+	eor3	$res1b, $ctr_t0b, $ctr0b, $t1.16b			@ AES block - result
+	b	.L192_enc_blocks_less_than_1				@ jump to partial block handler
+
 .L192_enc_blocks_less_than_1:						@ blocks left <= 1
 
 	mvn	$temp0_x, xzr						@ temp0_x = 0xffffffffffffffff
@@ -4482,10 +4560,14 @@ unroll8_eor3_aes_gcm_dec_192_kernel:
 .L192_dec_tail:								@ TAIL
 
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes left
+	b.lt	.L192_dec_tail_partial_load				@ handle partial block load
 
+	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
+
+.L192_dec_tail_resume:
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
         ext     $h5.16b, $h5.16b, $h5.16b, #8
-	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
         ext     $h8.16b, $h8.16b, $h8.16b, #8
@@ -4736,6 +4818,28 @@ unroll8_eor3_aes_gcm_dec_192_kernel:
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-1 block - high
+
+.L192_dec_tail_partial_load:						@ less than 16 bytes to load
+	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ adjust counter
+	movi	$res1.16b, #0						@ zero the temp register
+	tbz	$main_end_input_ptr, #3, .L192_dec_ptload_4	@ check if at least 8 bytes
+	ldr	$res1d, [$input_ptr], #8				@ load 8 bytes
+	ext	$res1.16b, $res1.16b, $res1.16b, #8			@ shift to upper half
+.L192_dec_ptload_4:
+	tbz	$main_end_input_ptr, #2, .L192_dec_ptload_2	@ check if at least 4 bytes
+	ld1	{$res1.s}[2], [$input_ptr], #4				@ load 4 bytes
+.L192_dec_ptload_2:
+	tbz	$main_end_input_ptr, #1, .L192_dec_ptload_1	@ check if at least 2 bytes
+	ld1	{$res1.h}[6], [$input_ptr], #2				@ load 2 bytes
+.L192_dec_ptload_1:
+	tbz	$main_end_input_ptr, #0, .L192_dec_ptload_done	@ check if at least 1 byte
+	ld1	{$res1.b}[14], [$input_ptr], #1				@ load 1 byte
+.L192_dec_ptload_done:
+	rev64	$res1.16b, $res1.16b					@ reverse to correct byte order
+	mov	$t1.16b, $rk12
+	eor3	$res4b, $res1b, $ctr0b, $t1.16b				@ AES block - result
+	b	.L192_dec_blocks_less_than_1				@ jump to partial block handler
+
 .L192_dec_blocks_less_than_1:						@ blocks left <= 1
 
 	rev32	$rtmp_ctr.16b, $rtmp_ctr.16b
@@ -5768,11 +5872,15 @@ unroll8_eor3_aes_gcm_enc_256_kernel:
 	aese	$ctr6b, $rk13						@ AES block 8k+14 - round 13
 .L256_enc_tail:								@ TAIL
 
-	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8l | h8h
-        ext     $h8.16b, $h8.16b, $h8.16b, #8
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr		@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes left
+	b.lt	.L256_enc_tail_partial_load				@ handle partial block load
 
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - load plaintext
+
+.L256_enc_tail_resume:
+	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8l | h8h
+        ext     $h8.16b, $h8.16b, $h8.16b, #8
 
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
         ext     $h5.16b, $h5.16b, $h5.16b, #8
@@ -6030,6 +6138,28 @@ unroll8_eor3_aes_gcm_enc_256_kernel:
 	pmull2  $rk4v.1q, $rk4v.2d, $h12k.2d				@ GHASH final-1 block - mid
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
+
+.L256_enc_tail_partial_load:						@ less than 16 bytes to load
+	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ adjust counter
+	movi	$ctr_t0.16b, #0						@ zero the temp register
+	tbz	$main_end_input_ptr, #3, .L256_ptload_4		@ check if at least 8 bytes
+	ldr	$ctr_t0d, [$input_ptr], #8				@ load 8 bytes
+	ext	$ctr_t0.16b, $ctr_t0.16b, $ctr_t0.16b, #8		@ shift to upper half
+.L256_ptload_4:
+	tbz	$main_end_input_ptr, #2, .L256_ptload_2		@ check if at least 4 bytes
+	ld1	{$ctr_t0.s}[2], [$input_ptr], #4			@ load 4 bytes
+.L256_ptload_2:
+	tbz	$main_end_input_ptr, #1, .L256_ptload_1		@ check if at least 2 bytes
+	ld1	{$ctr_t0.h}[6], [$input_ptr], #2			@ load 2 bytes
+.L256_ptload_1:
+	tbz	$main_end_input_ptr, #0, .L256_ptload_done	@ check if at least 1 byte
+	ld1	{$ctr_t0.b}[14], [$input_ptr], #1			@ load 1 byte
+.L256_ptload_done:
+	rev64	$ctr_t0.16b, $ctr_t0.16b				@ reverse to correct byte order
+	mov	$t1.16b, $rk14
+	eor3	$res1b, $ctr_t0b, $ctr0b, $t1.16b			@ AES block - result
+	b	.L256_enc_blocks_less_than_1				@ jump to partial block handler
+
 .L256_enc_blocks_less_than_1:						@ blocks left <= 1
 
 	and	$bit_length, $bit_length, #127				@ bit_length %= 128
@@ -6999,11 +7129,15 @@ unroll8_eor3_aes_gcm_dec_256_kernel:
 	aese	$ctr0b, $rk13						@ AES block 8k+8 - round 13
 .L256_dec_tail:								@ TAIL
 
-	ext	$t0.16b, $acc_lb, $acc_lb, #8				@ prepare final partial tag
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr		@ main_end_input_ptr is number of bytes left to process
-	cmp	$main_end_input_ptr, #112
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes left
+	b.lt	.L256_dec_tail_partial_load				@ handle partial block load
 
 	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
+
+.L256_dec_tail_resume:
+	ext	$t0.16b, $acc_lb, $acc_lb, #8				@ prepare final partial tag
+	cmp	$main_end_input_ptr, #112
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
         ext     $h8.16b, $h8.16b, $h8.16b, #8
@@ -7254,6 +7388,28 @@ unroll8_eor3_aes_gcm_dec_256_kernel:
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-1 block - high
 
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-1 block - mid
+
+.L256_dec_tail_partial_load:						@ less than 16 bytes to load
+	sub	$rtmp_ctr.4s, $rtmp_ctr.4s, $rctr_inc.4s		@ adjust counter
+	movi	$res1.16b, #0						@ zero the temp register
+	tbz	$main_end_input_ptr, #3, .L256_dec_ptload_4	@ check if at least 8 bytes
+	ldr	$res1d, [$input_ptr], #8				@ load 8 bytes
+	ext	$res1.16b, $res1.16b, $res1.16b, #8			@ shift to upper half
+.L256_dec_ptload_4:
+	tbz	$main_end_input_ptr, #2, .L256_dec_ptload_2	@ check if at least 4 bytes
+	ld1	{$res1.s}[2], [$input_ptr], #4				@ load 4 bytes
+.L256_dec_ptload_2:
+	tbz	$main_end_input_ptr, #1, .L256_dec_ptload_1	@ check if at least 2 bytes
+	ld1	{$res1.h}[6], [$input_ptr], #2				@ load 2 bytes
+.L256_dec_ptload_1:
+	tbz	$main_end_input_ptr, #0, .L256_dec_ptload_done	@ check if at least 1 byte
+	ld1	{$res1.b}[14], [$input_ptr], #1				@ load 1 byte
+.L256_dec_ptload_done:
+	rev64	$res1.16b, $res1.16b					@ reverse to correct byte order
+	mov	$t1.16b, $rk14
+	eor3	$res4b, $res1b, $ctr0b, $t1.16b				@ AES block - result
+	b	.L256_dec_blocks_less_than_1				@ jump to partial block handler
+
 .L256_dec_blocks_less_than_1:						@ blocks left <= 1
 
 	ld1	{ $rk0}, [$output_ptr]					@ load existing bytes where the possibly partial last block is to be stored
