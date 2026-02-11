@@ -15,6 +15,7 @@
 
 #include <stdio.h>
 #include "internal/cryptlib.h"
+#include "internal/constant_time.h"
 #include "dh_local.h"
 #include "crypto/bn.h"
 #include "crypto/dh.h"
@@ -108,13 +109,16 @@ int ossl_dh_compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
 }
 
 /*-
- * NB: This function is inherently not constant time due to the
- * RFC 5246 (8.1.2) padding style that strips leading zero bytes.
+ * NB: This function implements constant-time unpadding to prevent
+ * timing side-channel attacks that could leak information about
+ * the number of leading zero bytes in the shared secret.
  */
 int DH_compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
 {
-    int ret = 0, i;
+    int ret = 0, i, j;
     volatile size_t npad = 0, mask = 1;
+    unsigned char byte_mask;
+    int original_ret;
 
     /* compute the key; ret is constant unless compute_key is external */
 #ifdef FIPS_MODULE
@@ -125,18 +129,35 @@ int DH_compute_key(unsigned char *key, const BIGNUM *pub_key, DH *dh)
     if (ret <= 0)
         return ret;
 
+    original_ret = ret;
+
     /* count leading zero bytes, yet still touch all bytes */
     for (i = 0; i < ret; i++) {
         mask &= !key[i];
         npad += mask;
     }
 
-    /* unpad key */
+    /* unpad key in constant time */
     ret -= npad;
-    /* key-dependent memory access, potentially leaking npad / ret */
-    memmove(key, key + npad, ret);
-    /* key-dependent memory access, potentially leaking npad / ret */
-    memset(key + ret, 0, npad);
+    
+    /* 
+     * constant-time memmove: copy bytes from key+npad to key
+     * We iterate through all destination positions and all possible source positions
+     * to ensure constant memory access patterns regardless of npad value
+     */
+    for (i = 0; i < ret; i++) {
+        unsigned char new_byte = 0;
+        for (j = 0; j < original_ret; j++) {
+            byte_mask = constant_time_eq(j, i + npad);
+            new_byte |= constant_time_select_8(byte_mask, key[j], 0);
+        }
+        key[i] = new_byte;
+    }
+    
+    /* constant-time memset: clear the trailing bytes */
+    for (i = ret; i < original_ret; i++) {
+        key[i] = 0;
+    }
 
     return ret;
 }
