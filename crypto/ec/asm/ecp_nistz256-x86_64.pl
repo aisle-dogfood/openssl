@@ -56,25 +56,38 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+# Sanitize environment variables to prevent shell command injection
+sub sanitize_env {
+	my $var = shift;
+	return undef unless defined $var;
+	# Only allow safe characters: alphanumeric, dash, underscore, dot, slash, plus, colon
+	# This covers typical compiler/assembler paths and names
+	return undef if $var =~ /[^a-zA-Z0-9_\-\.\/\+\:]/;
+	return $var;
+}
+
+my $cc = sanitize_env($ENV{CC});
+my $asm = sanitize_env($ENV{ASM});
+
+if (defined $cc && `$cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.19) + ($1>=2.22);
 	$addx = ($1>=2.23);
 }
 
-if (!$addx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+if (!$addx && $win64 && ($flavour =~ /nasm/ || (defined $asm && $asm =~ /nasm/)) &&
 	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.09) + ($1>=2.10);
 	$addx = ($1>=2.10);
 }
 
-if (!$addx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+if (!$addx && $win64 && ($flavour =~ /masm/ || (defined $asm && $asm =~ /ml64/)) &&
 	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
 	$avx = ($1>=10) + ($1>=11);
 	$addx = ($1>=12);
 }
 
-if (!$addx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
+if (!$addx && defined $cc && `$cc -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
 	my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
 	$avx = ($ver>=3.0) + ($ver>=3.01);
 	$addx = ($ver>=3.03);

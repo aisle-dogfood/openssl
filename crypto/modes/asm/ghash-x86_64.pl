@@ -102,22 +102,35 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+# Sanitize environment variables to prevent shell command injection
+sub sanitize_env {
+	my $var = shift;
+	return undef unless defined $var;
+	# Only allow safe characters: alphanumeric, dash, underscore, dot, slash, plus, colon
+	# This covers typical compiler/assembler paths and names
+	return undef if $var =~ /[^a-zA-Z0-9_\-\.\/\+\:]/;
+	return $var;
+}
+
+my $cc = sanitize_env($ENV{CC});
+my $asm = sanitize_env($ENV{ASM});
+
+if (defined $cc && `$cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.20) + ($1>=2.22);
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+if (!$avx && $win64 && ($flavour =~ /nasm/ || (defined $asm && $asm =~ /nasm/)) &&
 	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.09) + ($1>=2.10);
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+if (!$avx && $win64 && ($flavour =~ /masm/ || (defined $asm && $asm =~ /ml64/)) &&
 	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
 	$avx = ($1>=10) + ($1>=11);
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+if (!$avx && defined $cc && `$cc -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
 	$avx = ($2>=3.0) + ($2>3.0);
 }
 
