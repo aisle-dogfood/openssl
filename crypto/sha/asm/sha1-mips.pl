@@ -79,7 +79,18 @@ if ($flavour =~ /64|n32/i) {
 #
 ######################################################################
 
-$big_endian=(`echo MIPSEB | $ENV{CC} -E -`=~/MIPSEB/)?0:1 if ($ENV{CC});
+# Sanitize environment variables to prevent shell command injection
+sub sanitize_env {
+	my $var = shift;
+	return undef unless defined $var;
+	# Only allow safe characters: alphanumeric, dash, underscore, dot, slash, plus, colon, space
+	# This covers typical compiler/assembler paths and names
+	return undef if $var =~ /[^a-zA-Z0-9_\-\.\/\+\:\s]/;
+	return $var;
+}
+
+my $cc = sanitize_env($ENV{CC});
+$big_endian=(defined $cc && `echo MIPSEB | $cc -E -`=~/MIPSEB/)?0:1 if (defined $cc);
 
 $output and open STDOUT,">$output";
 
