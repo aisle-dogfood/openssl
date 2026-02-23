@@ -7,6 +7,12 @@
  * https://www.openssl.org/source/license.html
  */
 
+/*
+ * SECURITY WARNING: DES implementations use secret-dependent table lookups
+ * vulnerable to cache timing side-channel attacks (CWE-208). DES is legacy
+ * and should NOT be used in security-sensitive contexts. Use AES or ChaCha20.
+ */
+
 #ifndef OSSL_CRYPTO_DES_LOCAL_H
 # define OSSL_CRYPTO_DES_LOCAL_H
 

@@ -25,6 +25,14 @@
 !		50%  faster than cc-5.2 -xarch=v9 -xO5
 !		100% faster than gcc-3.2.1 -m64 -mcpu=ultrasparc -O5
 !
+!  SECURITY WARNING: This DES implementation uses table-based S-box lookups
+!  (DES_SPtrans) that are indexed by values derived from both secret keys and
+!  data. These secret-dependent table accesses may leak information through
+!  cache timing side-channels (CWE-208). DES is a legacy algorithm and should
+!  NOT be used in security-sensitive contexts. This implementation is confined
+!  to the Legacy provider and is disabled by default in FIPS mode.
+!  Use constant-time algorithms (AES, ChaCha20) for sensitive applications.
+!
 
 .ident "des_enc.m4 2.1"
 .file  "des_enc-sparc.S"
@@ -1827,6 +1835,10 @@ DES_ede3_cbc_encrypt:
 .align	64
 DES_SPtrans:
 .PIC.DES_SPtrans:
+	! SECURITY WARNING: Secret-dependent table lookups below create cache
+	! timing side-channel vulnerability. Indexes are derived from XOR of
+	! key schedule and data (see lines 283, 296 in rounds_macro).
+	! Do NOT use DES in contexts where timing attacks are a concern.
 	! nibble 0
 	.word	0x02080800, 0x00080000, 0x02000002, 0x02080802
 	.word	0x02000000, 0x00080802, 0x00080002, 0x02000002

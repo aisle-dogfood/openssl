@@ -8,6 +8,13 @@
 
 # The inner loop instruction sequence and the IP/FP modifications are from
 # Svend Olaf Mikkelsen.
+#
+# SECURITY WARNING: This DES implementation uses table-based S-box lookups
+# (DES_SPtrans) that are indexed by values derived from both secret keys and
+# data. These secret-dependent table accesses may leak information through
+# cache timing side-channels (CWE-208). DES is a legacy algorithm and should
+# NOT be used in security-sensitive contexts. This implementation is confined
+# to the Legacy provider. Use constant-time algorithms (AES, ChaCha20) instead.
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
