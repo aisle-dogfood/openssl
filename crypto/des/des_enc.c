@@ -10,6 +10,13 @@
 /*
  * DES low level APIs are deprecated for public use, but still ok for internal
  * use.
+ *
+ * SECURITY WARNING: This DES implementation uses table-based S-box lookups
+ * (DES_SPtrans) that are indexed by values derived from both secret keys and
+ * data. These secret-dependent table accesses may leak information through
+ * cache timing side-channels (CWE-208). DES is a legacy algorithm and should
+ * NOT be used in security-sensitive contexts. Use constant-time algorithms
+ * (AES, ChaCha20) for sensitive applications.
  */
 #include "internal/deprecated.h"
 

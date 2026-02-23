@@ -7,6 +7,13 @@
  * https://www.openssl.org/source/license.html
  */
 
+/*
+ * SECURITY WARNING: These S-box tables are accessed using indexes derived
+ * from secret key material and data, creating cache timing side-channel
+ * vulnerabilities (CWE-208). This is an inherent property of table-based
+ * DES implementations. Do NOT use DES in security-sensitive contexts where
+ * timing attacks are a concern. Use constant-time algorithms instead.
+ */
 const DES_LONG DES_SPtrans[8][64] = {
     {
         /* nibble 0 */

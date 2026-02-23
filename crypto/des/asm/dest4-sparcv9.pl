@@ -16,6 +16,10 @@
 ######################################################################
 # DES for SPARC T4.
 #
+# SECURITY WARNING: DES is a legacy algorithm with known vulnerabilities.
+# This implementation should only be used for compatibility. Use modern
+# algorithms (AES, ChaCha20) for security-sensitive applications.
+#
 # As with other hardware-assisted ciphers CBC encrypt results [for
 # aligned data] are virtually identical to critical path lengths:
 #

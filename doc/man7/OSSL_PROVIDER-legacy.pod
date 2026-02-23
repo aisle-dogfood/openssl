@@ -69,6 +69,9 @@ Not all of these symmetric cipher algorithms are enabled by default.
 The algorithm names are: DES_ECB, DES_CBC, DES_OFB, DES_CFB, DES_CFB1, DES_CFB8
 and DESX_CBC.
 
+B<Security Warning>: DES uses secret-dependent table lookups vulnerable to
+cache timing side-channel attacks. Not recommended for security-sensitive use.
+
 =item IDEA, see L<EVP_CIPHER-IDEA(7)>
 
 =item RC2, see L<EVP_CIPHER-RC2(7)>

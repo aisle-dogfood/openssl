@@ -156,6 +156,14 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_RC5_CFB, ossl_rc5128cfb64_functions),
 #endif /* OPENSSL_NO_RC5 */
 #ifndef OPENSSL_NO_DES
+    /*
+     * SECURITY WARNING: DES implementations use secret-dependent table lookups
+     * (S-box accesses) that are vulnerable to cache timing side-channel attacks
+     * (CWE-208). This is an inherent property of table-based DES and cannot be
+     * easily mitigated without performance penalties. DES is confined to the
+     * legacy provider and should NOT be used in security-sensitive contexts.
+     * Use constant-time algorithms (AES, ChaCha20) instead.
+     */
     ALG(PROV_NAMES_DESX_CBC, ossl_tdes_desx_cbc_functions),
 #ifdef OPENSSL_ENABLE_WEAK_DES_CIPHERS
     /* Single DES ciphers are disabled by default due to inadequate encryption strength */
