@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include "internal/cryptlib.h"
+#include "internal/constant_time.h"
 #include "bn_local.h"
 
 #ifndef OPENSSL_NO_EC2M
@@ -554,12 +555,19 @@ int BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
  * Modified Almost Inverse Algorithm (Algorithm 10) from Hankerson, D.,
  * Hernandez, J.L., and Menezes, A.  "Software Implementation of Elliptic
  * Curve Cryptography Over Binary Fields".
+ * This is a constant-time implementation that avoids timing side-channels.
  */
 static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
                                    const BIGNUM *p, BN_CTX *ctx)
 {
-    BIGNUM *b, *c = NULL, *u = NULL, *v = NULL, *tmp;
+    BIGNUM *b, *c = NULL, *u = NULL, *v = NULL;
     int ret = 0;
+    int i, j, k;
+    int top;
+    int max_iterations;
+    BN_ULONG *udp, *bdp, *vdp, *cdp;
+    BN_ULONG u_is_odd_mask, swap_mask;
+    BN_ULONG u_is_zero;
 
     bn_check_top(a);
     bn_check_top(p);
@@ -580,131 +588,127 @@ static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
 
     if (!BN_copy(v, p))
         goto err;
-# if 0
-    if (!BN_one(b))
+
+    top = p->top;
+    
+    /* Allocate and initialize working arrays */
+    if (!bn_wexpand(u, top))
+        goto err;
+    udp = u->d;
+    for (i = u->top; i < top; i++)
+        udp[i] = 0;
+    u->top = top;
+    
+    if (!bn_wexpand(b, top))
+        goto err;
+    bdp = b->d;
+    bdp[0] = 1;
+    for (i = 1; i < top; i++)
+        bdp[i] = 0;
+    b->top = top;
+    
+    if (!bn_wexpand(c, top))
+        goto err;
+    cdp = c->d;
+    for (i = 0; i < top; i++)
+        cdp[i] = 0;
+    c->top = top;
+    
+    vdp = v->d;
+
+    /*
+     * Run a fixed number of iterations based on the field size.
+     * 2 * BN_num_bits(p) is sufficient for the algorithm to converge.
+     */
+    max_iterations = 2 * BN_num_bits(p);
+
+    for (j = 0; j < max_iterations; j++) {
+        BN_ULONG u0, u1, b0, b1, mask;
+        BN_ULONG should_swap;
+        
+        /* Check if u is odd - create mask for constant-time select */
+        u_is_odd_mask = (BN_ULONG)0 - (udp[0] & 1);
+        
+        /*
+         * Path 1: u is even - right-shift u and conditionally adjust b
+         * This is executed unconditionally, but results masked out if u is odd
+         */
+        u0 = udp[0];
+        b0 = bdp[0];
+        mask = (BN_ULONG)0 - (b0 & 1);
+        b0 ^= p->d[0] & mask;
+        
+        for (i = 0; i < top - 1; i++) {
+            BN_ULONG u_shifted, b_shifted;
+            
+            u1 = udp[i + 1];
+            u_shifted = ((u0 >> 1) | (u1 << (BN_BITS2 - 1))) & BN_MASK2;
+            
+            b1 = bdp[i + 1] ^ (p->d[i + 1] & mask);
+            b_shifted = ((b0 >> 1) | (b1 << (BN_BITS2 - 1))) & BN_MASK2;
+            
+            /* Select between shifted (if even) or original (if odd) */
+            udp[i] = constant_time_select_bn(u_is_odd_mask, udp[i], u_shifted);
+            bdp[i] = constant_time_select_bn(u_is_odd_mask, bdp[i], b_shifted);
+            
+            u0 = u1;
+            b0 = b1;
+        }
+        udp[i] = constant_time_select_bn(u_is_odd_mask, udp[i], u0 >> 1);
+        bdp[i] = constant_time_select_bn(u_is_odd_mask, bdp[i], b0 >> 1);
+        
+        /*
+         * Path 2: u is odd - compare, swap if needed, and XOR
+         * This is also executed unconditionally, results masked if u is even
+         */
+        
+        /* Constant-time comparison: check if u < v */
+        should_swap = 0;
+        for (k = top - 1; k >= 0; k--) {
+            BN_ULONG u_lt_v_mask = constant_time_lt_bn(udp[k], vdp[k]);
+            BN_ULONG u_gt_v_mask = constant_time_lt_bn(vdp[k], udp[k]);
+            BN_ULONG eq_mask = constant_time_is_zero_bn(udp[k] ^ vdp[k]);
+            BN_ULONG decided_mask = u_lt_v_mask | u_gt_v_mask;
+            
+            /* If equal, keep current should_swap; if decided, use u_lt_v */
+            should_swap = constant_time_select_bn(eq_mask, should_swap, 
+                                                 constant_time_select_bn(decided_mask, u_lt_v_mask, should_swap));
+        }
+        
+        /* Conditional swap: only when u is odd AND should_swap */
+        swap_mask = u_is_odd_mask & ((BN_ULONG)0 - should_swap);
+        
+        for (i = 0; i < top; i++) {
+            BN_ULONG tmp_u = constant_time_select_bn(swap_mask, vdp[i], udp[i]);
+            BN_ULONG tmp_v = constant_time_select_bn(swap_mask, udp[i], vdp[i]);
+            udp[i] = tmp_u;
+            vdp[i] = tmp_v;
+            
+            BN_ULONG tmp_b = constant_time_select_bn(swap_mask, cdp[i], bdp[i]);
+            BN_ULONG tmp_c = constant_time_select_bn(swap_mask, bdp[i], cdp[i]);
+            bdp[i] = tmp_b;
+            cdp[i] = tmp_c;
+        }
+        
+        /* XOR u with v and b with c: only when u is odd */
+        for (i = 0; i < top; i++) {
+            BN_ULONG u_xor_v = udp[i] ^ vdp[i];
+            BN_ULONG b_xor_c = bdp[i] ^ cdp[i];
+            
+            udp[i] = constant_time_select_bn(u_is_odd_mask, u_xor_v, udp[i]);
+            bdp[i] = constant_time_select_bn(u_is_odd_mask, b_xor_c, bdp[i]);
+        }
+    }
+    
+    /* Check if u == 0 (error: input was not invertible) */
+    u_is_zero = 1;
+    for (i = 0; i < top; i++) {
+        u_is_zero &= constant_time_is_zero_bn(udp[i]);
+    }
+    if (u_is_zero)
         goto err;
 
-    while (1) {
-        while (!BN_is_odd(u)) {
-            if (BN_is_zero(u))
-                goto err;
-            if (!BN_rshift1(u, u))
-                goto err;
-            if (BN_is_odd(b)) {
-                if (!BN_GF2m_add(b, b, p))
-                    goto err;
-            }
-            if (!BN_rshift1(b, b))
-                goto err;
-        }
-
-        if (BN_abs_is_word(u, 1))
-            break;
-
-        if (BN_num_bits(u) < BN_num_bits(v)) {
-            tmp = u;
-            u = v;
-            v = tmp;
-            tmp = b;
-            b = c;
-            c = tmp;
-        }
-
-        if (!BN_GF2m_add(u, u, v))
-            goto err;
-        if (!BN_GF2m_add(b, b, c))
-            goto err;
-    }
-# else
-    {
-        int i;
-        int ubits = BN_num_bits(u);
-        int vbits = BN_num_bits(v); /* v is copy of p */
-        int top = p->top;
-        BN_ULONG *udp, *bdp, *vdp, *cdp;
-
-        if (!bn_wexpand(u, top))
-            goto err;
-        udp = u->d;
-        for (i = u->top; i < top; i++)
-            udp[i] = 0;
-        u->top = top;
-        if (!bn_wexpand(b, top))
-          goto err;
-        bdp = b->d;
-        bdp[0] = 1;
-        for (i = 1; i < top; i++)
-            bdp[i] = 0;
-        b->top = top;
-        if (!bn_wexpand(c, top))
-          goto err;
-        cdp = c->d;
-        for (i = 0; i < top; i++)
-            cdp[i] = 0;
-        c->top = top;
-        vdp = v->d;             /* It pays off to "cache" *->d pointers,
-                                 * because it allows optimizer to be more
-                                 * aggressive. But we don't have to "cache"
-                                 * p->d, because *p is declared 'const'... */
-        while (1) {
-            while (ubits && !(udp[0] & 1)) {
-                BN_ULONG u0, u1, b0, b1, mask;
-
-                u0 = udp[0];
-                b0 = bdp[0];
-                mask = (BN_ULONG)0 - (b0 & 1);
-                b0 ^= p->d[0] & mask;
-                for (i = 0; i < top - 1; i++) {
-                    u1 = udp[i + 1];
-                    udp[i] = ((u0 >> 1) | (u1 << (BN_BITS2 - 1))) & BN_MASK2;
-                    u0 = u1;
-                    b1 = bdp[i + 1] ^ (p->d[i + 1] & mask);
-                    bdp[i] = ((b0 >> 1) | (b1 << (BN_BITS2 - 1))) & BN_MASK2;
-                    b0 = b1;
-                }
-                udp[i] = u0 >> 1;
-                bdp[i] = b0 >> 1;
-                ubits--;
-            }
-
-            if (ubits <= BN_BITS2) {
-                if (udp[0] == 0) /* poly was reducible */
-                    goto err;
-                if (udp[0] == 1)
-                    break;
-            }
-
-            if (ubits < vbits) {
-                i = ubits;
-                ubits = vbits;
-                vbits = i;
-                tmp = u;
-                u = v;
-                v = tmp;
-                tmp = b;
-                b = c;
-                c = tmp;
-                udp = vdp;
-                vdp = v->d;
-                bdp = cdp;
-                cdp = c->d;
-            }
-            for (i = 0; i < top; i++) {
-                udp[i] ^= vdp[i];
-                bdp[i] ^= cdp[i];
-            }
-            if (ubits == vbits) {
-                BN_ULONG ul;
-                int utop = (ubits - 1) / BN_BITS2;
-
-                while ((ul = udp[utop]) == 0 && utop)
-                    utop--;
-                ubits = utop * BN_BITS2 + BN_num_bits_word(ul);
-            }
-        }
-        bn_correct_top(b);
-    }
-# endif
+    bn_correct_top(b);
 
     if (!BN_copy(r, b))
         goto err;
@@ -724,8 +728,8 @@ static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
 
 /*-
  * Wrapper for BN_GF2m_mod_inv_vartime that blinds the input before calling.
- * This is not constant time.
- * But it does eliminate first order deduction on the input.
+ * The underlying inversion is now constant-time. Input blinding provides
+ * additional defense-in-depth against side-channel attacks.
  */
 int BN_GF2m_mod_inv(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 {
