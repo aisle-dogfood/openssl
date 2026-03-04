@@ -1505,6 +1505,17 @@ foreach (keys %useradd) {
 # At this point, we can forget everything about %user and %useradd,
 # because it's now all been merged into the corresponding $config entry
 
+# Validate CC, CXX, and CROSS_COMPILE to prevent command injection
+foreach my $var (qw(CC CXX CROSS_COMPILE)) {
+    if (defined $config{$var} && $config{$var} ne '') {
+        # Check for shell metacharacters that could enable command injection
+        if ($config{$var} =~ /[;\|&\$`<>()\{\}\[\]!]/) {
+            die "Error: $var contains shell metacharacters which are not allowed: $config{$var}\n" .
+                "Please ensure $var contains only safe characters (alphanumeric, _, -, /, ., and spaces).\n";
+        }
+    }
+}
+
 if ($config{prefix} && !$config{CROSS_COMPILE}) {
     die "Directory given with --prefix MUST be absolute\n"
         unless file_name_is_absolute($config{prefix});
@@ -1726,7 +1737,9 @@ if (!$disabled{asm} && !$predefined_C{__MACH__} && $^O ne 'VMS' && !$predefined_
         push @{$config{cflags}}, "-Wa,--noexecstack", "-Qunused-arguments";
     } else {
         my $cc = $config{CROSS_COMPILE}.$config{CC};
-        open(PIPE, "$cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
+        # Use shell quoting to prevent command injection
+        my $quoted_cc = shell_quote($cc);
+        open(PIPE, "$quoted_cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
         while(<PIPE>) {
             if (m/--noexecstack/) {
                 push @{$config{cflags}}, "-Wa,--noexecstack";
@@ -1836,13 +1849,15 @@ unless ($disabled{devcryptoeng}) {
 unless ($disabled{ktls}) {
     $config{ktls}="";
     my $cc = $config{CROSS_COMPILE}.$config{CC};
+    # Use shell quoting to prevent command injection
+    my $quoted_cc = shell_quote($cc);
     if ($target =~ m/^linux/) {
-        system("printf '#include <sys/types.h>\n#include <linux/tls.h>' | $cc -E - >/dev/null 2>&1");
+        system("printf '#include <sys/types.h>\\n#include <linux/tls.h>' | $quoted_cc -E - >/dev/null 2>&1");
         if ($? != 0) {
             disable('too-old-kernel', 'ktls');
         }
     } elsif ($target =~ m/^BSD/) {
-        system("printf '#include <sys/types.h>\n#include <sys/ktls.h>' | $cc -E - >/dev/null 2>&1");
+        system("printf '#include <sys/types.h>\\n#include <sys/ktls.h>' | $quoted_cc -E - >/dev/null 2>&1");
         if ($? != 0) {
             disable('too-old-freebsd', 'ktls');
         }
@@ -3387,6 +3402,16 @@ sub usage
         exit(1);
         }
 
+sub shell_quote {
+    my $arg = shift;
+    # For Unix-like systems, quote arguments for safe shell execution
+    # This prevents shell metacharacter interpretation
+    # Replace single quotes with '\'' and wrap in single quotes
+    # This is safe for POSIX shells (sh, bash, etc.)
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
 sub compiler_predefined {
     state %predefined;
     my $cc = shift;
@@ -3401,7 +3426,9 @@ sub compiler_predefined {
         $predefined{$cc} = {};
 
         # collect compiler pre-defines from gcc or gcc-alike...
-        open(PIPE, "$cc -dM -E -x c /dev/null 2>&1 |");
+        # Use shell quoting to prevent command injection
+        my $quoted_cc = shell_quote($cc);
+        open(PIPE, "$quoted_cc -dM -E -x c /dev/null 2>&1 |");
         while (my $l = <PIPE>) {
             $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
             $predefined{$cc}->{$1} = $2 // '';
