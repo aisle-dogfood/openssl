@@ -482,7 +482,7 @@ static CONF *generate_config_and_load(const char *prov_name,
     if (conf == NULL)
         goto end;
 
-    if (CONF_modules_load(conf, NULL, 0) <= 0)
+    if (CONF_modules_load(conf, NULL, CONF_MFLAGS_NO_DSO) <= 0)
         goto end;
     BIO_free(mem_bio);
     return conf;
