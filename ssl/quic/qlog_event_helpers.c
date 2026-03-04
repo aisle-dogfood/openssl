@@ -421,9 +421,7 @@ static int log_frame_actual(QLOG *qlog_instance, PACKET *pkt,
             QLOG_U64("sequence_number", f.seq_num);
             QLOG_U64("retire_prior_to", f.retire_prior_to);
             QLOG_CID("connection_id", &f.conn_id);
-            QLOG_BIN("stateless_reset_token",
-                     f.stateless_reset.token,
-                     sizeof(f.stateless_reset.token));
+            QLOG_STR("stateless_reset_token", "<redacted>");
         }
         break;
     case OSSL_QUIC_FRAME_TYPE_RETIRE_CONN_ID:
@@ -488,7 +486,8 @@ static int log_frame_actual(QLOG *qlog_instance, PACKET *pkt,
             QLOG_STR("frame_type", "new_token");
             QLOG_BEGIN("token");
                 QLOG_BEGIN("raw");
-                    QLOG_BIN("data", token, token_len);
+                    QLOG_STR("data", "<redacted>");
+                    QLOG_U64("length", token_len);
                 QLOG_END();
             QLOG_END();
         }
