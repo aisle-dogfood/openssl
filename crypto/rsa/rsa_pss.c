@@ -139,7 +139,7 @@ int ossl_rsa_verify_PKCS1_PSS_mgf1(RSA *rsa, const unsigned char *mHash,
     }
     if (!EVP_DigestFinal_ex(ctx, H_, NULL))
         goto err;
-    if (memcmp(H_, H, hLen)) {
+    if (CRYPTO_memcmp(H_, H, hLen)) {
         ERR_raise(ERR_LIB_RSA, RSA_R_BAD_SIGNATURE);
         ret = 0;
     } else {
