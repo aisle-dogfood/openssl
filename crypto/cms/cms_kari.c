@@ -244,9 +244,11 @@ static int cms_kek_cipher(unsigned char **pout, size_t *poutlen,
     if (!rv)
         OPENSSL_free(out);
     EVP_CIPHER_CTX_reset(kari->ctx);
-    /* FIXME: WHY IS kari->pctx freed here?  /RL */
-    EVP_PKEY_CTX_free(kari->pctx);
-    kari->pctx = NULL;
+    /*
+     * Do not free kari->pctx here; it is reused across multiple recipients
+     * in ossl_cms_RecipientInfo_kari_encrypt() and will be freed when the
+     * CMS_KeyAgreeRecipientInfo structure is destroyed.
+     */
     return rv;
 }
 
