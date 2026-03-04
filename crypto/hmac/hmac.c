@@ -17,10 +17,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include "internal/cryptlib.h"
+#include "internal/thread_once.h"
 #include <openssl/opensslconf.h>
 #include <openssl/hmac.h>
 #include <openssl/core_names.h>
 #include "hmac_local.h"
+
+/* Thread-local storage for HMAC static buffer */
+static CRYPTO_ONCE hmac_static_buf_init = CRYPTO_ONCE_STATIC_INIT;
+static CRYPTO_THREAD_LOCAL hmac_static_buf_key;
+
+static void hmac_static_buf_cleanup(void *buf)
+{
+    OPENSSL_free(buf);
+}
+
+DEFINE_RUN_ONCE_STATIC(hmac_init_static_buf)
+{
+    return CRYPTO_THREAD_init_local(&hmac_static_buf_key, hmac_static_buf_cleanup);
+}
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len,
                  const EVP_MD *md, ENGINE *impl)
@@ -249,18 +264,37 @@ unsigned char *HMAC(const EVP_MD *evp_md, const void *key, int key_len,
                     const unsigned char *data, size_t data_len,
                     unsigned char *md, unsigned int *md_len)
 {
-    static unsigned char static_md[EVP_MAX_MD_SIZE];
     int size = EVP_MD_get_size(evp_md);
     size_t temp_md_len = 0;
     unsigned char *ret = NULL;
+    unsigned char *output_buf = md;
 
-    if (size > 0) {
-        ret = EVP_Q_mac(NULL, "HMAC", NULL, EVP_MD_get0_name(evp_md), NULL,
-                        key, key_len, data, data_len,
-                        md == NULL ? static_md : md, size, &temp_md_len);
-        if (md_len != NULL)
-            *md_len = (unsigned int)temp_md_len;
+    if (size <= 0)
+        return NULL;
+
+    /* If md is NULL, use thread-local storage */
+    if (md == NULL) {
+        if (!RUN_ONCE(&hmac_static_buf_init, hmac_init_static_buf))
+            return NULL;
+
+        output_buf = CRYPTO_THREAD_get_local(&hmac_static_buf_key);
+        if (output_buf == NULL) {
+            output_buf = OPENSSL_malloc(EVP_MAX_MD_SIZE);
+            if (output_buf == NULL)
+                return NULL;
+            if (!CRYPTO_THREAD_set_local(&hmac_static_buf_key, output_buf)) {
+                OPENSSL_free(output_buf);
+                return NULL;
+            }
+        }
     }
+
+    ret = EVP_Q_mac(NULL, "HMAC", NULL, EVP_MD_get0_name(evp_md), NULL,
+                    key, key_len, data, data_len,
+                    output_buf, size, &temp_md_len);
+    if (md_len != NULL)
+        *md_len = (unsigned int)temp_md_len;
+
     return ret;
 }
 
