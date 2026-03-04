@@ -26,10 +26,9 @@ static int test_static_sha_common(const char *input, size_t length,
             || !TEST_ptr_eq(sbuf, buf)
             || !TEST_mem_eq(sbuf, length, out, length))
         return 0;
+    /* md == NULL should now return NULL for thread-safety */
     sbuf = (*md)(in, in_len, NULL);
-    if (!TEST_ptr(sbuf)
-            || !TEST_ptr_ne(sbuf, buf)
-            || !TEST_mem_eq(sbuf, length, out, length))
+    if (!TEST_ptr_null(sbuf))
         return 0;
     return 1;
 }
