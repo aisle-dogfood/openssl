@@ -605,7 +605,7 @@ our %disabled = ( # "what"         => "comment"
                   "pie"                 => "default",
                   "jitter"              => "default",
                   "ktls"                => "default",
-                  "md2"                 => "default",
+                  "md2"                 => "unavailable",
                   "msan"                => "default",
                   "rc5"                 => "default",
                   "sctp"                => "default",
@@ -979,6 +979,10 @@ while (@argvcopy)
                         {
                         delete $disabled{"fips"};
                         delete $disabled{"jitter"};
+                        }
+                elsif ($1 eq "md2")
+                        {
+                        die "***** MD2 is a cryptographically broken hash function and cannot be enabled\n";
                         }
                 my $algo = $1;
                 delete $disabled{$algo};
@@ -1447,6 +1451,8 @@ foreach my $feature (@{$target{enable}}) {
 $disabled{uplink} = 'no uplink_arch' unless (defined $target{uplink_arch});
 # If asm_arch isn't defined, disable asm
 $disabled{asm} = 'no asm_arch' unless (defined $target{asm_arch});
+# MD2 is cryptographically broken and must be disabled
+$disabled{md2} = 'cryptographically broken';
 
 disable();                      # Run a cascade now
 
