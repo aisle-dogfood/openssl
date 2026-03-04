@@ -69,6 +69,15 @@
 #	purposes, results are best-available;
 # (***)	SHAEXT result is 4.1, strangely enough better than 64-bit one;
 
+# Sanitize environment variables to prevent command injection
+sub sanitize_env {
+    my ($var) = @_;
+    return '' unless defined $var;
+    # Allow only safe characters: alphanumeric, dash, underscore, dot, slash, space, equals, and colon
+    $var =~ s/[^a-zA-Z0-9._\/\-+=: ]//g;
+    return $var;
+}
+
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
 require "x86asm.pl";
@@ -80,7 +89,8 @@ $output=pop and open STDOUT,">$output";
 $xmm=$avx=0;
 for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-if ($xmm &&	`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+my $cc_safe = sanitize_env($ENV{CC});
+if ($xmm && $cc_safe && `$cc_safe -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 			=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.19) + ($1>=2.22);
 }
@@ -95,7 +105,7 @@ if ($xmm && !$avx && $ARGV[0] eq "win32" &&
 	$avx = ($1>=10) + ($1>=11);
 }
 
-if ($xmm && !$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
+if ($xmm && !$avx && $cc_safe && `$cc_safe -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
 	$avx = ($2>=3.0) + ($2>3.0);
 }
 

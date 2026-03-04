@@ -83,19 +83,31 @@ my $PTR=" PTR";
 my $nasmref=2.03;
 my $nasm=0;
 
+# Sanitize environment variables to prevent command injection
+sub sanitize_env {
+    my ($var) = @_;
+    return '' unless defined $var;
+    # Allow only safe characters: alphanumeric, dash, underscore, dot, slash, space, equals, and colon
+    $var =~ s/[^a-zA-Z0-9._\/\-+=: ]//g;
+    return $var;
+}
+
 # GNU as indicator, as opposed to $gas, which indicates acceptable
 # syntax
 my $gnuas=0;
 
+my $cc_safe = sanitize_env($ENV{CC});
+my $asm_safe = sanitize_env($ENV{ASM});
+
 if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
-				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
+				  $prefix = $cc_safe ? `echo __USER_LABEL_PREFIX__ | $cc_safe -E -P -` : '';
 				  $prefix =~ s|\R$||; # Better chomp
 				}
 elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
 elsif ($flavour eq "masm")	{ $gas=0; $elf=0; $masm=$masmref; $win64=1; $decor="\$L\$"; }
 elsif ($flavour eq "nasm")	{ $gas=0; $elf=0; $nasm=$nasmref; $win64=1; $decor="\$L\$"; $PTR=""; }
 elsif (!$gas)
-{   if ($ENV{ASM} =~ m/nasm/ && `nasm -v` =~ m/version ([0-9]+)\.([0-9]+)/i)
+{   if ($asm_safe =~ m/nasm/ && `nasm -v` =~ m/version ([0-9]+)\.([0-9]+)/i)
     {	$nasm = $1 + $2*0.01; $PTR="";  }
     elsif (`ml64 2>&1` =~ m/Version ([0-9]+)\.([0-9]+)(\.([0-9]+))?/)
     {	$masm = $1 + $2*2**-16 + $4*2**-32;   }
@@ -105,17 +117,17 @@ elsif (!$gas)
     $decor="\$L\$";
 }
 # Find out if we're using GNU as
-elsif (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+elsif ($cc_safe && `$cc_safe -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/)
 {
     $gnuas=1;
 }
-elsif (`$ENV{CC} --version 2>/dev/null`
+elsif ($cc_safe && `$cc_safe --version 2>/dev/null`
 		=~ /(clang .*|Intel.*oneAPI .*)/)
 {
     $gnuas=1;
 }
-elsif (`$ENV{CC} -V 2>/dev/null`
+elsif ($cc_safe && `$cc_safe -V 2>/dev/null`
 		=~ /nvc .*/)
 {
     $gnuas=1;

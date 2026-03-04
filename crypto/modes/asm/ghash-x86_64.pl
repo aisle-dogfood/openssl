@@ -90,6 +90,15 @@
 #
 # [1] http://rt.openssl.org/Ticket/Display.html?id=2900&user=guest&pass=guest
 
+# Sanitize environment variables to prevent command injection
+sub sanitize_env {
+    my ($var) = @_;
+    return '' unless defined $var;
+    # Allow only safe characters: alphanumeric, dash, underscore, dot, slash, space, equals, and colon
+    $var =~ s/[^a-zA-Z0-9._\/\-+=: ]//g;
+    return $var;
+}
+
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
@@ -102,22 +111,24 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+my $cc_safe = sanitize_env($ENV{CC});
+if ($cc_safe && `$cc_safe -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.20) + ($1>=2.22);
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+my $asm_safe = sanitize_env($ENV{ASM});
+if (!$avx && $win64 && ($flavour =~ /nasm/ || $asm_safe =~ /nasm/) &&
 	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.09) + ($1>=2.10);
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+if (!$avx && $win64 && ($flavour =~ /masm/ || $asm_safe =~ /ml64/) &&
 	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
 	$avx = ($1>=10) + ($1>=11);
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+if (!$avx && $cc_safe && `$cc_safe -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
 	$avx = ($2>=3.0) + ($2>3.0);
 }
 

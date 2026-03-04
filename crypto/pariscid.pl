@@ -259,7 +259,17 @@ L\$done2
 ___
 }
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+# Sanitize environment variables to prevent command injection
+sub sanitize_env {
+    my ($var) = @_;
+    return '' unless defined $var;
+    # Allow only safe characters: alphanumeric, dash, underscore, dot, slash, space, equals, and colon
+    $var =~ s/[^a-zA-Z0-9._\/\-+=: ]//g;
+    return $var;
+}
+
+my $cc_safe = sanitize_env($ENV{CC});
+if ($cc_safe && `$cc_safe -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 	=~ /GNU assembler/) {
     $gnuas = 1;
 }

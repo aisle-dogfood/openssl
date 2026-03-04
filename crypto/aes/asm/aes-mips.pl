@@ -97,7 +97,17 @@ $pf = ($flavour =~ /nubi/i) ? $t0 : $t2;
 #
 ######################################################################
 
-$big_endian=(`echo MIPSEB | $ENV{CC} -E -`=~/MIPSEB/)?0:1 if ($ENV{CC});
+# Sanitize environment variables to prevent command injection
+sub sanitize_env {
+    my ($var) = @_;
+    return '' unless defined $var;
+    # Allow only safe characters: alphanumeric, dash, underscore, dot, slash, space, equals, and colon
+    $var =~ s/[^a-zA-Z0-9._\/\-+=: ]//g;
+    return $var;
+}
+
+my $cc_safe = sanitize_env($ENV{CC});
+$big_endian=($cc_safe && `echo MIPSEB | $cc_safe -E -`=~/MIPSEB/)?0:1 if ($cc_safe);
 
 if (!defined($big_endian))
 {    $big_endian=(unpack('L',pack('N',1))==1);   }
