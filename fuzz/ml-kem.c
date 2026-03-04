@@ -15,6 +15,7 @@
 #include <openssl/evp.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
 #include <openssl/byteorder.h>
 #include <openssl/ml_kem.h>
 #include "internal/nelem.h"
@@ -315,7 +316,7 @@ static void mlkem_encap_decap(uint8_t **buf, size_t *len, void *key1, void *in2,
         goto err;
     }
 
-    if (memcmp(unwrappedkey, genkey, genkey_len))
+    if (CRYPTO_memcmp(unwrappedkey, genkey, genkey_len))
         fprintf(stderr, "mismatch on secret comparison\n");
 err:
     EVP_PKEY_CTX_free(ctx);
