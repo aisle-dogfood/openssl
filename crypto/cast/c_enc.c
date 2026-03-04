@@ -16,6 +16,18 @@
 #include <openssl/cast.h>
 #include "cast_local.h"
 
+/*
+ * SECURITY WARNING: This implementation uses secret-dependent S-box table
+ * lookups that may leak information via cache-timing side channels. The S-box
+ * tables (CAST_S_table0..7) are indexed by values derived from both the key
+ * and plaintext, making the memory access patterns secret-dependent. This can
+ * allow attackers with fine-grained timing measurement capabilities (e.g.,
+ * co-located processes on shared hardware) to potentially extract key material.
+ *
+ * CAST-128 should only be used for legacy compatibility with existing systems.
+ * For new applications, prefer modern AEAD ciphers (e.g., AES-GCM, ChaCha20-Poly1305)
+ * that have constant-time implementations.
+ */
 void CAST_encrypt(CAST_LONG *data, const CAST_KEY *key)
 {
     CAST_LONG l, r, t;
