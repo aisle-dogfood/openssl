@@ -39,6 +39,24 @@
 # Profiler-assisted and platform-specific optimization resulted in 16%
 # improvement on Cortex A8 core and ~21.5 cycles per byte.
 
+# ====================================================================
+# SECURITY NOTE:
+#
+# This implementation uses T-table lookups with secret-dependent indices,
+# making it vulnerable to cache-timing side-channel attacks. The
+# vulnerability can be exploited by local or co-resident attackers to
+# recover key material through cache observation.
+#
+# On ARMv7+ platforms with NEON support, prefer constant-time
+# implementations such as bsaes-armv7 or vpaes. On ARMv8+, use the
+# hardware AES instructions (aesv8-armx).
+#
+# To completely disable this vulnerable implementation at compile time,
+# define OPENSSL_ARMV4_AES_DISABLE_TTABLE. This will prevent the T-table
+# implementation from being compiled, forcing the use of constant-time
+# alternatives where available.
+# ====================================================================
+
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
@@ -85,6 +103,12 @@ $code=<<___;
 .code	32
 #undef __thumb2__
 #endif
+
+#ifndef OPENSSL_ARMV4_AES_DISABLE_TTABLE
+@ This implementation uses cache-timing vulnerable T-tables.
+@ It is provided for compatibility but should not be used in
+@ security-sensitive contexts. Prefer hardware AES (ARMv8),
+@ BSAES (ARMv7+NEON), or VPAES for constant-time operation.
 
 .text
 
@@ -1229,6 +1253,70 @@ _armv4_AES_decrypt:
 	sub	$tbl,$tbl,#1024
 	ldr	pc,[sp],#4		@ pop and return
 .size	_armv4_AES_decrypt,.-_armv4_AES_decrypt
+
+#else  @ OPENSSL_ARMV4_AES_DISABLE_TTABLE
+
+@ T-table implementation disabled at compile time for security.
+@ This code path requires constant-time alternatives (BSAES, VPAES, or hardware AES).
+.text
+.globl	AES_encrypt
+.type	AES_encrypt,%function
+AES_encrypt:
+	@ Stub function - T-table implementation disabled
+	mov	r0, #-1
+#if __ARM_ARCH__>=5
+	bx	lr
+#else
+	tst	lr,#1
+	moveq	pc,lr
+	bx	lr
+#endif
+.size	AES_encrypt,.-AES_encrypt
+
+.globl	AES_decrypt
+.type	AES_decrypt,%function
+AES_decrypt:
+	@ Stub function - T-table implementation disabled
+	mov	r0, #-1
+#if __ARM_ARCH__>=5
+	bx	lr
+#else
+	tst	lr,#1
+	moveq	pc,lr
+	bx	lr
+#endif
+.size	AES_decrypt,.-AES_decrypt
+
+.globl	AES_set_encrypt_key
+.type	AES_set_encrypt_key,%function
+AES_set_encrypt_key:
+	@ Stub function - T-table implementation disabled
+	mov	r0, #-1
+#if __ARM_ARCH__>=5
+	bx	lr
+#else
+	tst	lr,#1
+	moveq	pc,lr
+	bx	lr
+#endif
+.size	AES_set_encrypt_key,.-AES_set_encrypt_key
+
+.globl	AES_set_decrypt_key
+.type	AES_set_decrypt_key,%function
+AES_set_decrypt_key:
+	@ Stub function - T-table implementation disabled
+	mov	r0, #-1
+#if __ARM_ARCH__>=5
+	bx	lr
+#else
+	tst	lr,#1
+	moveq	pc,lr
+	bx	lr
+#endif
+.size	AES_set_decrypt_key,.-AES_set_decrypt_key
+
+#endif  @ OPENSSL_ARMV4_AES_DISABLE_TTABLE
+
 .asciz	"AES for ARMv4, CRYPTOGAMS by <appro\@openssl.org>"
 .align	2
 ___
