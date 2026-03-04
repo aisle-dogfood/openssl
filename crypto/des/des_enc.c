@@ -17,6 +17,16 @@
 #include "des_local.h"
 #include "spr.h"
 
+/*
+ * SECURITY WARNING: This DES implementation uses table-based S-box lookups
+ * (DES_SPtrans in spr.h) that are vulnerable to cache-timing side-channel
+ * attacks (CWE-208). The D_ENCRYPT macro performs secret-dependent table
+ * accesses that may leak key material through cache behavior.
+ *
+ * DES is a legacy algorithm. Use AES or ChaCha20 for new applications.
+ * See crypto/des/SECURITY.md for details.
+ */
+
 void DES_encrypt1(DES_LONG *data, DES_key_schedule *ks, int enc)
 {
     register DES_LONG l, r, t, u;

@@ -7,6 +7,27 @@
  * https://www.openssl.org/source/license.html
  */
 
+/*
+ * =========================================================================
+ * SECURITY WARNING: Cache-Timing Side-Channel Vulnerability (CWE-208)
+ * =========================================================================
+ * The DES_SPtrans S-box tables below are accessed using indices derived from
+ * secret key material and plaintext/ciphertext data. This creates a cache-
+ * timing side-channel that may allow local attackers with precise timing
+ * measurement capability to recover secret keys through statistical analysis.
+ *
+ * This vulnerability is inherent to table-based DES implementations and
+ * cannot be easily mitigated without fundamentally redesigning the algorithm
+ * (e.g., using bitslicing techniques).
+ *
+ * DES is a legacy algorithm. For new applications, use AES or ChaCha20 which
+ * have constant-time implementations available.
+ *
+ * See crypto/des/SECURITY.md for detailed security considerations and usage
+ * guidelines.
+ * =========================================================================
+ */
+
 const DES_LONG DES_SPtrans[8][64] = {
     {
         /* nibble 0 */

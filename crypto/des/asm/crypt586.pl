@@ -6,6 +6,13 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
+# =========================================================================
+# SECURITY WARNING: Cache-Timing Side-Channel Vulnerability (CWE-208)
+# =========================================================================
+# This DES-based crypt() implementation uses table-based S-box lookups
+# vulnerable to cache-timing attacks. See crypto/des/SECURITY.md.
+# =========================================================================
+
 # The inner loop instruction sequence and the IP/FP modifications are from
 # Svend Olaf Mikkelsen
 
