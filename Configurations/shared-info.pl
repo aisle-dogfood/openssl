@@ -11,14 +11,22 @@
 # shared libraries, currently on any Unix variant, including Unix like
 # environments on Windows.
 
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # Replace single quotes with '\'' and wrap in single quotes
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
 sub detect_gnu_ld {
-    my @lines =
-        `$config{CROSS_COMPILE}$config{CC} -Wl,-V /dev/null 2>&1`;
+    my $cc_cmd = shell_quote("$config{CROSS_COMPILE}$config{CC}");
+    my @lines = `$cc_cmd -Wl,-V /dev/null 2>&1`;
     return grep /^GNU ld/, @lines;
 }
 sub detect_gnu_cc {
-    my @lines =
-        `$config{CROSS_COMPILE}$config{CC} -v 2>&1`;
+    my $cc_cmd = shell_quote("$config{CROSS_COMPILE}$config{CC}");
+    my @lines = `$cc_cmd -v 2>&1`;
     return grep /gcc/, @lines;
 }
 

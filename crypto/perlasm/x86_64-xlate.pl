@@ -6,6 +6,14 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
+# Shell-quote a string to make it safe for shell interpolation.
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # Replace single quotes with '\'' and wrap in single quotes
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
 
 # Ascetic x86_64 AT&T to MASM/NASM assembler translator by <appro>.
 #
@@ -88,7 +96,8 @@ my $nasm=0;
 my $gnuas=0;
 
 if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
-				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
+				  my $cc_quoted = shell_quote($ENV{CC} // 'cc');
+				  $prefix=`echo __USER_LABEL_PREFIX__ | $cc_quoted -E -P -`;
 				  $prefix =~ s|\R$||; # Better chomp
 				}
 elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
@@ -105,20 +114,24 @@ elsif (!$gas)
     $decor="\$L\$";
 }
 # Find out if we're using GNU as
-elsif (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/)
+elsif (defined($ENV{CC}))
 {
-    $gnuas=1;
-}
-elsif (`$ENV{CC} --version 2>/dev/null`
-		=~ /(clang .*|Intel.*oneAPI .*)/)
-{
-    $gnuas=1;
-}
-elsif (`$ENV{CC} -V 2>/dev/null`
-		=~ /nvc .*/)
-{
-    $gnuas=1;
+    my $cc_quoted = shell_quote($ENV{CC});
+    if (`$cc_quoted -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+		    =~ /GNU assembler version ([2-9]\.[0-9]+)/)
+    {
+        $gnuas=1;
+    }
+    elsif (`$cc_quoted --version 2>/dev/null`
+		    =~ /(clang .*|Intel.*oneAPI .*)/)
+    {
+        $gnuas=1;
+    }
+    elsif (`$cc_quoted -V 2>/dev/null`
+		    =~ /nvc .*/)
+    {
+        $gnuas=1;
+    }
 }
 
 my $cet_property;
