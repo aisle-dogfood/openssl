@@ -259,9 +259,20 @@ L\$done2
 ___
 }
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-	=~ /GNU assembler/) {
-    $gnuas = 1;
+sub shell_quote {
+    my $arg = shift;
+    return "''" if !defined($arg) || $arg eq '';
+    # Replace single quotes with '\'' and wrap in single quotes
+    $arg =~ s/'/'\\''/g;
+    return "'$arg'";
+}
+
+if (defined($ENV{CC})) {
+    my $cc_quoted = shell_quote($ENV{CC});
+    if (`$cc_quoted -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+	    =~ /GNU assembler/) {
+        $gnuas = 1;
+    }
 }
 
 foreach(split("\n",$code)) {
