@@ -8,7 +8,7 @@
  */
 
 /*
- * DES and SHA-1 low level APIs are deprecated for public use, but still ok for
+ * DES and SHA-256 low level APIs are deprecated for public use, but still ok for
  * internal use.
  */
 #include "internal/deprecated.h"
@@ -31,10 +31,26 @@ static const unsigned char wrap_iv[8] = {
     0x4a, 0xdd, 0xa2, 0x2c, 0x79, 0xe8, 0x21, 0x05
 };
 
+/*
+ * Internal SHA-256 helper function for computing ICV
+ * Uses SHA-256 instead of deprecated SHA-1 for FIPS compliance
+ */
+static int compute_sha256(const unsigned char *d, size_t n, unsigned char *md)
+{
+    SHA256_CTX c;
+
+    if (!SHA256_Init(&c))
+        return 0;
+    SHA256_Update(&c, d, n);
+    SHA256_Final(md, &c);
+    OPENSSL_cleanse(&c, sizeof(c));
+    return 1;
+}
+
 static int des_ede3_unwrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
                            const unsigned char *in, size_t inl)
 {
-    unsigned char icv[8], iv[TDES_IVLEN], sha1tmp[SHA_DIGEST_LENGTH];
+    unsigned char icv[8], iv[TDES_IVLEN], sha256tmp[SHA256_DIGEST_LENGTH];
     int rv = -1;
 
     if (inl < 24)
@@ -64,11 +80,12 @@ static int des_ede3_unwrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
     /* Decrypt again using new IV */
     ctx->hw->cipher(ctx, out, out, inl - 16);
     ctx->hw->cipher(ctx, icv, icv, 8);
-    if (ossl_sha1(out, inl - 16, sha1tmp) /* Work out hash of first portion */
-            && CRYPTO_memcmp(sha1tmp, icv, 8) == 0)
+    /* Work out hash of first portion using SHA-256 for FIPS compliance */
+    if (compute_sha256(out, inl - 16, sha256tmp)
+            && CRYPTO_memcmp(sha256tmp, icv, 8) == 0)
         rv = inl - 16;
     OPENSSL_cleanse(icv, 8);
-    OPENSSL_cleanse(sha1tmp, SHA_DIGEST_LENGTH);
+    OPENSSL_cleanse(sha256tmp, SHA256_DIGEST_LENGTH);
     OPENSSL_cleanse(iv, 8);
     OPENSSL_cleanse(ctx->iv, sizeof(ctx->iv));
     if (rv == -1)
@@ -80,7 +97,7 @@ static int des_ede3_unwrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
 static int des_ede3_wrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
                          const unsigned char *in, size_t inl)
 {
-    unsigned char sha1tmp[SHA_DIGEST_LENGTH];
+    unsigned char sha256tmp[SHA256_DIGEST_LENGTH];
     size_t ivlen = TDES_IVLEN;
     size_t icvlen = TDES_IVLEN;
     size_t len = inl + ivlen + icvlen;
@@ -90,11 +107,11 @@ static int des_ede3_wrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
 
     /* Copy input to output buffer + 8 so we have space for IV */
     memmove(out + ivlen, in, inl);
-    /* Work out ICV */
-    if (!ossl_sha1(in, inl, sha1tmp))
+    /* Work out ICV using SHA-256 for FIPS compliance */
+    if (!compute_sha256(in, inl, sha256tmp))
         return 0;
-    memcpy(out + inl + ivlen, sha1tmp, icvlen);
-    OPENSSL_cleanse(sha1tmp, SHA_DIGEST_LENGTH);
+    memcpy(out + inl + ivlen, sha256tmp, icvlen);
+    OPENSSL_cleanse(sha256tmp, SHA256_DIGEST_LENGTH);
     /* Generate random IV */
     if (RAND_bytes_ex(ctx->libctx, ctx->iv, ivlen, 0) <= 0)
         return 0;

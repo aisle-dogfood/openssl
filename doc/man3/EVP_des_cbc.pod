@@ -81,7 +81,10 @@ CFB with 8-bit shift and OFB modes.
 
 =item EVP_des_ede3_wrap()
 
-Triple-DES key wrap according to RFC 3217 Section 3.
+Triple-DES key wrap according to RFC 3217 Section 3. Note: The integrity check
+value (ICV) computation uses SHA-256 instead of SHA-1 for improved security.
+This is a legacy algorithm and is not FIPS-approved. Use AES-KW or AES-KWP for
+new applications.
 
 =back
 
