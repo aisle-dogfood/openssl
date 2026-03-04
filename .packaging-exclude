@@ -1,0 +1,99 @@
+# OpenSSL Packaging Exclusions - Hard-coded Test/Demo Credentials
+#
+# This file lists paths containing hard-coded private keys and test fixtures
+# that MUST be excluded from production packages.
+#
+# Package maintainers should reference this file when creating distribution
+# packages to prevent accidental inclusion of demo/test private keys.
+#
+# See SECURITY-TESTING.md for complete guidance.
+
+# Demo Private Keys - EXCLUDE from production packages
+demos/certs/apps/rootkey.pem
+demos/certs/apps/intkey.pem
+demos/certs/apps/skey.pem
+demos/certs/apps/skey2.pem
+demos/certs/apps/ckey.pem
+demos/certs/apps/WARNING.txt
+demos/sslecho/key.pem
+demos/sslecho/cert.pem
+demos/guide/rootkey.pem
+demos/guide/serverkey.pem
+demos/guide/rootcert.pem
+demos/guide/servercert.pem
+demos/bio/server.pem
+demos/bio/server-ec.pem
+demos/bio/root.pem
+demos/bio/intca.pem
+demos/cms/cakey.pem
+demos/cms/cacert.pem
+demos/cms/signer.pem
+demos/cms/signer2.pem
+demos/smime/cakey.pem
+demos/smime/cacert.pem
+demos/smime/signer.pem
+demos/smime/signer2.pem
+
+# Demo Scripts and Configuration - Optional (can be in dev packages)
+demos/certs/apps/mkacerts.sh
+demos/certs/apps/mkxcerts.sh
+demos/certs/apps/apps.cnf
+
+# Test Private Keys - EXCLUDE from production packages
+test/recipes/04-test_pem_read_depr_data/dsaprivatekey.pem
+test/recipes/04-test_pem_read_depr_data/rsaprivatekey.pem
+test/recipes/15-test_ml_dsa_codecs_data/prv-*.pem
+test/recipes/15-test_ml_kem_codecs_data/prv-*.pem
+test/recipes/30-test_evp_pkey_provided/*.priv.pem
+test/recipes/61-test_bio_pw_callback_data/private_key.pem
+test/recipes/65-test_cmp_vfy_data/insta.priv.pem
+test/insta.priv.pem
+test/certs/ec_privkey_with_chain.pem
+test/certs/root-ed25519.privkey.pem
+
+# Test Data with Embedded Private Keys - EXCLUDE from production packages
+test/recipes/30-test_evp_data/evppkey_ml_kem_*_decap.txt
+test/recipes/30-test_evp_data/evppkey_*.txt
+
+# General Exclusion Patterns for Package Tools
+#
+# For RPM .spec files:
+#   %exclude %{_datadir}/openssl/demos/certs/apps/*.pem
+#   %exclude %{_datadir}/openssl/demos/sslecho/key.pem
+#   %exclude %{_datadir}/openssl/test/recipes/*/*.priv.pem
+#
+# For Debian .install files:
+#   # Exclude demo/test private keys - see .packaging-exclude
+#   usr/share/openssl/demos/certs/apps/*.pem
+#   usr/share/openssl/test/recipes/*/*.priv.pem
+#
+# For general build systems, exclude these directories from production:
+#   demos/certs/apps/
+#   test/recipes/
+#
+# Or include only in separate development/testing packages.
+
+# Recommended Package Structure:
+#
+# openssl (production runtime)
+#   - libraries (libssl, libcrypto)
+#   - openssl command line tool
+#   - NO demo or test private keys
+#
+# openssl-devel (development package)
+#   - headers
+#   - pkg-config files
+#   - static libraries (optional)
+#   - NO demo or test private keys
+#
+# openssl-demos (optional demo package) 
+#   - demo source code
+#   - demo certificates/keys with SECURITY warnings
+#   - clearly marked as DEMO ONLY
+#
+# openssl-test (optional test package)
+#   - test fixtures
+#   - test private keys with SECURITY warnings
+#   - clearly marked as TEST ONLY
+#
+# This separation ensures production packages never contain hard-coded credentials.

@@ -1,6 +1,26 @@
 The OpenSSL Guide Demos
 =======================
 
+## ⚠️  SECURITY WARNING ⚠️
+
+**The private keys in this directory (rootkey.pem, serverkey.pem) are PUBLICLY
+AVAILABLE in the OpenSSL repository and are FOR DEMONSTRATION PURPOSES ONLY.**
+
+These hard-coded private keys provide **NO security** if used outside of local
+demonstrations because they are publicly known. **NEVER** use these keys for:
+- Production servers or services
+- Publicly accessible systems
+- Any environment where security matters
+
+**For production use**: Always generate new keys with proper entropy:
+```bash
+openssl genpkey -algorithm RSA -out mykey.pem -pkeyopt rsa_keygen_bits:2048
+```
+
+See [../certs/SECURITY.md](../certs/SECURITY.md) for complete security guidance.
+
+## Demo Applications
+
 The demos in this directory are the complete source code for the applications
 developed in the OpenSSL Guide tutorials. Refer to the various tutorial pages in
 the [guide] for an extensive discussion on the demos available here.

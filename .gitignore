@@ -1,6 +1,17 @@
 # Ignore editor artefacts
 /.dir-locals.el
 
+# SECURITY: Prevent accidental commits of private keys
+# Note: Demo and test keys in demos/ and test/ are intentionally tracked
+# for demonstration and testing purposes. See SECURITY-TESTING.md.
+# This pattern helps prevent accidentally committing new production keys.
+*.key
+*-key.pem
+*_key.pem
+private-key.pem
+privatekey.pem
+# Exceptions: Allow tracked demo/test keys (handled by explicit git add)
+
 # Top level excludes
 /Makefile.in
 /Makefile

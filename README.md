@@ -32,6 +32,7 @@ Table of Contents
  - [Support](#support)
  - [Contributing](#contributing)
  - [Legalities](#legalities)
+ - [Security Notice: Test and Demo Keys](#security-notice-test-and-demo-keys)
 
 Overview
 ========
@@ -236,6 +237,37 @@ All rights reserved.
 [OpenSSL Guide]:
     <https://www.openssl.org/docs/manmaster/man7/ossl-guide-introduction.html>
     "An introduction to OpenSSL"
+
+Security Notice: Test and Demo Keys
+====================================
+
+**⚠️ IMPORTANT: This repository contains hard-coded private keys for demonstration and testing purposes.**
+
+The `demos/` and `test/` directories include PEM-encoded private keys that are **publicly accessible** and must **NEVER** be used in production environments or publicly accessible systems.
+
+**Why this matters:**
+- These keys are committed to a public Git repository
+- Using them in production provides **zero security**
+- Anyone can use these keys to impersonate your services or decrypt your traffic
+
+**Affected locations:**
+- Demo keys: `demos/certs/apps/*.pem`, `demos/sslecho/key.pem`, and others
+- Test keys: `test/recipes/*/*.pem` and embedded keys in test data files
+
+**For users and developers:**
+- Use these keys ONLY for local learning and testing
+- Always generate new keys for production use
+- See [SECURITY-TESTING.md](SECURITY-TESTING.md) for complete guidance
+
+**For package maintainers:**
+- EXCLUDE `demos/` and `test/recipes/` private keys from production packages
+- Include test fixtures only in separate development/testing packages
+- See [SECURITY-TESTING.md](SECURITY-TESTING.md) for packaging guidelines
+
+For more information, see:
+- [SECURITY-TESTING.md](SECURITY-TESTING.md) - Comprehensive security documentation
+- [demos/certs/SECURITY.md](demos/certs/SECURITY.md) - Demo certificate security guide
+- [test/recipes/SECURITY-NOTICE.md](test/recipes/SECURITY-NOTICE.md) - Test fixture documentation
 
 <!-- Logos and Badges -->
 

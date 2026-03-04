@@ -1,0 +1,40 @@
+⚠️  SECURITY WARNING - DEMO PRIVATE KEYS ⚠️
+===========================================
+
+All .pem files in this directory containing private keys are PUBLICLY
+AVAILABLE in the OpenSSL Git repository and MUST NOT be used for any
+production purpose.
+
+DEMO PRIVATE KEYS (DO NOT USE IN PRODUCTION):
+- rootkey.pem  : Demo Root CA private key
+- intkey.pem   : Demo Intermediate CA private key  
+- skey.pem     : Demo Server private key
+- skey2.pem    : Demo Server #2 private key
+- ckey.pem     : Demo Client private key
+
+WHY THIS IS CRITICAL:
+These keys are hard-coded secrets (CWE-321) that are publicly visible to
+anyone with access to the OpenSSL repository. Using them in any production
+or publicly accessible environment would:
+
+  ✗ Provide ZERO security (keys are public knowledge)
+  ✗ Allow anyone to decrypt your traffic
+  ✗ Allow anyone to impersonate your servers
+  ✗ Violate security compliance requirements
+  ✗ Expose your organization to immediate compromise
+
+ACCEPTABLE USES:
+  ✓ Running demo scripts locally
+  ✓ Learning OpenSSL certificate generation
+  ✓ Isolated development and testing
+
+FOR PRODUCTION USE:
+Generate new keys with proper entropy:
+  $ openssl genpkey -algorithm RSA -out mykey.pem \
+      -pkeyopt rsa_keygen_bits:2048
+
+PACKAGERS:
+Do NOT include this directory in production distributions.
+These are demonstration materials only.
+
+See ../SECURITY.md for complete guidance.
