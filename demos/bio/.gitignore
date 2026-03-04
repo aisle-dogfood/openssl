@@ -1,0 +1,3 @@
+# Generated test certificates and keys with private keys
+server.pem
+server-ec.pem

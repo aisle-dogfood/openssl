@@ -8,6 +8,14 @@ the [guide] for an extensive discussion on the demos available here.
 They must be built before they can be run. An example UNIX style Makefile is
 supplied. Just type "make" from this directory on a Linux/UNIX system.
 
+**Before running the demos, you must generate test certificates and keys:**
+
+    ./mkkeys.sh
+
+This will create test certificates and private keys (rootkey.pem, rootcert.pem,
+serverkey.pem, servercert.pem). These are for demonstration purposes only and
+should never be used in production.
+
 Running the TLS Demos
 ---------------------
 

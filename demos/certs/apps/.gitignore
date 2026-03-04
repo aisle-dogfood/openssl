@@ -1,0 +1,18 @@
+# Generated test private keys
+rootkey.pem
+intkey.pem
+skey.pem
+skey2.pem
+ckey.pem
+
+# Generated test certificates
+root.pem
+intca.pem
+intreq.pem
+server.pem
+server2.pem
+client.pem
+sreq.pem
+sreq2.pem
+creq.pem
+*.srl

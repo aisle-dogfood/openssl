@@ -20,7 +20,11 @@ The new client code illustrates that:
   SSL_write() and SSL_read().
 - Pretty simple.
 
-The cert.pem and key.pem files included are self signed certificates with the
-"Common Name" of 'localhost'.
+**Before running the demo, you must generate test certificates and keys:**
 
-Best to create the 'pem' files using an actual hostname.
+    ./mkkeys.sh
+
+This will create cert.pem and key.pem - self signed certificates with the
+"Common Name" of 'localhost'. These are for demonstration purposes only.
+
+Best to create the 'pem' files using an actual hostname for production use.
