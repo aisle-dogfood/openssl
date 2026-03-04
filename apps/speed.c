@@ -69,7 +69,6 @@ VirtualLock(
 
 #include <openssl/bn.h>
 #include <openssl/rsa.h>
-#include "./testrsa.h"
 #ifndef OPENSSL_NO_DH
 # include <openssl/dh.h>
 #endif
@@ -1923,17 +1922,15 @@ int speed_main(int argc, char **argv)
         0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0, 0x12, 0x34  /* key3 */
     };
     static const struct {
-        const unsigned char *data;
-        unsigned int length;
         unsigned int bits;
     } rsa_keys[] = {
-        {   test512,   sizeof(test512),   512 },
-        {  test1024,  sizeof(test1024),  1024 },
-        {  test2048,  sizeof(test2048),  2048 },
-        {  test3072,  sizeof(test3072),  3072 },
-        {  test4096,  sizeof(test4096),  4096 },
-        {  test7680,  sizeof(test7680),  7680 },
-        { test15360, sizeof(test15360), 15360 }
+        {   512 },
+        {  1024 },
+        {  2048 },
+        {  3072 },
+        {  4096 },
+        {  7680 },
+        { 15360 }
     };
     uint8_t rsa_doit[RSA_NUM] = { 0 };
     int primes = RSA_DEFAULT_PRIME_NUM;
@@ -3224,26 +3221,19 @@ int speed_main(int argc, char **argv)
         if (!rsa_doit[testnum])
             continue;
 
-        if (primes > RSA_DEFAULT_PRIME_NUM) {
-            /* we haven't set keys yet,  generate multi-prime RSA keys */
-            bn = BN_new();
-            st = bn != NULL
-                && BN_set_word(bn, RSA_F4)
-                && init_gen_str(&genctx, "RSA", NULL, 0, NULL, NULL)
-                && EVP_PKEY_CTX_set_rsa_keygen_bits(genctx, rsa_keys[testnum].bits) > 0
-                && EVP_PKEY_CTX_set1_rsa_keygen_pubexp(genctx, bn) > 0
-                && EVP_PKEY_CTX_set_rsa_keygen_primes(genctx, primes) > 0
-                && EVP_PKEY_keygen(genctx, &rsa_key) > 0;
-            BN_free(bn);
-            bn = NULL;
-            EVP_PKEY_CTX_free(genctx);
-            genctx = NULL;
-        } else {
-            const unsigned char *p = rsa_keys[testnum].data;
-
-            st = (rsa_key = d2i_PrivateKey(EVP_PKEY_RSA, NULL, &p,
-                                           rsa_keys[testnum].length)) != NULL;
-        }
+        /* Generate RSA keys at runtime to avoid embedding secrets in source */
+        bn = BN_new();
+        st = bn != NULL
+            && BN_set_word(bn, RSA_F4)
+            && init_gen_str(&genctx, "RSA", NULL, 0, NULL, NULL)
+            && EVP_PKEY_CTX_set_rsa_keygen_bits(genctx, rsa_keys[testnum].bits) > 0
+            && EVP_PKEY_CTX_set1_rsa_keygen_pubexp(genctx, bn) > 0
+            && EVP_PKEY_CTX_set_rsa_keygen_primes(genctx, primes) > 0
+            && EVP_PKEY_keygen(genctx, &rsa_key) > 0;
+        BN_free(bn);
+        bn = NULL;
+        EVP_PKEY_CTX_free(genctx);
+        genctx = NULL;
 
         for (i = 0; st && i < loopargs_len; i++) {
             loopargs[i].rsa_sign_ctx[testnum] = EVP_PKEY_CTX_new(rsa_key, NULL);
