@@ -111,6 +111,8 @@ static const ERR_STRING_DATA PROV_str_reasons[] = {
      "invalid output length"},
     {ERR_PACK(ERR_LIB_PROV, 0, PROV_R_INVALID_PADDING_MODE),
      "invalid padding mode"},
+    {ERR_PACK(ERR_LIB_PROV, 0, PROV_R_INVALID_PASSWORD_LENGTH),
+     "invalid password length"},
     {ERR_PACK(ERR_LIB_PROV, 0, PROV_R_INVALID_PREHASHED_DIGEST_LENGTH),
      "invalid prehashed digest length"},
     {ERR_PACK(ERR_LIB_PROV, 0, PROV_R_INVALID_PUBINFO), "invalid pubinfo"},
