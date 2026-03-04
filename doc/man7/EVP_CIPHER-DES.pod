@@ -38,6 +38,11 @@ FIPS provider:
 
 =item "DES3-WRAP"
 
+This is a legacy algorithm. The integrity check value (ICV) computation has been
+updated to use SHA-256 instead of SHA-1 for improved security. This algorithm is
+not FIPS-approved for key wrapping. For new applications, use AES-KW or AES-KWP
+instead.
+
 =back
 
 The following algorithms are available in the legacy provider:
