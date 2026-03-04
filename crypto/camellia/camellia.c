@@ -283,9 +283,32 @@ static const u32 SIGMA[] = {
         _s3 = (_s3<<_n) | _t0;\
 } while (0)
 
+/*
+ * Prefetch S-box tables to mitigate cache-timing attacks.
+ * This loads the entire S-box into cache before cryptographic operations.
+ */
+static void Camellia_Prefetch_Sbox(void)
+{
+    volatile u32 dummy = 0;
+    size_t i;
+
+    /* Touch every cache line in the S-box tables */
+    for (i = 0; i < 256; i++) {
+        dummy |= SBOX1_1110[i];
+        dummy |= SBOX2_0222[i];
+        dummy |= SBOX3_3033[i];
+        dummy |= SBOX4_4404[i];
+    }
+    /* Prevent compiler from optimizing away the loop */
+    (void)dummy;
+}
+
 int Camellia_Ekeygen(int keyBitLength, const u8 *rawKey, KEY_TABLE_TYPE k)
 {
     register u32 s0, s1, s2, s3;
+
+    /* Prefetch S-box to mitigate cache-timing attacks */
+    Camellia_Prefetch_Sbox();
 
     k[0] = s0 = GETU32(rawKey);
     k[1] = s1 = GETU32(rawKey + 4);
@@ -407,6 +430,9 @@ void Camellia_EncryptBlock_Rounds(int grandRounds, const u8 plaintext[],
     register u32 s0, s1, s2, s3;
     const u32 *k = keyTable, *kend = keyTable + grandRounds * 16;
 
+    /* Prefetch S-box to mitigate cache-timing attacks */
+    Camellia_Prefetch_Sbox();
+
     s0 = GETU32(plaintext) ^ k[0];
     s1 = GETU32(plaintext + 4) ^ k[1];
     s2 = GETU32(plaintext + 8) ^ k[2];
@@ -459,6 +485,9 @@ void Camellia_DecryptBlock_Rounds(int grandRounds, const u8 ciphertext[],
 {
     u32 s0, s1, s2, s3;
     const u32 *k = keyTable + grandRounds * 16, *kend = keyTable + 4;
+
+    /* Prefetch S-box to mitigate cache-timing attacks */
+    Camellia_Prefetch_Sbox();
 
     s0 = GETU32(ciphertext) ^ k[0];
     s1 = GETU32(ciphertext + 4) ^ k[1];
