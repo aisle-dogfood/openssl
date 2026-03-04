@@ -38,6 +38,12 @@ int ossl_md5_sha1_final(unsigned char *md, MD5_SHA1_CTX *mctx)
     return SHA1_Final(md + MD5_DIGEST_LENGTH, &mctx->sha1);
 }
 
+/*
+ * LEGACY FUNCTION - SSLv3 support only
+ * MD5 and SHA-1 are cryptographically weak and should not be used in new protocols.
+ * This function exists solely for SSLv3 backward compatibility and is blocked
+ * in FIPS mode. Modern TLS versions (1.2+) use stronger hash algorithms.
+ */
 int ossl_md5_sha1_ctrl(MD5_SHA1_CTX *mctx, int cmd, int mslen, void *ms)
 {
     unsigned char padtmp[48];

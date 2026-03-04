@@ -66,6 +66,17 @@ IMPLEMENT_LEGACY_EVP_MD_METH_SHAKE(shake, ossl_sha3, '\x1f')
 
 static int sha1_int_ctrl(EVP_MD_CTX *ctx, int cmd, int p1, void *p2)
 {
+    /* Reject SSLv3 control in FIPS mode - SHA-1 is weak and deprecated */
+    if (cmd == EVP_CTRL_SSL3_MASTER_SECRET && ctx != NULL) {
+        EVP_PKEY_CTX *pctx = ctx->pctx;
+        if (pctx != NULL) {
+            OSSL_LIB_CTX *libctx = EVP_PKEY_CTX_get0_libctx(pctx);
+            if (EVP_default_properties_is_fips_enabled(libctx)) {
+                /* SSLv3 with SHA-1 is not allowed in FIPS mode */
+                return 0;
+            }
+        }
+    }
     return ossl_sha1_ctrl(ctx != NULL ? EVP_MD_CTX_get0_md_data(ctx) : NULL,
                           cmd, p1, p2);
 }
