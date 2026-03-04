@@ -23,7 +23,7 @@ void generic_free(void *keydata)
     if (generic == NULL)
         return;
 
-    OPENSSL_free(generic->data);
+    OPENSSL_clear_free(generic->data, generic->length);
     OPENSSL_free(generic);
 }
 
