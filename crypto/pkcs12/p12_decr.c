@@ -147,10 +147,12 @@ void *PKCS12_item_decrypt_d2i_ex(const X509_ALGOR *algor, const ASN1_ITEM *it,
                              &out, &outlen, 0, libctx, propq))
         return NULL;
     p = out;
+    /*
+     * NOTE: PKCS12_DECRYPT trace channel intentionally does NOT print
+     * decrypted data. Enable tracing only in controlled debugging environments.
+     */
     OSSL_TRACE_BEGIN(PKCS12_DECRYPT) {
-        BIO_printf(trc_out, "\n");
-        BIO_dump(trc_out, out, outlen);
-        BIO_printf(trc_out, "\n");
+        BIO_printf(trc_out, "Decrypted data length: %d (value redacted)\n", outlen);
     } OSSL_TRACE_END(PKCS12_DECRYPT);
     ret = ASN1_item_d2i(NULL, &p, outlen, it);
     if (zbuf)

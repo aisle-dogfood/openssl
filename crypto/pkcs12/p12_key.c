@@ -108,22 +108,21 @@ int PKCS12_key_gen_uni_ex(unsigned char *pass, int passlen, unsigned char *salt,
     *p++ = OSSL_PARAM_construct_int(OSSL_KDF_PARAM_ITER, &iter);
     *p = OSSL_PARAM_construct_end();
 
+    /*
+     * NOTE: PKCS12_KEYGEN trace channel intentionally does NOT print
+     * sensitive data (password, salt, or derived key). Enable tracing
+     * only in controlled debugging environments.
+     */
     OSSL_TRACE_BEGIN(PKCS12_KEYGEN) {
         BIO_printf(trc_out, "PKCS12_key_gen_uni_ex(): ID %d, ITER %d\n", id, iter);
-        BIO_printf(trc_out, "Password (length %d):\n", passlen);
-        BIO_hex_string(trc_out, 0, passlen, pass, passlen);
-        BIO_printf(trc_out, "\n");
-        BIO_printf(trc_out, "Salt (length %d):\n", saltlen);
-        BIO_hex_string(trc_out, 0, saltlen, salt, saltlen);
-        BIO_printf(trc_out, "\n");
+        BIO_printf(trc_out, "Password length: %d (value redacted)\n", passlen);
+        BIO_printf(trc_out, "Salt length: %d (value redacted)\n", saltlen);
     } OSSL_TRACE_END(PKCS12_KEYGEN);
 
     if (EVP_KDF_derive(ctx, out, (size_t)n, params)) {
         res = 1;
         OSSL_TRACE_BEGIN(PKCS12_KEYGEN) {
-            BIO_printf(trc_out, "Output KEY (length %d)\n", n);
-            BIO_hex_string(trc_out, 0, n, out, n);
-            BIO_printf(trc_out, "\n");
+            BIO_printf(trc_out, "Output KEY length: %d (value redacted)\n", n);
         } OSSL_TRACE_END(PKCS12_KEYGEN);
     }
     EVP_KDF_CTX_free(ctx);
