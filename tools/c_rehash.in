@@ -182,8 +182,10 @@ sub compute_hash {
     my $fh;
     if ( $^O eq "VMS" ) {
         # VMS uses the open through shell
-        # The file names are safe there and list form is unsupported
-        if (!open($fh, "-|", join(' ', @_))) {
+        # List form is unsupported, so we must properly quote arguments
+        # to prevent command injection via filenames or $OPENSSL variable
+        my $cmd = join(' ', map { vms_quote($_) } @_);
+        if (!open($fh, "-|", $cmd)) {
             print STDERR "Cannot compute hash on '$fname'\n";
             return;
         }
@@ -194,6 +196,16 @@ sub compute_hash {
         }
     }
     return (<$fh>, <$fh>);
+}
+
+# Quote arguments for VMS shell to prevent command injection
+sub vms_quote {
+    my $arg = shift;
+    # VMS DCL shell uses double quotes for quoting
+    # Escape existing double quotes by doubling them
+    $arg =~ s/"/""/g;
+    # Always quote to prevent special character interpretation
+    return qq{"$arg"};
 }
 
 # Link a certificate to its subject name hash value, each hash is of
