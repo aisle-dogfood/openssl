@@ -27,6 +27,9 @@
 /apps/tsget.pl
 /apps/md4.c
 
+# Prevent committing private keys - pca-key.pem removed for security
+/apps/pca-key.pem
+
 # Auto generated headers
 /crypto/buildinf.h
 /include/crypto/*_conf.h
