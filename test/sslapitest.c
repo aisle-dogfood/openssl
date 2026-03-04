@@ -5961,7 +5961,7 @@ static int verify_cookie_callback(SSL *ssl, const unsigned char *cookie,
                                   unsigned int cookie_len)
 {
     if (cookie_len == sizeof(cookie_magic_value) - 1
-        && memcmp(cookie, cookie_magic_value, cookie_len) == 0)
+        && CRYPTO_memcmp(cookie, cookie_magic_value, cookie_len) == 0)
         return 1;
 
     return 0;

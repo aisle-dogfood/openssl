@@ -17,6 +17,7 @@
 #include "apps.h"
 #include <openssl/core_names.h>
 #include <openssl/params.h>
+#include <openssl/crypto.h>
 #include <openssl/err.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
@@ -916,7 +917,7 @@ int verify_stateless_cookie_callback(SSL *ssl, const unsigned char *cookie,
     if (cookie_initialized
         && generate_stateless_cookie_callback(ssl, result, &resultlength)
         && cookie_len == resultlength
-        && memcmp(result, cookie, resultlength) == 0)
+        && CRYPTO_memcmp(result, cookie, resultlength) == 0)
         return 1;
 
     return 0;
