@@ -23,6 +23,13 @@
 extern "C" {
 # endif
 
+/*
+ * SECURITY WARNING: CAST-128 implementation has cache-timing vulnerabilities.
+ * Secret-dependent S-box lookups may leak key material via timing side channels.
+ * Use only for legacy compatibility. Prefer modern AEAD ciphers for new systems.
+ * See EVP_CIPHER-CAST(7) for details.
+ */
+
 # define CAST_BLOCK      8
 # define CAST_KEY_LENGTH 16
 

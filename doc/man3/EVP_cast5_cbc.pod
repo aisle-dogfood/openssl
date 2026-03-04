@@ -44,6 +44,16 @@ calling these functions multiple times and should consider using
 L<EVP_CIPHER_fetch(3)> with L<EVP_CIPHER-CAST(7)> instead.
 See L<crypto(7)/Performance> for further information.
 
+=head1 SECURITY CONSIDERATIONS
+
+B<WARNING:> The CAST-128 implementation is vulnerable to cache-timing
+side-channel attacks due to secret-dependent S-box table lookups. This may
+allow attackers with fine-grained timing measurement capabilities to extract
+key material. CAST should only be used for legacy compatibility. For new
+applications, prefer modern AEAD ciphers like AES-GCM or ChaCha20-Poly1305.
+
+See L<EVP_CIPHER-CAST(7)> for detailed security information.
+
 =head1 RETURN VALUES
 
 These functions return an B<EVP_CIPHER> structure that contains the

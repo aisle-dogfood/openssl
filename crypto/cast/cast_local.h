@@ -120,6 +120,14 @@
         L^=(t&0xffffffff); \
         }
 #else
+/*
+ * SECURITY WARNING: The following macro performs secret-dependent S-box lookups.
+ * The table indices (t>>8, t, t>>24, t>>16) depend on the key and round state,
+ * creating cache-timing side-channel vulnerabilities. Attackers with access to
+ * timing information may be able to extract key material through these patterns.
+ * This is inherent to the CAST-128 algorithm design and cannot be easily fixed
+ * without significant performance degradation. Use CAST only for legacy purposes.
+ */
 # define E_CAST(n,key,L,R,OP1,OP2,OP3) \
         { \
         CAST_LONG a,b,c,d; \
