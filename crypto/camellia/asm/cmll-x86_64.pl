@@ -162,6 +162,21 @@ Camellia_EncryptBlock_Rounds:
 	lea	.LCamellia_SBOX(%rip),$Tbl
 	lea	($key,%rdi),$keyend
 
+	# Prefetch S-box to mitigate cache-timing attacks
+	push	%rsi
+	mov	\$32,%ecx
+	mov	$Tbl,%rsi
+.Lenc_prefetch_sbox:
+	mov	0(%rsi),%rax
+	mov	32(%rsi),%rdi
+	mov	64(%rsi),%r8
+	mov	96(%rsi),%r9
+	lea	128(%rsi),%rsi
+	dec	%ecx
+	jnz	.Lenc_prefetch_sbox
+	pop	%rsi
+	mov	%rdx,$key		# restore key pointer
+
 	mov	0(%rsi),@S[0]		# load plaintext
 	mov	4(%rsi),@S[1]
 	mov	8(%rsi),@S[2]
@@ -288,6 +303,22 @@ Camellia_DecryptBlock_Rounds:
 	shl	\$6,%edi		# process grandRounds
 	lea	.LCamellia_SBOX(%rip),$Tbl
 	lea	($keyend,%rdi),$key
+
+	# Prefetch S-box to mitigate cache-timing attacks
+	push	%rsi
+	push	$key
+	mov	\$32,%ecx
+	mov	$Tbl,%rsi
+.Ldec_prefetch_sbox:
+	mov	0(%rsi),%rax
+	mov	32(%rsi),%rdi
+	mov	64(%rsi),%r8
+	mov	96(%rsi),%r9
+	lea	128(%rsi),%rsi
+	dec	%ecx
+	jnz	.Ldec_prefetch_sbox
+	pop	$key
+	pop	%rsi
 
 	mov	0(%rsi),@S[0]		# load plaintext
 	mov	4(%rsi),@S[1]
@@ -504,6 +535,24 @@ $code.=<<___;
 .L1st128:
 	lea	.LCamellia_SIGMA(%rip),$key
 	lea	.LCamellia_SBOX(%rip),$Tbl
+
+	# Prefetch S-box to mitigate cache-timing attacks
+	push	$key
+	push	%r12
+	push	%r13
+	mov	\$32,%ecx
+	mov	$Tbl,%rsi
+.Lkey_prefetch_sbox:
+	mov	0(%rsi),%rax
+	mov	32(%rsi),%rdx
+	mov	64(%rsi),%r12
+	mov	96(%rsi),%r13
+	lea	128(%rsi),%rsi
+	dec	%ecx
+	jnz	.Lkey_prefetch_sbox
+	pop	%r13
+	pop	%r12
+	pop	$key
 
 	mov	0($key),$t1
 	mov	4($key),$t0
