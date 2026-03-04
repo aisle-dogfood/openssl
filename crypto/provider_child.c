@@ -170,13 +170,16 @@ static int provider_remove_child_cb(const OSSL_CORE_HANDLE *prov, void *cbdata)
     if (cprov == NULL)
         return 0;
     /*
-     * ossl_provider_find ups the ref count, so we free it again here. We can
-     * rely on the provider store reference count.
+     * Check if it's a child and deactivate before freeing to avoid
+     * use-after-free. ossl_provider_find ups the ref count, so we free it
+     * again afterwards. We can rely on the provider store reference count.
      */
-    ossl_provider_free(cprov);
     if (ossl_provider_is_child(cprov)
-            && !ossl_provider_deactivate(cprov, 1))
+            && !ossl_provider_deactivate(cprov, 1)) {
+        ossl_provider_free(cprov);
         return 0;
+    }
+    ossl_provider_free(cprov);
 
     return 1;
 }
