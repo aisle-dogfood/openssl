@@ -25,6 +25,12 @@
 #include "sha_local.h"
 #include "crypto/sha.h"
 
+/*
+ * LEGACY FUNCTION - SSLv3 support only
+ * SHA-1 is cryptographically weak and should not be used in new protocols.
+ * This function exists solely for SSLv3 backward compatibility and is blocked
+ * in FIPS mode. Modern TLS versions (1.2+) use stronger hash algorithms.
+ */
 int ossl_sha1_ctrl(SHA_CTX *sha1, int cmd, int mslen, void *ms)
 {
     unsigned char padtmp[40];
