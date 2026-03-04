@@ -56,29 +56,53 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+# Helper to safely execute commands and capture output without shell injection
+sub safe_exec {
+	my @cmd = @_;
+	my $output = "";
+	# Use open with list form to avoid shell interpolation
+	if (open(my $pipe, "-|", @cmd)) {
+		local $/;
+		$output = <$pipe>;
+		close($pipe);
+	}
+	return $output;
+}
+
+my $cc = $ENV{CC} || "cc";
+my $cc_output = safe_exec($cc, "-Wa,-v", "-c", "-o", "/dev/null", "-x", "assembler", "/dev/null");
+if ($cc_output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.19) + ($1>=2.22);
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.09) + ($1>=2.10);
+if (!$avx && $win64 && ($flavour =~ /nasm/ || (defined($ENV{ASM}) && $ENV{ASM} =~ /nasm/))) {
+	my $nasm_output = safe_exec("nasm", "-v");
+	if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)/) {
+		$avx = ($1>=2.09) + ($1>=2.10);
+	}
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	   `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=12);
+if (!$avx && $win64 && ($flavour =~ /masm/ || (defined($ENV{ASM}) && $ENV{ASM} =~ /ml64/))) {
+	my $ml64_output = safe_exec("ml64");
+	if ($ml64_output =~ /Version ([0-9]+)\./) {
+		$avx = ($1>=10) + ($1>=12);
+	}
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
-	$avx = ($2>=3.0) + ($2>3.0);
+if (!$avx) {
+	my $cc_version = safe_exec($cc, "-v");
+	if ($cc_version =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+		$avx = ($2>=3.0) + ($2>3.0);
+	}
 }
 
 $shaext=$avx;	### set to zero if compiling for 1.0.1
 $avx=1		if (!$shaext && $avx);
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
+# Use list form to avoid shell interpretation
+my @xlate_cmd = ($^X, $xlate, $flavour);
+push @xlate_cmd, $output if defined($output);
+open OUT, "|-", @xlate_cmd
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 

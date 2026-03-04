@@ -986,8 +986,22 @@ sub assemble {
     ref($opcode) eq 'CODE' ? &$opcode($mod,$args) : "\t$mnemonic$mod\t$args";
 }
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-	=~ /GNU assembler/) {
+# Helper to safely execute commands and capture output without shell injection
+sub safe_exec {
+	my @cmd = @_;
+	my $output = "";
+	# Use open with list form to avoid shell interpolation
+	if (open(my $pipe, "-|", @cmd)) {
+		local $/;
+		$output = <$pipe>;
+		close($pipe);
+	}
+	return $output;
+}
+
+my $cc = $ENV{CC} || "cc";
+my $cc_output = safe_exec($cc, "-Wa,-v", "-c", "-o", "/dev/null", "-x", "assembler", "/dev/null");
+if ($cc_output =~ /GNU assembler/) {
     $gnuas = 1;
 }
 
