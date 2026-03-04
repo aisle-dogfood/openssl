@@ -79,6 +79,7 @@
 # define PROV_R_INVALID_MODE                              125
 # define PROV_R_INVALID_OUTPUT_LENGTH                     217
 # define PROV_R_INVALID_PADDING_MODE                      168
+# define PROV_R_INVALID_PASSWORD_LENGTH                   254
 # define PROV_R_INVALID_PREHASHED_DIGEST_LENGTH           241
 # define PROV_R_INVALID_PUBINFO                           198
 # define PROV_R_INVALID_SALT_LENGTH                       112
