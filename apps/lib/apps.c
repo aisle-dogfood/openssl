@@ -3283,7 +3283,8 @@ void corrupt_signature(const ASN1_STRING *signature)
 {
     unsigned char *s = signature->data;
 
-    s[signature->length - 1] ^= 0x1;
+    if (signature->length > 0)
+        s[signature->length - 1] ^= 0x1;
 }
 
 int check_cert_time_string(const char *time, const char *desc)
