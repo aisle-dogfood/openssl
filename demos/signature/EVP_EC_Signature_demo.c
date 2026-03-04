@@ -38,32 +38,55 @@ static const char *hamlet_2 =
 ;
 
 /*
- * For demo_sign, load EC private key priv_key from priv_key_der[].
- * For demo_verify, load EC public key pub_key from pub_key_der[].
+ * Generate EC keys at runtime to avoid embedding private key material
+ * in source code (CWE-321, CWE-798).
+ * For demo_sign, generate EC private key.
+ * For demo_verify, extract public key from the private key.
  */
 static EVP_PKEY *get_key(OSSL_LIB_CTX *libctx, const char *propq, int public)
 {
-    OSSL_DECODER_CTX *dctx = NULL;
-    EVP_PKEY  *pkey = NULL;
-    int selection;
-    const unsigned char *data;
-    size_t data_len;
+    static EVP_PKEY *cached_pkey = NULL;
+    EVP_PKEY *pkey = NULL;
+    EVP_PKEY_CTX *pctx = NULL;
 
-    if (public) {
-        selection = EVP_PKEY_PUBLIC_KEY;
-        data =  pub_key_der;
-        data_len = sizeof(pub_key_der);
-    } else {
-        selection =  EVP_PKEY_KEYPAIR;
-        data = priv_key_der;
-        data_len = sizeof(priv_key_der);
+    /* Generate key once and cache it for both sign and verify operations */
+    if (cached_pkey == NULL) {
+        pctx = EVP_PKEY_CTX_new_from_name(libctx, "EC", propq);
+        if (pctx == NULL) {
+            fprintf(stderr, "EVP_PKEY_CTX_new_from_name failed.\n");
+            return NULL;
+        }
+
+        if (EVP_PKEY_keygen_init(pctx) <= 0) {
+            fprintf(stderr, "EVP_PKEY_keygen_init failed.\n");
+            EVP_PKEY_CTX_free(pctx);
+            return NULL;
+        }
+
+        /* Use P-256 curve (prime256v1) */
+        if (EVP_PKEY_CTX_set_ec_paramgen_curve_nid(pctx, NID_X9_62_prime256v1) <= 0) {
+            fprintf(stderr, "EVP_PKEY_CTX_set_ec_paramgen_curve_nid failed.\n");
+            EVP_PKEY_CTX_free(pctx);
+            return NULL;
+        }
+
+        if (EVP_PKEY_generate(pctx, &cached_pkey) <= 0) {
+            fprintf(stderr, "EVP_PKEY_generate failed.\n");
+            EVP_PKEY_CTX_free(pctx);
+            return NULL;
+        }
+
+        EVP_PKEY_CTX_free(pctx);
     }
-    dctx = OSSL_DECODER_CTX_new_for_pkey(&pkey, "DER", NULL, "EC",
-                                         selection, libctx, propq);
-    (void)OSSL_DECODER_from_data(dctx, &data, &data_len);
-    OSSL_DECODER_CTX_free(dctx);
+
+    /* For verify operation, we use the same key (public part) */
+    pkey = cached_pkey;
+    if (pkey != NULL)
+        EVP_PKEY_up_ref(pkey);
+
     if (pkey == NULL)
-        fprintf(stderr, "Failed to load %s key.\n", public ? "public" : "private");
+        fprintf(stderr, "Failed to get %s key.\n", public ? "public" : "private");
+
     return pkey;
 }
 
