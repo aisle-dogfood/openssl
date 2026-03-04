@@ -37,7 +37,14 @@ $(TESTS):
 clean:
 	$(RM) $(TESTS) *.o
 
-test: all
+# Generate test certificates and keys if they don't exist
+keys:
+	@if [ ! -f signer.pem ]; then \
+		echo "Generating test certificates and keys..."; \
+		./mkkeys.sh; \
+	fi
+
+test: all keys
 	@echo "\nCMS tests:"
 	LD_LIBRARY_PATH=../.. ./cms_enc
 	LD_LIBRARY_PATH=../.. ./cms_dec

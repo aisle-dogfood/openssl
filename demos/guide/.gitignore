@@ -1,0 +1,4 @@
+# Generated test private keys
+rootkey.pem
+serverkey.pem
+*.srl

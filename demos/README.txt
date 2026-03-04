@@ -7,6 +7,11 @@ Note: Makefiles are provided in the demo subfolders to demonstrate how to build
 them, but are not frequently used.  Configure openssl with enable-demos to build
 them automatically through the perl based build system
 
+IMPORTANT: Many demos require test certificates and private keys. For security
+reasons, private keys are not included in the repository. Before running demos,
+you must generate test keys by running the mkkeys.sh or similar script in each
+demo directory. See individual demo README files for details.
+
 bio:                   Demonstration of a simple TLS client and server
 
 certs:                 Demonstration of creating certs, using OCSP

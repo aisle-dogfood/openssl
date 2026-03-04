@@ -29,7 +29,14 @@ $(TESTS):
 clean:
 	$(RM) $(TESTS) *.o
 
-test: all
+# Generate test certificates and keys if they don't exist
+keys:
+	@if [ ! -f signer.pem ]; then \
+		echo "Generating test certificates and keys..."; \
+		./mkkeys.sh; \
+	fi
+
+test: all keys
 	@echo "\nS/MIME tests:"
 	LD_LIBRARY_PATH=../.. ./smenc
 	LD_LIBRARY_PATH=../.. ./smdec

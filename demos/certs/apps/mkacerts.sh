@@ -8,6 +8,14 @@ opensslcmd() {
 
 opensslcmd version
 
+# Generate private keys first
+echo "Generating private keys..."
+opensslcmd genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:1024 -out rootkey.pem
+opensslcmd genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:1024 -out intkey.pem
+opensslcmd genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:1024 -out skey.pem
+opensslcmd genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:1024 -out skey2.pem
+opensslcmd genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:1024 -out ckey.pem
+
 # Root CA: create certificate directly
 CN="OpenSSL Test Root CA" opensslcmd req -config apps.cnf -x509 -nodes \
 	-keyout root.pem -out root.pem -key rootkey.pem -new -days 3650

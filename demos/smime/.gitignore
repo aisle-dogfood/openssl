@@ -1,0 +1,8 @@
+# Generated test certificates and keys with private keys
+cakey.pem
+signer.pem
+signer2.pem
+*.srl
+
+# Generated output files from demos
+smout.txt
