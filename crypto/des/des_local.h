@@ -141,6 +141,14 @@
  * since things can be xored directly into L
  */
 
+/*
+ * SECURITY WARNING: The D_ENCRYPT macro below performs secret-dependent
+ * table lookups into DES_SPtrans. The indices (u and t) are derived from
+ * both the round key (S) and data (R), creating a cache-timing side-channel
+ * vulnerability (CWE-208). This is inherent to table-based DES and cannot
+ * be easily mitigated. Use AES or ChaCha20 for security-sensitive applications.
+ * See crypto/des/SECURITY.md for details.
+ */
 # define D_ENCRYPT(LL,R,S) { \
         LOAD_DATA_tmp(R,S,u,t,E0,E1); \
         t=ROTATE(t,4); \

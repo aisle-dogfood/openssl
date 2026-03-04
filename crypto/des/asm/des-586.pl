@@ -6,6 +6,18 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
+# =========================================================================
+# SECURITY WARNING: Cache-Timing Side-Channel Vulnerability (CWE-208)
+# =========================================================================
+# This x86 DES assembly implementation uses table-based S-box lookups
+# (DES_SPtrans) that are vulnerable to cache-timing attacks. Memory access
+# patterns during encryption/decryption depend on secret key material and
+# may leak information to local attackers with timing measurement capability.
+#
+# DES is a legacy algorithm. Use AES or ChaCha20 for new applications.
+# See crypto/des/SECURITY.md for detailed security considerations.
+# =========================================================================
+
 # The inner loop instruction sequence and the IP/FP modifications are from
 # Svend Olaf Mikkelsen.
 

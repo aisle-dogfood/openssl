@@ -357,6 +357,13 @@ static const OSSL_ALGORITHM_CAPABLE fips_ciphers[] = {
     ALGC(PROV_NAMES_AES_256_CBC_HMAC_SHA256, ossl_aes256cbc_hmac_sha256_functions,
          ossl_cipher_capable_aes_cbc_hmac_sha256),
 #ifndef OPENSSL_NO_DES
+    /*
+     * 3DES-EDE3 is included in FIPS provider for backward compatibility only.
+     * Note: All DES implementations (including 3DES) use table-based S-box
+     * lookups that are vulnerable to cache-timing side-channels (CWE-208).
+     * Single DES is excluded from FIPS. Use AES for new FIPS applications.
+     * See crypto/des/SECURITY.md for security considerations.
+     */
     ALG(PROV_NAMES_DES_EDE3_ECB, ossl_tdes_ede3_ecb_functions),
     ALG(PROV_NAMES_DES_EDE3_CBC, ossl_tdes_ede3_cbc_functions),
 #endif  /* OPENSSL_NO_DES */

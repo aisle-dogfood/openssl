@@ -158,7 +158,14 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
 #ifndef OPENSSL_NO_DES
     ALG(PROV_NAMES_DESX_CBC, ossl_tdes_desx_cbc_functions),
 #ifdef OPENSSL_ENABLE_WEAK_DES_CIPHERS
-    /* Single DES ciphers are disabled by default due to inadequate encryption strength */
+    /*
+     * Single DES ciphers are disabled by default due to inadequate encryption
+     * strength and cache-timing side-channel vulnerabilities (CWE-208).
+     * DES uses table-based S-box lookups that leak key material through cache
+     * access patterns. Single DES also has a 56-bit key (broken) and 64-bit
+     * block size (SWEET32 vulnerability). Use AES or ChaCha20 for new applications.
+     * See crypto/des/SECURITY.md for details.
+     */
     ALG(PROV_NAMES_DES_ECB, ossl_des_ecb_functions),
     ALG(PROV_NAMES_DES_CBC, ossl_des_cbc_functions),
     ALG(PROV_NAMES_DES_OFB, ossl_des_ofb64_functions),

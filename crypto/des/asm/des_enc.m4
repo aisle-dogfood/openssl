@@ -5,6 +5,24 @@
 ! in the file LICENSE in the source distribution or at
 ! https://www.openssl.org/source/license.html
 !
+! ========================================================================
+! SECURITY WARNING: Cache-Timing Side-Channel Vulnerability
+! ========================================================================
+! This DES implementation uses table-based S-box lookups (DES_SPtrans)
+! indexed by secret-dependent values. This creates a cache-timing side-
+! channel vulnerability (CWE-208) that may allow local attackers with
+! precise timing measurement capability to recover key material.
+!
+! DES is a legacy algorithm and should NOT be used for new applications.
+! This implementation is:
+!  - Confined to Legacy provider (single DES) and Default/FIPS (3DES only)
+!  - NOT recommended for use in security-sensitive contexts
+!  - Subject to additional vulnerabilities (56-bit key, 64-bit block)
+!
+! For new applications, use AES or ChaCha20 with constant-time implementations.
+! See crypto/des/SECURITY.md for detailed security considerations.
+! ========================================================================
+!
 !  To expand the m4 macros: m4 -B 8192 des_enc.m4 > des_enc.S
 !
 !  Global registers 1 to 5 are used. This is the same as done by the
@@ -1821,6 +1839,12 @@ DES_ede3_cbc_encrypt:
 	.word	LOOPS                     ! 280
 	.word	0x0000FC00                ! 284
 
+	! ====================================================================
+	! SECURITY WARNING: The following DES_SPtrans S-box tables are used
+	! in secret-dependent table lookups, creating a cache-timing side-
+	! channel vulnerability. See file header and crypto/des/SECURITY.md
+	! for details. This is inherent to table-based DES implementations.
+	! ====================================================================
 	.global	DES_SPtrans
 	.type	DES_SPtrans,#object
 	.size	DES_SPtrans,2048
