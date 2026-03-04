@@ -2,6 +2,16 @@
 
 # Create certificates using various algorithms to test multi-certificate
 # functionality.
+#
+# ⚠️  SECURITY WARNING ⚠️
+# This script generates demo certificates with embedded private keys.
+# These are FOR DEMONSTRATION AND LOCAL TESTING ONLY.
+#
+# The generated certificates should NEVER be used in production environments.
+# For production use, generate new keys with proper entropy and keep private
+# keys secure.
+#
+# See ../SECURITY.md for complete security guidance.
 
 opensslcmd() {
     LD_LIBRARY_PATH=../../.. ../../../apps/openssl $@

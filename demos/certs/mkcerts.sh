@@ -1,5 +1,20 @@
 #!/bin/sh
 
+# ⚠️  SECURITY WARNING ⚠️
+# This script generates demo certificates and private keys that are stored
+# in this repository. These are FOR DEMONSTRATION AND LOCAL TESTING ONLY.
+#
+# The generated keys and certificates provide NO security if used in production
+# as this is a public repository and all generated materials can be recreated
+# by anyone.
+#
+# For production use:
+# - Generate keys outside of version control
+# - Use proper key management and certificate lifecycle
+# - Never commit private keys to repositories
+#
+# See SECURITY.md for complete security guidance.
+
 opensslcmd() {
     LD_LIBRARY_PATH=../.. ../../apps/openssl "$@"
 }
