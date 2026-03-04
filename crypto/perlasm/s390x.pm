@@ -3050,11 +3050,46 @@ sub get_V {
 	return $v;
 }
 
+# Safe arithmetic expression evaluator
+# Only allows numbers, whitespace, and basic arithmetic operators
+sub safe_eval_arithmetic {
+	my $expr = shift;
+	
+	# Return 0 for undefined/empty expressions
+	return 0 if (!defined($expr) || $expr eq '');
+	
+	# Remove whitespace for validation
+	my $check_expr = $expr;
+	$check_expr =~ s/\s+//g;
+	
+	# Validate: only allow numbers (including hex 0x... and negative), 
+	# parentheses, and arithmetic operators +, -, *, /, %, **, <<, >>
+	# This regex ensures no letters except 'x' in hex numbers, no function calls, etc.
+	if ($check_expr !~ /^[\d+\-*\/%()<>x]*$/ || $check_expr =~ /[a-wyzA-Z_]/) {
+		return undef;  # Invalid expression
+	}
+	
+	# Additional safety: reject expressions with consecutive operators that could be exploited
+	# and other suspicious patterns
+	if ($check_expr =~ /[+\-*\/%]{3,}/ ||  # Three or more operators in a row
+	    $check_expr =~ /[(]{5,}/ ||         # Too many opening parentheses
+	    $check_expr =~ /[)]{5,}/) {         # Too many closing parentheses
+		return undef;
+	}
+	
+	# Use eval in a safe context - the expression has been validated to contain
+	# only arithmetic operations
+	my $result = eval $expr;
+	
+	# Return undef if eval failed
+	return $@ ? undef : $result;
+}
+
 sub get_I {
 	confess(err("ARGNUM")) if ($#_!=1);
 	my ($i,$bits)=(shift,shift);
 
-	$i=defined($i)?(eval($i)):(0);
+	$i=defined($i)?(safe_eval_arithmetic($i)):(0);
 	confess(err("PARSE")) if (!defined($i));
 	confess(err("ARGRANGE")) if (abs($i)&~(2**$bits-1));
 
@@ -3065,7 +3100,7 @@ sub get_M {
 	confess(err("ARGNUM")) if ($#_!=0);
 	my $m=shift;
 
-	$m=defined($m)?(eval($m)):(0);
+	$m=defined($m)?(safe_eval_arithmetic($m)):(0);
 	confess(err("PARSE")) if (!defined($m));
 	confess(err("ARGRANGE")) if ($m&~0xf);
 
@@ -3081,10 +3116,10 @@ sub get_DB
 		if (!defined) {
 			($d,$b)=(0,0);
 		} elsif (/^(.+)\($GR\)$/) {
-			($d,$b)=(eval($1),$2);
+			($d,$b)=(safe_eval_arithmetic($1),$2);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)$/) {
-			($d,$b)=(eval($1),0);
+			($d,$b)=(safe_eval_arithmetic($1),0);
 			confess(err("PARSE")) if (!defined($d));
 		} else {
 			confess(err("PARSE"));
@@ -3104,13 +3139,13 @@ sub get_DVB
 		if (!defined) {
 			($d,$v,$b)=(0,0,0);
 		} elsif (/^(.+)\($VR,$GR\)$/) {
-			($d,$v,$b)=(eval($1),$2,$3);
+			($d,$v,$b)=(safe_eval_arithmetic($1),$2,$3);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)\($GR\)$/) {
-			($d,$v,$b)=(eval($1),0,$2);
+			($d,$v,$b)=(safe_eval_arithmetic($1),0,$2);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)$/) {
-			($d,$v,$b)=(eval($1),0,0);
+			($d,$v,$b)=(safe_eval_arithmetic($1),0,0);
 			confess(err("PARSE")) if (!defined($d));
 		} else {
 			confess(err("PARSE"));
@@ -3130,13 +3165,13 @@ sub get_DXB
 		if (!defined) {
 			($d,$x,$b)=(0,0,0);
 		} elsif (/^(.+)\($GR,$GR\)$/) {
-			($d,$x,$b)=(eval($1),$2,$3);
+			($d,$x,$b)=(safe_eval_arithmetic($1),$2,$3);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)\($GR\)$/) {
-			($d,$x,$b)=(eval($1),0,$2);
+			($d,$x,$b)=(safe_eval_arithmetic($1),0,$2);
 			confess(err("PARSE")) if (!defined($d));
 		} elsif (/^(.+)$/) {
-			($d,$x,$b)=(eval($1),0,0);
+			($d,$x,$b)=(safe_eval_arithmetic($1),0,0);
 			confess(err("PARSE")) if (!defined($d));
 		} else {
 			confess(err("PARSE"));
