@@ -64,28 +64,52 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
+# Helper to safely execute commands and capture output without shell injection
+sub safe_exec {
+	my @cmd = @_;
+	my $output = "";
+	# Use open with list form to avoid shell interpolation
+	if (open(my $pipe, "-|", @cmd)) {
+		local $/;
+		$output = <$pipe>;
+		close($pipe);
+	}
+	return $output;
+}
+
+# Use list form to avoid shell interpretation
+my @xlate_cmd = ($^X, $xlate, $flavour);
+push @xlate_cmd, $output if defined($output);
+open OUT, "|-", @xlate_cmd
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+my $cc = $ENV{CC} || "cc";
+my $cc_output = safe_exec($cc, "-Wa,-v", "-c", "-o", "/dev/null", "-x", "assembler", "/dev/null");
+if ($cc_output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$addx = ($1>=2.23);
 }
 
-if (!$addx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$addx = ($1>=2.10);
+if (!$addx && $win64 && ($flavour =~ /nasm/ || (defined($ENV{ASM}) && $ENV{ASM} =~ /nasm/))) {
+	my $nasm_output = safe_exec("nasm", "-v");
+	if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)/) {
+		$addx = ($1>=2.10);
+	}
 }
 
-if (!$addx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$addx = ($1>=12);
+if (!$addx && $win64 && ($flavour =~ /masm/ || (defined($ENV{ASM}) && $ENV{ASM} =~ /ml64/))) {
+	my $ml64_output = safe_exec("ml64");
+	if ($ml64_output =~ /Version ([0-9]+)\./) {
+		$addx = ($1>=12);
+	}
 }
 
-if (!$addx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
-	my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
-	$addx = ($ver>=3.03);
+if (!$addx) {
+	my $cc_version = safe_exec($cc, "-v");
+	if ($cc_version =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
+		my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
+		$addx = ($ver>=3.03);
+	}
 }
 
 ($out, $inp, $mod) = ("%rdi", "%rsi", "%rbp");	# common internal API

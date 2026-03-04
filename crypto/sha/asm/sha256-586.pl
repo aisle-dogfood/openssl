@@ -80,23 +80,47 @@ $output=pop and open STDOUT,">$output";
 $xmm=$avx=0;
 for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-if ($xmm &&	`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-			=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.19) + ($1>=2.22);
+# Helper to safely execute commands and capture output without shell injection
+sub safe_exec {
+	my @cmd = @_;
+	my $output = "";
+	# Use open with list form to avoid shell interpolation
+	if (open(my $pipe, "-|", @cmd)) {
+		local $/;
+		$output = <$pipe>;
+		close($pipe);
+	}
+	return $output;
 }
 
-if ($xmm && !$avx && $ARGV[0] eq "win32n" &&
-		`nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.03) + ($1>=2.10);
+if ($xmm) {
+	my $cc = $ENV{CC} || "cc";
+	my $cc_output = safe_exec($cc, "-Wa,-v", "-c", "-o", "/dev/null", "-x", "assembler", "/dev/null");
+	if ($cc_output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+		$avx = ($1>=2.19) + ($1>=2.22);
+	}
 }
 
-if ($xmm && !$avx && $ARGV[0] eq "win32" &&
-		`ml 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=11);
+if ($xmm && !$avx && $ARGV[0] eq "win32n") {
+	my $nasm_output = safe_exec("nasm", "-v");
+	if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)/) {
+		$avx = ($1>=2.03) + ($1>=2.10);
+	}
 }
 
-if ($xmm && !$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
-	$avx = ($2>=3.0) + ($2>3.0);
+if ($xmm && !$avx && $ARGV[0] eq "win32") {
+	my $ml_output = safe_exec("ml");
+	if ($ml_output =~ /Version ([0-9]+)\./) {
+		$avx = ($1>=10) + ($1>=11);
+	}
+}
+
+if ($xmm && !$avx) {
+	my $cc = $ENV{CC} || "cc";
+	my $cc_version = safe_exec($cc, "-v");
+	if ($cc_version =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
+		$avx = ($2>=3.0) + ($2>3.0);
+	}
 }
 
 $shaext=$xmm;	### set to zero if compiling for 1.0.1

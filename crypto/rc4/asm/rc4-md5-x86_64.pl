@@ -65,7 +65,10 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; my $dir=$1; my $xlate;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
+# Use list form to avoid shell interpretation
+my @xlate_cmd = ($^X, $xlate, $flavour);
+push @xlate_cmd, $output if defined($output);
+open OUT, "|-", @xlate_cmd
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
