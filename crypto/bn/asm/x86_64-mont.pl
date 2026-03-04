@@ -46,6 +46,15 @@
 #
 # Add MULX/ADOX/ADCX code path.
 
+# Sanitize environment variables to prevent command injection
+sub sanitize_env {
+    my ($var) = @_;
+    return '' unless defined $var;
+    # Allow only safe characters: alphanumeric, dash, underscore, dot, slash, space, equals, and colon
+    $var =~ s/[^a-zA-Z0-9._\/\-+=: ]//g;
+    return $var;
+}
+
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
@@ -62,22 +71,24 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+my $cc_safe = sanitize_env($ENV{CC});
+if ($cc_safe && `$cc_safe -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$addx = ($1>=2.23);
 }
 
-if (!$addx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+my $asm_safe = sanitize_env($ENV{ASM});
+if (!$addx && $win64 && ($flavour =~ /nasm/ || $asm_safe =~ /nasm/) &&
 	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
 	$addx = ($1>=2.10);
 }
 
-if (!$addx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+if (!$addx && $win64 && ($flavour =~ /masm/ || $asm_safe =~ /ml64/) &&
 	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
 	$addx = ($1>=12);
 }
 
-if (!$addx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
+if (!$addx && $cc_safe && `$cc_safe -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
 	my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
 	$addx = ($ver>=3.03);
 }
