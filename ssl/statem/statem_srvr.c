@@ -1786,8 +1786,8 @@ static int tls_early_post_process_client_hello(SSL_CONNECTION *s)
                 }
                 /* default verification */
             } else if (s->d1->cookie_len != clienthello->dtls_cookie_len
-                    || memcmp(clienthello->dtls_cookie, s->d1->cookie,
-                              s->d1->cookie_len) != 0) {
+                    || CRYPTO_memcmp(clienthello->dtls_cookie, s->d1->cookie,
+                                     s->d1->cookie_len) != 0) {
                 SSLfatal(s, SSL_AD_HANDSHAKE_FAILURE, SSL_R_COOKIE_MISMATCH);
                 goto err;
             }
