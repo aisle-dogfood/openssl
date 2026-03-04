@@ -25,10 +25,9 @@
 unsigned char *MD2(const unsigned char *d, size_t n, unsigned char *md)
 {
     MD2_CTX c;
-    static unsigned char m[MD2_DIGEST_LENGTH];
 
     if (md == NULL)
-        md = m;
+        return NULL;
     if (!MD2_Init(&c))
         return NULL;
 #ifndef CHARSET_EBCDIC
