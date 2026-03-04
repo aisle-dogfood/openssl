@@ -1006,8 +1006,25 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 .L128_enc_tail:								@ TAIL
 
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
+	
+	@ Safe load: check if we have at least 16 bytes to load
+	cmp	$main_end_input_ptr, #16
+	b.ge	.L128_enc_tail_block_0_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t0b, #0						@ zero the register
+	sub	$temp1_x, $main_end_input_ptr, #1			@ temp1_x = bytes_remaining - 1
+.L128_enc_tail_block_0_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t0.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_tail_block_0_partial_load_loop
+	b	.L128_enc_tail_block_0_loaded
+
+.L128_enc_tail_block_0_safe_load:
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - load plaintext
 
+.L128_enc_tail_block_0_loaded:
 	mov	$t1.16b, $rk10
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
@@ -1089,8 +1106,26 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 	st1	{ $res1b}, [$output_ptr], #16				@ AES final-7 block  - store result
 
 	rev64	$res0b, $res1b						@ GHASH final-7 block
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_block_7_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_block_7_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_block_7_partial_load_loop
+	b	.L128_enc_block_7_loaded
+
+.L128_enc_block_7_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-6 block - load plaintext
 
+.L128_enc_block_7_loaded:
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-7 block - mid
@@ -1111,8 +1146,26 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 	st1	{ $res1b}, [$output_ptr], #16				@ AES final-6 block - store result
 
 	rev64	$res0b, $res1b						@ GHASH final-6 block
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_block_6_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_block_6_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_block_6_partial_load_loop
+	b	.L128_enc_block_6_loaded
+
+.L128_enc_block_6_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-5 block - load plaintext
 
+.L128_enc_block_6_loaded:
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-6 block - mid
@@ -1139,7 +1192,26 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-5 block - mid
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_block_5_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_block_5_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_block_5_partial_load_loop
+	b	.L128_enc_block_5_loaded
+
+.L128_enc_block_5_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-4 block - load plaintext
+
+.L128_enc_block_5_loaded:
 	pmull2  $rk2q1, $res0.2d, $h6.2d				@ GHASH final-5 block - high
 
 	eor	$acc_hb, $acc_hb, $rk2					@ GHASH final-5 block - high
@@ -1162,8 +1234,25 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 
 	rev64	$res0b, $res1b						@ GHASH final-4 block
 
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_block_4_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_block_4_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_block_4_partial_load_loop
+	b	.L128_enc_block_4_loaded
+
+.L128_enc_block_4_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-3 block - load plaintext
 
+.L128_enc_block_4_loaded:
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-4 block - mid
@@ -1197,8 +1286,25 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 	ldr	$h34kq, [$current_tag, #96]				@ load h4k | h3k
 	pmull	$rk3q1, $res0.1d, $h4.1d				@ GHASH final-3 block - low
 
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_block_3_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_block_3_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_block_3_partial_load_loop
+	b	.L128_enc_block_3_loaded
+
+.L128_enc_block_3_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-2 block - load plaintext
 
+.L128_enc_block_3_loaded:
 	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-3 block - mid
 
 	ins	$rk4v.d[1], $rk4v.d[0]					@ GHASH final-3 block - mid
@@ -1219,8 +1325,25 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
 
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_block_2_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_block_2_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_block_2_partial_load_loop
+	b	.L128_enc_block_2_loaded
+
+.L128_enc_block_2_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final-1 block - load plaintext
 
+.L128_enc_block_2_loaded:
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-2 block - mid
 	ldr	$h3q, [$current_tag, #80]				@ load h3l | h3h
 	ext     $h3.16b, $h3.16b, $h3.16b, #8
@@ -1245,8 +1368,26 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 	ldr	$h2q, [$current_tag, #64]				@ load h2l | h2h
 	ext     $h2.16b, $h2.16b, $h2.16b, #8
 	rev64	$res0b, $res1b						@ GHASH final-1 block
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_enc_final_block_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_enc_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_enc_partial_load_loop
+	b	.L128_enc_final_block_loaded
+
+.L128_enc_final_block_safe_load:
 	ldr	$ctr_t1q, [$input_ptr], #16				@ AES final block - load plaintext
 
+.L128_enc_final_block_loaded:
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
 
 	movi	$t0.8b, #0						@ suppress further partial tag feed in
@@ -2098,11 +2239,28 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 	mov	$t1.16b, $rk10
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
 
+	@ Safe load: check if we have at least 16 bytes to load
+	cmp	$main_end_input_ptr, #16
+	b.ge	.L128_dec_tail_block_0_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $main_end_input_ptr, #1			@ temp1_x = bytes_remaining - 1
+.L128_dec_tail_block_0_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_tail_block_0_partial_load_loop
+	b	.L128_dec_tail_block_0_loaded
+
+.L128_dec_tail_block_0_safe_load:
+	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
+
+.L128_dec_tail_block_0_loaded:
 	cmp	$main_end_input_ptr, #112
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
 	ext     $h8.16b, $h8.16b, $h8.16b, #8
-	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
 
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
 	ext     $h5.16b, $h5.16b, $h5.16b, #8
@@ -2188,8 +2346,26 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-7 block - mid
 
 	movi	$t0.8b, #0						@ suppress further partial tag feed in
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_block_7_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_block_7_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_block_7_partial_load_loop
+	b	.L128_dec_block_7_loaded
+
+.L128_dec_block_7_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final-6 block - load ciphertext
 
+.L128_dec_block_7_loaded:
 	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-7 block - mid
 
 	pmull2  $acc_h.1q, $res0.2d, $h8.2d				@ GHASH final-7 block - high
@@ -2208,7 +2384,26 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-6 block - mid
 
 	pmull	$rk3q1, $res0.1d, $h7.1d				@ GHASH final-6 block - low
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_block_6_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_block_6_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_block_6_partial_load_loop
+	b	.L128_dec_block_6_loaded
+
+.L128_dec_block_6_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final-5 block - load ciphertext
+
+.L128_dec_block_6_loaded:
 	movi	$t0.8b, #0						@ suppress further partial tag feed in
 
 	pmull	$rk4v.1q, $rk4v.1d, $h78k.1d				@ GHASH final-6 block - mid
@@ -2224,7 +2419,25 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 
 	rev64	$res0b, $res1b						@ GHASH final-5 block
 
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_block_5_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_block_5_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_block_5_partial_load_loop
+	b	.L128_dec_block_5_loaded
+
+.L128_dec_block_5_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final-4 block - load ciphertext
+
+.L128_dec_block_5_loaded:
 	st1	{ $res4b}, [$output_ptr], #16			 	@ AES final-5 block - store result
 
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
@@ -2250,8 +2463,26 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 	rev64	$res0b, $res1b						@ GHASH final-4 block
 
 	eor	$res0b, $res0b, $t0.16b					@ feed in partial tag
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_block_4_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_block_4_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_block_4_partial_load_loop
+	b	.L128_dec_block_4_loaded
+
+.L128_dec_block_4_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final-3 block - load ciphertext
 
+.L128_dec_block_4_loaded:
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-4 block - mid
 	movi	$t0.8b, #0						@ suppress further partial tag feed in
 	pmull2  $rk2q1, $res0.2d, $h5.2d				@ GHASH final-4 block - high
@@ -2284,8 +2515,25 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 
 	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-3 block - mid
 
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_block_3_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_block_3_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_block_3_partial_load_loop
+	b	.L128_dec_block_3_loaded
+
+.L128_dec_block_3_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final-2 block - load ciphertext
 
+.L128_dec_block_3_loaded:
 	ins	$rk4v.d[1], $rk4v.d[0]					@ GHASH final-3 block - mid
 	pmull	$rk3q1, $res0.1d, $h4.1d				@ GHASH final-3 block - low
 	pmull2  $rk2q1, $res0.2d, $h4.2d				@ GHASH final-3 block - high
@@ -2317,8 +2565,26 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 
 	pmull2  $rk2q1, $res0.2d, $h3.2d				@ GHASH final-2 block - high
 	pmull	$rk4v.1q, $rk4v.1d, $h34k.1d				@ GHASH final-2 block - mid
+	
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_block_2_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_block_2_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_block_2_partial_load_loop
+	b	.L128_dec_block_2_loaded
+
+.L128_dec_block_2_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final-1 block - load ciphertext
 
+.L128_dec_block_2_loaded:
 	eor	$acc_mb, $acc_mb, $rk4v.16b				@ GHASH final-2 block - mid
 
 	eor	$acc_lb, $acc_lb, $rk3					@ GHASH final-2 block - low
@@ -2339,7 +2605,25 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 
 	ins	$rk4v.d[0], $res0.d[1]					@ GHASH final-1 block - mid
 
+	@ Safe load: check if we have at least 16 bytes left
+	sub	$temp0_x, $end_input_ptr, $input_ptr			@ compute bytes remaining
+	cmp	$temp0_x, #16
+	b.ge	.L128_dec_final_block_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$res1b, #0						@ zero the register
+	sub	$temp1_x, $temp0_x, #1					@ temp1_x = bytes_remaining - 1
+.L128_dec_final_block_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$res1.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L128_dec_final_block_partial_load_loop
+	b	.L128_dec_final_block_loaded
+
+.L128_dec_final_block_safe_load:
 	ldr	$res1q, [$input_ptr], #16				@ AES final block - load ciphertext
+
+.L128_dec_final_block_loaded:
 	pmull2  $rk2q1, $res0.2d, $h2.2d				@ GHASH final-1 block - high
 
 	eor	$rk4v.8b, $rk4v.8b, $res0.8b				@ GHASH final-1 block - mid
@@ -3325,8 +3609,24 @@ unroll8_eor3_aes_gcm_enc_192_kernel:
         ext     $h5.16b, $h5.16b, $h5.16b, #8
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
 
+	@ Safe load: check if we have at least 16 bytes to load
+	cmp	$main_end_input_ptr, #16
+	b.ge	.L192_enc_tail_block_0_safe_load
+	
+	@ Partial block: load byte-by-byte into temporary buffer
+	movi	$ctr_t0b, #0						@ zero the register
+	sub	$temp1_x, $main_end_input_ptr, #1			@ temp1_x = bytes_remaining - 1
+.L192_enc_tail_block_0_partial_load_loop:
+	ldrb	$temp2_x, [$input_ptr], #1				@ load one byte
+	ins	$ctr_t0.b[$temp1_x], $temp2_x				@ insert into vector
+	subs	$temp1_x, $temp1_x, #1
+	b.ge	.L192_enc_tail_block_0_partial_load_loop
+	b	.L192_enc_tail_block_0_loaded
+
+.L192_enc_tail_block_0_safe_load:
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - l3ad plaintext
 
+.L192_enc_tail_block_0_loaded:
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
         ext     $h8.16b, $h8.16b, $h8.16b, #8
 
