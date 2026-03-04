@@ -16,7 +16,8 @@
 # define DEFAULT_CONF_MFLAGS \
     (CONF_MFLAGS_DEFAULT_SECTION | \
      CONF_MFLAGS_IGNORE_MISSING_FILE | \
-     CONF_MFLAGS_IGNORE_RETURN_CODES)
+     CONF_MFLAGS_IGNORE_RETURN_CODES | \
+     CONF_MFLAGS_NO_DSO)
 
 struct ossl_init_settings_st {
     char *filename;

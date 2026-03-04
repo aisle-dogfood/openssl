@@ -490,7 +490,8 @@ OSSL_LIB_CTX *OSSL_LIB_CTX_new_child(const OSSL_CORE_HANDLE *handle,
 
 int OSSL_LIB_CTX_load_config(OSSL_LIB_CTX *ctx, const char *config_file)
 {
-    return CONF_modules_load_file_ex(ctx, config_file, NULL, 0) > 0;
+    return CONF_modules_load_file_ex(ctx, config_file, NULL,
+                                     CONF_MFLAGS_NO_DSO) > 0;
 }
 #endif
 
