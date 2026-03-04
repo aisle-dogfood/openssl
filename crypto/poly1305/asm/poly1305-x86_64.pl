@@ -75,27 +75,47 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
+# Sanitize environment variables to prevent command injection
+my $cc = $ENV{CC} // 'cc';
+my $asm = $ENV{ASM} // '';
+# Only allow safe characters in CC and ASM (alphanumeric, dash, underscore, slash, dot)
+$cc =~ /^([-\w.\/]+)$/ or die "Unsafe CC environment variable";
+$cc = $1;
+$asm =~ /^([-\w.\/]*)$/ or die "Unsafe ASM environment variable";
+$asm = $1;
+
+if (my $output = `$cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`) {
+	if ($output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+		$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
+	}
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
-	$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
-	$avx += 2 if ($1==2.11 && $2>=8);
+if (!$avx && $win64 && ($flavour =~ /nasm/ || $asm =~ /nasm/) &&
+	   (my $nasm_output = `nasm -v 2>&1`)) {
+	if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
+		$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
+		$avx += 2 if ($1==2.11 && $2>=8);
+	}
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	   `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=12);
+if (!$avx && $win64 && ($flavour =~ /masm/ || $asm =~ /ml64/) &&
+	   (my $ml64_output = `ml64 2>&1`)) {
+	if ($ml64_output =~ /Version ([0-9]+)\./) {
+		$avx = ($1>=10) + ($1>=12);
+	}
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
-	$avx = ($2>=3.0) + ($2>3.0);
+if (!$avx && (my $cc_output = `$cc -v 2>&1`)) {
+	if ($cc_output =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+		$avx = ($2>=3.0) + ($2>3.0);
+	}
 }
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
+# Use list form of open to avoid shell interpolation
+my @args = ($^X, $xlate);
+push @args, $flavour if defined $flavour;
+push @args, $output if defined $output;
+open OUT, "|-", @args
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
