@@ -21,6 +21,7 @@ use OpenSSL::fallback "$FindBin::Bin/external/perl/MODULES.txt";
 use OpenSSL::Glob;
 use OpenSSL::Template;
 use OpenSSL::config;
+use Safe;
 
 # see INSTALL.md for instructions.
 
@@ -381,6 +382,15 @@ foreach (sort glob($pattern)) {
 }
 
 if (defined env($local_config_envname)) {
+    # WARNING: Files loaded from OPENSSL_LOCAL_CONFIG_DIR are evaluated as Perl code.
+    # Only use this with trusted, repository-managed configuration files.
+    # Untrusted configuration files can execute arbitrary code.
+    warn <<"EOF";
+WARNING: Loading configuration files from $local_config_envname environment variable.
+         Only trusted configuration files should be loaded, as they are evaluated as Perl code.
+         Using untrusted configuration files can lead to arbitrary code execution.
+EOF
+    
     if ($^O eq 'VMS') {
         # VMS environment variables are logical names,
         # which can be used as is
@@ -389,7 +399,24 @@ if (defined env($local_config_envname)) {
         $pattern = catfile(env($local_config_envname), '*.conf');
     }
 
-    foreach (sort glob($pattern)) {
+    my @local_configs = sort glob($pattern);
+    if (@local_configs == 0) {
+        warn "WARNING: No configuration files found matching pattern: $pattern\n";
+    }
+    
+    foreach (@local_configs) {
+        # Validate that the file exists and is a regular file
+        if (! -f $_) {
+            die "ERROR: Configuration file '$_' is not a regular file or does not exist\n";
+        }
+        if (! -r $_) {
+            die "ERROR: Configuration file '$_' is not readable\n";
+        }
+        
+        # Resolve to absolute path for clarity in warnings
+        my $abs_path = rel2abs($_);
+        warn "Loading configuration from: $abs_path\n";
+        
         &read_config($_);
     }
 }
@@ -3173,6 +3200,10 @@ sub add {
     sub { _add($separator, @_, @x) };
 }
 
+# read_eval_file: Reads and evaluates a file as Perl code
+# SECURITY WARNING: This function evaluates arbitrary Perl code from the given file.
+# It should only be used with trusted, repository-managed configuration files.
+# The configuration file has full access to the Configure script's environment.
 sub read_eval_file {
     my $fname = shift;
     my $content;
@@ -3187,6 +3218,8 @@ sub read_eval_file {
     {
         local $@;
 
+        # SECURITY: eval executes arbitrary Perl code from configuration files.
+        # Only trusted files should reach this point.
         @result = ( eval $content );
         warn $@ if $@;
     }
