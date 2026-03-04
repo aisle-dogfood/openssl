@@ -1726,7 +1726,18 @@ if (!$disabled{asm} && !$predefined_C{__MACH__} && $^O ne 'VMS' && !$predefined_
         push @{$config{cflags}}, "-Wa,--noexecstack", "-Qunused-arguments";
     } else {
         my $cc = $config{CROSS_COMPILE}.$config{CC};
-        open(PIPE, "$cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
+        # Split compiler command to avoid shell injection
+        my @cc_cmd = split(/\s+/, $cc);
+        my $pid = open(PIPE, "-|");
+        if (!defined $pid) {
+            die "Failed to fork: $!";
+        } elsif ($pid == 0) {
+            # Child process
+            open(STDERR, ">&STDOUT") or die "Can't dup STDOUT: $!";
+            exec { $cc_cmd[0] } @cc_cmd, "-Wa,--help", "-c", "-o", "null.$$.o", "-x", "assembler", "/dev/null"
+                or die "Failed to exec $cc_cmd[0]: $!";
+        }
+        # Parent process
         while(<PIPE>) {
             if (m/--noexecstack/) {
                 push @{$config{cflags}}, "-Wa,--noexecstack";
@@ -3401,7 +3412,18 @@ sub compiler_predefined {
         $predefined{$cc} = {};
 
         # collect compiler pre-defines from gcc or gcc-alike...
-        open(PIPE, "$cc -dM -E -x c /dev/null 2>&1 |");
+        # Split compiler command to avoid shell injection
+        my @cc_cmd = split(/\s+/, $cc);
+        my $pid = open(PIPE, "-|");
+        if (!defined $pid) {
+            die "Failed to fork: $!";
+        } elsif ($pid == 0) {
+            # Child process
+            open(STDERR, ">&STDOUT") or die "Can't dup STDOUT: $!";
+            exec { $cc_cmd[0] } @cc_cmd, "-dM", "-E", "-x", "c", "/dev/null"
+                or die "Failed to exec $cc_cmd[0]: $!";
+        }
+        # Parent process
         while (my $l = <PIPE>) {
             $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
             $predefined{$cc}->{$1} = $2 // '';
