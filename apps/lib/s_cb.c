@@ -14,6 +14,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> /* for memcpy() and strcmp() */
+#ifndef OPENSSL_NO_POSIX_IO
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <fcntl.h>
+# include <unistd.h>
+#endif
 #include "apps.h"
 #include <openssl/core_names.h>
 #include <openssl/params.h>
@@ -1619,6 +1625,12 @@ static void keylog_callback(const SSL *ssl, const char *line)
 
 int set_keylog_file(SSL_CTX *ctx, const char *keylog_file)
 {
+#ifndef OPENSSL_NO_POSIX_IO
+    FILE *fp = NULL;
+    int fd = -1;
+    struct stat st;
+#endif
+
     /* Close any open files */
     BIO_free_all(bio_keylog);
     bio_keylog = NULL;
@@ -1633,11 +1645,55 @@ int set_keylog_file(SSL_CTX *ctx, const char *keylog_file)
      * Furthermore, this preserves existing keylog files which is useful when
      * the tool is run multiple times.
      */
+#ifndef OPENSSL_NO_POSIX_IO
+    /*
+     * On POSIX systems, open/create the file with restrictive permissions
+     * (mode 0600) to protect sensitive TLS secrets from unauthorized access.
+     */
+# ifdef O_CREAT
+    fd = open(keylog_file, O_WRONLY | O_APPEND | O_CREAT, 0600);
+# else
+    fd = open(keylog_file, O_WRONLY | O_APPEND, 0600);
+# endif
+    if (fd < 0) {
+        BIO_printf(bio_err, "Error opening keylog file %s\n", keylog_file);
+        return 1;
+    }
+
+    /*
+     * Verify that the file has restrictive permissions. If the file already
+     * existed with overly permissive settings, warn the user about potential
+     * exposure of TLS secrets.
+     */
+    if (fstat(fd, &st) == 0) {
+        if ((st.st_mode & 0077) != 0) {
+            BIO_printf(bio_err,
+                       "Warning: keylog file %s has insecure permissions "
+                       "(should be 0600)\n", keylog_file);
+        }
+    }
+
+    fp = fdopen(fd, "a");
+    if (fp == NULL) {
+        BIO_printf(bio_err, "Error opening keylog file %s\n", keylog_file);
+        close(fd);
+        return 1;
+    }
+    bio_keylog = BIO_new_fp(fp, BIO_CLOSE);
+    if (bio_keylog == NULL) {
+        BIO_printf(bio_err, "Error creating BIO for keylog file %s\n",
+                   keylog_file);
+        fclose(fp);
+        return 1;
+    }
+#else
+    /* Non-POSIX systems: use standard BIO_new_file (best effort) */
     bio_keylog = BIO_new_file(keylog_file, "a");
     if (bio_keylog == NULL) {
         BIO_printf(bio_err, "Error writing keylog file %s\n", keylog_file);
         return 1;
     }
+#endif
 
     /* Write a header for seekable, empty files (this excludes pipes). */
     if (BIO_tell(bio_keylog) == 0) {
