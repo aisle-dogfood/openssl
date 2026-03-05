@@ -302,8 +302,8 @@ int dsa_main(int argc, char **argv)
     EVP_CIPHER_free(enc);
     release_engine(e);
     if (passin != NULL)
-        OPENSSL_clear_free(passin, strlen(passin));
+        OPENSSL_clear_free(passin, strlen(passin) + 1);
     if (passout != NULL)
-        OPENSSL_clear_free(passout, strlen(passout));
+        OPENSSL_clear_free(passout, strlen(passout) + 1);
     return ret;
 }
