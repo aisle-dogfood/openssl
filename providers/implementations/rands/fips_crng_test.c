@@ -298,7 +298,11 @@ static size_t crng_test_get_seed(void *vcrngt, unsigned char **pout,
         if (n == 0)
             return 0;
         r = crng_test(crngt, *pout, n);
-        return r > 0 ? n : 0;
+        if (r <= 0) {
+            ossl_prov_cleanup_entropy(crngt->provctx, *pout, n);
+            return 0;
+        }
+        return n;
     }
 
     /* Grab seed from our parent */
