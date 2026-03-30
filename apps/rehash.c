@@ -562,13 +562,14 @@ int rehash_main(int argc, char **argv)
             errs += do_dir(*argv++, h);
     } else if ((env = getenv(X509_get_default_cert_dir_env())) != NULL) {
         char lsc[2] = { LIST_SEPARATOR_CHAR, '\0' };
+        char *saveptr = NULL;
         m = OPENSSL_strdup(env);
         if (m == NULL) {
             BIO_puts(bio_err, "out of memory\n");
             errs = 1;
             goto end;
         }
-        for (e = strtok(m, lsc); e != NULL; e = strtok(NULL, lsc))
+        for (e = strtok_r(m, lsc, &saveptr); e != NULL; e = strtok_r(NULL, lsc, &saveptr))
             errs += do_dir(e, h);
         OPENSSL_free(m);
     } else {
