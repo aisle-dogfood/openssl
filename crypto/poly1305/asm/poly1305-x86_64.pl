@@ -799,6 +799,10 @@ $code.=<<___	if ($win64);
 	vmovdqa		%xmm14,0xd0(%r11)
 	vmovdqa		%xmm15,0xe0(%r11)
 .Ldo_avx_body:
+	# CRITICAL: This label is referenced in .LSEH_info_poly1305_blocks_avx_3
+	# by avx_handler. It marks the end of prologue where XMM6-15 are saved.
+	# Any modification to the prologue MUST keep this label immediately after
+	# the last XMM register save, or SEH unwinding will fail. See .xdata section.
 ___
 $code.=<<___;
 	sub		\$64,$len
@@ -1372,6 +1376,10 @@ $code.=<<___	if ($win64);
 	vmovdqa		0xe0(%r11),%xmm15
 	lea		0xf8(%r11),%rsp
 .Ldo_avx_epilogue:
+	# CRITICAL: This label is referenced in .LSEH_info_poly1305_blocks_avx_3
+	# by avx_handler. It marks the start of epilogue where XMM6-15 are restored.
+	# The XMM restore instructions above MUST remain immediately before this label,
+	# or SEH unwinding will fail. See .xdata section.
 ___
 $code.=<<___	if (!$win64);
 	lea		0x58(%r11),%rsp
@@ -1747,6 +1755,10 @@ $code.=<<___	if ($win64);
 	vmovdqa		%xmm14,0xd0(%r11)
 	vmovdqa		%xmm15,0xe0(%r11)
 .Ldo_avx2_body:
+	# CRITICAL: This label is referenced in .LSEH_info_poly1305_blocks_avx2_3
+	# by avx_handler. It marks the end of prologue where XMM6-15 are saved.
+	# Any modification to the prologue MUST keep this label immediately after
+	# the last XMM register save, or SEH unwinding will fail. See .xdata section.
 ___
 $code.=<<___;
 	lea		.Lconst(%rip),%rcx
@@ -2116,6 +2128,10 @@ $code.=<<___	if ($win64);
 	vmovdqa		0xe0(%r11),%xmm15
 	lea		0xf8(%r11),%rsp
 .Ldo_avx2_epilogue:
+	# CRITICAL: This label is referenced in .LSEH_info_poly1305_blocks_avx2_3
+	# by avx_handler. It marks the start of epilogue where XMM6-15 are restored.
+	# The XMM restore instructions above MUST remain immediately before this label,
+	# or SEH unwinding will fail. See .xdata section.
 ___
 $code.=<<___	if (!$win64);
 	lea		8(%r11),%rsp
@@ -2173,6 +2189,10 @@ $code.=<<___	if ($win64);
 	vmovdqa		%xmm14,0xd0(%r11)
 	vmovdqa		%xmm15,0xe0(%r11)
 .Ldo_avx512_body:
+	# CRITICAL: This label is referenced in .LSEH_info_poly1305_blocks_avx512
+	# by avx_handler. It marks the end of prologue where XMM6-15 are saved.
+	# Any modification to the prologue MUST keep this label immediately after
+	# the last XMM register save, or SEH unwinding will fail. See .xdata section.
 ___
 $code.=<<___;
 	lea		.Lconst(%rip),%rcx
@@ -2720,6 +2740,10 @@ $code.=<<___	if ($win64);
 	movdqa		0xe0(%r11),%xmm15
 	lea		0xf8(%r11),%rsp
 .Ldo_avx512_epilogue:
+	# CRITICAL: This label is referenced in .LSEH_info_poly1305_blocks_avx512
+	# by avx_handler. It marks the start of epilogue where XMM6-15 are restored.
+	# The XMM restore instructions above MUST remain immediately before this label,
+	# or SEH unwinding will fail. See .xdata section.
 ___
 $code.=<<___	if (!$win64);
 	lea		8(%r11),%rsp
@@ -3995,6 +4019,14 @@ se_handler:
 .type	avx_handler,\@abi-omnipotent
 .align	16
 avx_handler:
+	# CRITICAL: Custom SEH handler for AVX/AVX2/AVX512 functions
+	# This handler restores XMM6-XMM15 registers during exception unwinding.
+	# It depends on:
+	# 1. HandlerData[0] pointing to *_body label (after XMM saves in prologue)
+	# 2. HandlerData[1] pointing to *_epilogue label (before XMM restores)
+	# 3. XMM registers saved at offset 0x50 from R11 (10 registers * 16 bytes)
+	# 4. Stack frame pointer in R11 matching the prologue setup
+	# Any drift between these assumptions and actual code will cause crashes.
 	push	%rsi
 	push	%rdi
 	push	%rbx
@@ -4026,10 +4058,10 @@ avx_handler:
 
 	mov	208($context),%rax	# pull context->R11
 
-	lea	0x50(%rax),%rsi
+	lea	0x50(%rax),%rsi		# CRITICAL: Offset 0x50 must match XMM save location
 	lea	0xf8(%rax),%rax
 	lea	512($context),%rdi	# &context.Xmm6
-	mov	\$20,%ecx
+	mov	\$20,%ecx		# 10 XMM registers * 16 bytes / 8 = 20 qwords
 	.long	0xa548f3fc		# cld; rep movsq
 
 .Lcommon_seh_tail:
@@ -4074,6 +4106,26 @@ avx_handler:
 
 .section	.pdata
 .align	4
+	###########################################################################
+	# CRITICAL SEH UNWIND METADATA SECTION
+	# This section defines exception handling metadata for Windows x64.
+	# The .pdata entries map function ranges to .xdata unwind info.
+	# The .xdata entries reference custom handlers (se_handler, avx_handler)
+	# and specify prologue/epilogue labels via HandlerData[].
+	#
+	# MAINTENANCE REQUIREMENTS:
+	# 1. Labels in HandlerData[] MUST precisely match code structure
+	# 2. *_body labels MUST immediately follow XMM register saves in prologue
+	# 3. *_epilogue labels MUST immediately precede XMM register restores
+	# 4. Offset 0x50(%r11) in avx_handler MUST match XMM save location
+	# 5. Any change to prologue/epilogue XMM save/restore code requires
+	#    verification that corresponding labels remain synchronized
+	#
+	# VALIDATION:
+	# - Review all *_body and *_epilogue label placements after code changes
+	# - Verify avx_handler offset calculations match stack frame layout
+	# - Consider automated CI testing of unwind metadata (e.g., dumpbin /unwindinfo)
+	###########################################################################
 	.rva	.LSEH_begin_poly1305_init
 	.rva	.LSEH_end_poly1305_init
 	.rva	.LSEH_info_poly1305_init
@@ -4153,6 +4205,10 @@ $code.=<<___ if ($avx);
 .LSEH_info_poly1305_blocks_avx_3:
 	.byte	9,0,0,0
 	.rva	avx_handler
+	# CRITICAL SEH synchronization point:
+	# .Ldo_avx_body must immediately follow the last vmovdqa saving XMM15
+	# .Ldo_avx_epilogue must immediately precede the first vmovdqa restoring XMM6
+	# avx_handler at offset 0x50 uses these to copy XMM6-15 during unwind
 	.rva	.Ldo_avx_body,.Ldo_avx_epilogue			# HandlerData[]
 
 .LSEH_info_poly1305_emit_avx:
@@ -4174,12 +4230,20 @@ $code.=<<___ if ($avx>1);
 .LSEH_info_poly1305_blocks_avx2_3:
 	.byte	9,0,0,0
 	.rva	avx_handler
+	# CRITICAL SEH synchronization point:
+	# .Ldo_avx2_body must immediately follow the last vmovdqa saving XMM15
+	# .Ldo_avx2_epilogue must immediately precede the first vmovdqa restoring XMM6
+	# avx_handler at offset 0x50 uses these to copy XMM6-15 during unwind
 	.rva	.Ldo_avx2_body,.Ldo_avx2_epilogue		# HandlerData[]
 ___
 $code.=<<___ if ($avx>2);
 .LSEH_info_poly1305_blocks_avx512:
 	.byte	9,0,0,0
 	.rva	avx_handler
+	# CRITICAL SEH synchronization point:
+	# .Ldo_avx512_body must immediately follow the last vmovdqa/movdqa saving XMM15
+	# .Ldo_avx512_epilogue must immediately precede the first movdqa restoring XMM6
+	# avx_handler at offset 0x50 uses these to copy XMM6-15 during unwind
 	.rva	.Ldo_avx512_body,.Ldo_avx512_epilogue		# HandlerData[]
 ___
 }
