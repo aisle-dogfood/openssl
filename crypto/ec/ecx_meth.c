@@ -824,7 +824,7 @@ static int pkey_ecd_digestsign25519(EVP_MD_CTX *ctx, unsigned char *sig,
     if (ossl_ed25519_sign(sig, tbs, tbslen, edkey->pubkey, edkey->privkey,
                           0, 0, 0,
                           NULL, 0,
-                          NULL, NULL) == 0)
+                          edkey->libctx, edkey->propq) == 0)
         return 0;
     *siglen = ED25519_SIGSIZE;
     return 1;
