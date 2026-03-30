@@ -12,6 +12,7 @@
 #include <openssl/lhash.h>
 #include <openssl/core_names.h>
 #include <openssl/rand.h>
+#include <openssl/crypto.h>
 
 /*
  * QUIC Stateless Reset Token Manager
@@ -117,7 +118,7 @@ QUIC_SRTM *ossl_quic_srtm_new(OSSL_LIB_CTX *libctx, const char *propq)
         goto err;
 
     if ((srtm = OPENSSL_zalloc(sizeof(*srtm))) == NULL)
-        return NULL;
+        goto err;
 
     /* Use AES-128-ECB as a permutation over 128-bit SRTs. */
     if ((ecb = EVP_CIPHER_fetch(libctx, "AES-128-ECB", propq)) == NULL)
@@ -137,13 +138,13 @@ QUIC_SRTM *ossl_quic_srtm_new(OSSL_LIB_CTX *libctx, const char *propq)
         || (srtm->items_rev = lh_SRTM_ITEM_new(items_rev_hash, items_rev_cmp)) == NULL)
         goto err;
 
+    /* Cleanse the temporary key before returning. */
+    OPENSSL_cleanse(key, sizeof(key));
     return srtm;
 
 err:
-    /*
-     * No cleansing of key needed as blinding exists only for side channel
-     * mitigation.
-     */
+    /* Cleanse the temporary key on all error paths. */
+    OPENSSL_cleanse(key, sizeof(key));
     ossl_quic_srtm_free(srtm);
     EVP_CIPHER_free(ecb);
     return NULL;
