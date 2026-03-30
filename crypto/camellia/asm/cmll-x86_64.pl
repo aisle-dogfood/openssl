@@ -35,6 +35,15 @@
 # thanks to 64-bit operations being covertly deployed. Improvement on
 # EM64T, pre-Core2 Intel x86_64 CPU, is not as impressive, because it
 # apparently emulates some of 64-bit operations in [32-bit] microcode.
+#
+# SECURITY NOTE: This implementation performs S-box table lookups using
+# indices derived from secret key material. While S-box data and key schedule
+# are positioned to optimize cache associativity (reducing but not eliminating
+# timing variation), this code is NOT constant-time and may leak information
+# via cache timing side-channels in hostile multi-tenant environments.
+# Applications requiring protection against cache-timing attacks should build
+# OpenSSL with assembly disabled (Configure no-asm) to use the constant-time
+# C implementation, which scans all S-box entries at significant performance cost.
 
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
