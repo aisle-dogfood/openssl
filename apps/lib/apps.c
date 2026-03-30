@@ -3281,8 +3281,12 @@ int has_stdin_waiting(void)
 /* Corrupt a signature by modifying final byte */
 void corrupt_signature(const ASN1_STRING *signature)
 {
-    unsigned char *s = signature->data;
+    unsigned char *s;
 
+    if (signature == NULL || signature->length <= 0 || signature->data == NULL)
+        return;
+
+    s = signature->data;
     s[signature->length - 1] ^= 0x1;
 }
 
