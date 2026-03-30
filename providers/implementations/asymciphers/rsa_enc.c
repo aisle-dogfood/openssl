@@ -191,7 +191,7 @@ static int rsa_encrypt(void *vprsactx, unsigned char *out, size_t *outlen,
         if ((tbuf = OPENSSL_malloc(rsasize)) == NULL)
             return 0;
         if (prsactx->oaep_md == NULL) {
-            prsactx->oaep_md = EVP_MD_fetch(prsactx->libctx, "SHA-1", NULL);
+            prsactx->oaep_md = EVP_MD_fetch(prsactx->libctx, "SHA-256", NULL);
             if (prsactx->oaep_md == NULL) {
                 OPENSSL_free(tbuf);
                 ERR_raise(ERR_LIB_PROV, ERR_R_INTERNAL_ERROR);
@@ -279,7 +279,7 @@ static int rsa_decrypt(void *vprsactx, unsigned char *out, size_t *outlen,
         }
         if (prsactx->pad_mode == RSA_PKCS1_OAEP_PADDING) {
             if (prsactx->oaep_md == NULL) {
-                prsactx->oaep_md = EVP_MD_fetch(prsactx->libctx, "SHA-1", NULL);
+                prsactx->oaep_md = EVP_MD_fetch(prsactx->libctx, "SHA-256", NULL);
                 if (prsactx->oaep_md == NULL) {
                     OPENSSL_free(tbuf);
                     ERR_raise(ERR_LIB_PROV, ERR_R_INTERNAL_ERROR);
@@ -537,7 +537,7 @@ static int rsa_set_ctx_params(void *vprsactx, const OSSL_PARAM params[])
         if (pad_mode == RSA_PKCS1_PSS_PADDING)
             return 0;
         if (pad_mode == RSA_PKCS1_OAEP_PADDING && prsactx->oaep_md == NULL) {
-            prsactx->oaep_md = EVP_MD_fetch(prsactx->libctx, "SHA1", mdprops);
+            prsactx->oaep_md = EVP_MD_fetch(prsactx->libctx, "SHA-256", mdprops);
             if (prsactx->oaep_md == NULL)
                 return 0;
         }
