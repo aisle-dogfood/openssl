@@ -43,6 +43,9 @@
 #	SSE2-capable ones; AVX is omitted, because it doesn't give
 #	a lot of improvement, 5-10% depending on processor;
 
+use IPC::Open3;
+use Symbol 'gensym';
+
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
 require "x86asm.pl";
@@ -60,8 +63,17 @@ if ($sse2) {
 	&static_label("enter_emit");
 	&external_label("OPENSSL_ia32cap_P");
 
-	if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-			=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+	# Probe GNU assembler version using IPC::Open3 to avoid shell injection
+	my $cc = $ENV{CC} // 'cc';
+	my $gas_probe_out = '';
+	eval {
+		my $err = gensym();
+		my $pid = open3(undef, my $out, $err, $cc, '-Wa,-v', '-c', '-o', '/dev/null', '-x', 'assembler', '/dev/null');
+		$gas_probe_out = do { local $/; <$out> };
+		$gas_probe_out .= do { local $/; <$err> };
+		waitpid($pid, 0);
+	};
+	if ($gas_probe_out =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 		$avx = ($1>=2.19) + ($1>=2.22);
 	}
 
@@ -70,8 +82,19 @@ if ($sse2) {
 	$avx = ($1>=2.09) + ($1>=2.10);
 	}
 
-	if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
-		$avx = ($2>=3.0) + ($2>3.0);
+	# Probe clang/LLVM version using IPC::Open3 to avoid shell injection
+	if (!$avx) {
+		my $cc_version_out = '';
+		eval {
+			my $err = gensym();
+			my $pid = open3(undef, my $out, $err, $cc, '-v');
+			$cc_version_out = do { local $/; <$out> };
+			$cc_version_out .= do { local $/; <$err> };
+			waitpid($pid, 0);
+		};
+		if ($cc_version_out =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
+			$avx = ($2>=3.0) + ($2>3.0);
+		}
 	}
 }
 
