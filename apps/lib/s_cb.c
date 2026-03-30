@@ -22,6 +22,7 @@
 #include <openssl/x509.h>
 #include <openssl/ssl.h>
 #include <openssl/bn.h>
+#include <openssl/crypto.h>
 #ifndef OPENSSL_NO_DH
 # include <openssl/dh.h>
 #endif
@@ -916,7 +917,7 @@ int verify_stateless_cookie_callback(SSL *ssl, const unsigned char *cookie,
     if (cookie_initialized
         && generate_stateless_cookie_callback(ssl, result, &resultlength)
         && cookie_len == resultlength
-        && memcmp(result, cookie, resultlength) == 0)
+        && CRYPTO_memcmp(result, cookie, resultlength) == 0)
         return 1;
 
     return 0;
