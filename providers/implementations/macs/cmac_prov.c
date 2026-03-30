@@ -114,55 +114,14 @@ static size_t cmac_size(void *vmacctx)
     return EVP_CIPHER_CTX_get_block_size(cipherctx);
 }
 
-#ifdef FIPS_MODULE
-/*
- * TDES Encryption is not approved in FIPS 140-3.
- *
- * In strict approved mode we just fail here (by returning 0).
- * If we are going to bypass it using a FIPS indicator then we need to pass that
- * information down to the cipher also.
- * This function returns the param to pass down in 'p'.
- * state will return OSSL_FIPS_IND_STATE_UNKNOWN if the param has not been set.
- *
- * The name 'OSSL_CIPHER_PARAM_FIPS_ENCRYPT_CHECK' used below matches the
- * key name used by the Triple-DES.
- */
-static int tdes_check_param(struct cmac_data_st *macctx, OSSL_PARAM *p,
-                            int *state)
-{
-    OSSL_LIB_CTX *libctx = PROV_LIBCTX_OF(macctx->provctx);
-    const EVP_CIPHER *cipher = ossl_prov_cipher_cipher(&macctx->cipher);
-
-    *state = OSSL_FIPS_IND_STATE_UNKNOWN;
-    if (EVP_CIPHER_is_a(cipher, "DES-EDE3-CBC")) {
-        if (!OSSL_FIPS_IND_ON_UNAPPROVED(macctx, OSSL_FIPS_IND_SETTABLE0,
-                                         libctx, "CMAC", "Triple-DES",
-                                         ossl_fips_config_tdes_encrypt_disallowed))
-            return 0;
-        OSSL_FIPS_IND_GET_PARAM(macctx, p, state, OSSL_FIPS_IND_SETTABLE0,
-                                OSSL_CIPHER_PARAM_FIPS_ENCRYPT_CHECK)
-    }
-    return 1;
-}
-#endif
-
 static int cmac_setkey(struct cmac_data_st *macctx,
                        const unsigned char *key, size_t keylen)
 {
     int rv;
-    OSSL_PARAM *p = NULL;
-#ifdef FIPS_MODULE
-    int state = OSSL_FIPS_IND_STATE_UNKNOWN;
-    OSSL_PARAM prms[2] = { OSSL_PARAM_END, OSSL_PARAM_END };
-
-    if (!tdes_check_param(macctx, &prms[0], &state))
-        return 0;
-    if (state != OSSL_FIPS_IND_STATE_UNKNOWN)
-        p = prms;
-#endif
+    
     rv = ossl_cmac_init(macctx->ctx, key, keylen,
                         ossl_prov_cipher_cipher(&macctx->cipher),
-                        ossl_prov_cipher_engine(&macctx->cipher), p);
+                        ossl_prov_cipher_engine(&macctx->cipher), NULL);
     ossl_prov_cipher_reset(&macctx->cipher);
     return rv;
 }
@@ -232,7 +191,6 @@ static const OSSL_PARAM known_settable_ctx_params[] = {
     OSSL_PARAM_utf8_string(OSSL_MAC_PARAM_CIPHER, NULL, 0),
     OSSL_PARAM_utf8_string(OSSL_MAC_PARAM_PROPERTIES, NULL, 0),
     OSSL_PARAM_octet_string(OSSL_MAC_PARAM_KEY, NULL, 0),
-    OSSL_FIPS_IND_SETTABLE_CTX_PARAM(OSSL_CIPHER_PARAM_FIPS_ENCRYPT_CHECK)
     OSSL_PARAM_END
 };
 static const OSSL_PARAM *cmac_settable_ctx_params(ossl_unused void *ctx,
@@ -253,11 +211,6 @@ static int cmac_set_ctx_params(void *vmacctx, const OSSL_PARAM params[])
     if (ossl_param_is_empty(params))
         return 1;
 
-    if (!OSSL_FIPS_IND_SET_CTX_PARAM(macctx,
-                                     OSSL_FIPS_IND_SETTABLE0, params,
-                                     OSSL_CIPHER_PARAM_FIPS_ENCRYPT_CHECK))
-        return 0;
-
     if ((p = OSSL_PARAM_locate_const(params, OSSL_MAC_PARAM_CIPHER)) != NULL) {
         if (!ossl_prov_cipher_load_from_params(&macctx->cipher, params, ctx))
             return 0;
@@ -273,8 +226,7 @@ static int cmac_set_ctx_params(void *vmacctx, const OSSL_PARAM params[])
 
             if (!EVP_CIPHER_is_a(cipher, "AES-256-CBC")
                     && !EVP_CIPHER_is_a(cipher, "AES-192-CBC")
-                    && !EVP_CIPHER_is_a(cipher, "AES-128-CBC")
-                    && !EVP_CIPHER_is_a(cipher, "DES-EDE3-CBC")) {
+                    && !EVP_CIPHER_is_a(cipher, "AES-128-CBC")) {
                 ERR_raise(ERR_LIB_PROV, EVP_R_UNSUPPORTED_CIPHER);
                 return 0;
             }
