@@ -1273,7 +1273,7 @@ static int kdf_argon2_ctx_set_pwd(KDF_ARGON2 *ctx, const OSSL_PARAM *p)
         return 0;
 
     if (buflen > ARGON2_MAX_PWD_LENGTH) {
-        ERR_raise_data(ERR_LIB_PROV, PROV_R_INVALID_SALT_LENGTH, "max: %u",
+        ERR_raise_data(ERR_LIB_PROV, PROV_R_INVALID_PASSWORD_LENGTH, "max: %u",
                        ARGON2_MAX_PWD_LENGTH);
         goto fail;
     }
