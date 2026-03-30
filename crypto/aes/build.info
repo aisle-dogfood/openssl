@@ -29,8 +29,11 @@ IF[{- !$disabled{asm} -}]
   # aes-390x.S implements AES_ctr32_encrypt and AES_xts_[en|de]crypt
   $AESDEF_s390x=AES_ASM AES_CTR_ASM AES_XTS_ASM
 
-  $AESASM_armv4=aes_cbc.c aes-armv4.S bsaes-armv7.S aesv8-armx.S
-  $AESDEF_armv4=AES_ASM BSAES_ASM
+  # aes-armv4.S removed due to cache-timing vulnerability (CVE-XXXX-XXXXX)
+  # The T-table implementation performs secret-dependent memory accesses
+  # Use constant-time C implementation (aes_core.c) or hardware AES instead
+  $AESASM_armv4=aes_core.c aes_cbc.c bsaes-armv7.S aesv8-armx.S
+  $AESDEF_armv4=OPENSSL_AES_CONST_TIME BSAES_ASM
   $AESASM_aarch64=aes_core.c aes_cbc.c aesv8-armx.S bsaes-armv8.S vpaes-armv8.S
   $AESDEF_aarch64=BSAES_ASM VPAES_ASM
 
