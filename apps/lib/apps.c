@@ -3283,6 +3283,10 @@ void corrupt_signature(const ASN1_STRING *signature)
 {
     unsigned char *s = signature->data;
 
+    /* Avoid out-of-bounds write when signature length is zero */
+    if (signature->length <= 0)
+        return;
+
     s[signature->length - 1] ^= 0x1;
 }
 
