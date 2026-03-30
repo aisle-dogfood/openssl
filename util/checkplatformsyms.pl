@@ -9,13 +9,15 @@
 use warnings;
 use strict;
 use Config;
+use IPC::Open3;
+use Symbol 'gensym';
 
 my $expectedsyms=$ARGV[0];
 
 shift(@ARGV);
 
 my $objlist;
-my $objfilelist = join(" ", @ARGV);
+my @objfiles = @ARGV;  # Keep as array to avoid shell interpolation
 my $expsyms;
 my $exps;
 my $OBJFH;
@@ -23,7 +25,7 @@ my $cmd;
 
 if ($Config{osname} eq "MSWin32") {
         my $currentdll = "";
-        $cmd = "dumpbin /imports " . $objfilelist;
+        my @cmd = ("dumpbin", "/imports", @objfiles);
         my @symlist;
         open $expsyms, '<', $expectedsyms or die;
         {
@@ -31,7 +33,8 @@ if ($Config{osname} eq "MSWin32") {
             $exps=<$expsyms>;
         }
         close($expsyms);
-        open($OBJFH, "$cmd|") or die "Cannot open process: $!";
+        my $err = gensym();
+        my $pid = open3(undef, $OBJFH, $err, @cmd) or die "Cannot open process: $!";
         while (<$OBJFH>)
         {
             chomp;
@@ -51,6 +54,8 @@ if ($Config{osname} eq "MSWin32") {
                 }
             }
         }
+        close($OBJFH);
+        waitpid($pid, 0);
         foreach (@symlist) {
             if (index($exps, $_) < 0) {
                 print "Symbol $_ not in the allowed platform symbols list\n";
@@ -60,9 +65,8 @@ if ($Config{osname} eq "MSWin32") {
         exit 0;
     }
 else {
-        $cmd = "objdump -t " . $objfilelist . " | grep UND | grep -v \@OPENSSL";
-        $cmd = $cmd . " | awk '{print \$NF}' |";
-        $cmd = $cmd . " sed -e\"s/@.*\$//\" | sort | uniq";
+        # Use IPC::Open3 to safely invoke objdump without shell interpolation
+        my @cmd = ("objdump", "-t", @objfiles);
 
         open $expsyms, '<', $expectedsyms or die;
         {
@@ -71,14 +75,40 @@ else {
         }
         close($expsyms);
 
-        open($OBJFH, "$cmd|") or die "Cannot open process: $!";
+        my $err = gensym();
+        my $pid = open3(undef, $OBJFH, $err, @cmd) or die "Cannot open process: $!";
+        
+        # Process objdump output in Perl instead of shell pipeline
+        # Replaces: grep UND | grep -v @OPENSSL | awk '{print $NF}' | sed -e"s/@.*$//" | sort | uniq
+        my %symbols;  # Hash for unique symbols
         while (<$OBJFH>)
         {
-                if (index($exps, $_) < 0) {
-                    print "Symbol $_ not in the allowed platform symbols list\n";
+                # Filter lines containing "UND" (undefined symbols)
+                next unless /UND/;
+                # Skip lines containing @OPENSSL
+                next if /\@OPENSSL/;
+                
+                # Extract last field (symbol name) - equivalent to awk '{print $NF}'
+                my @fields = split(/\s+/);
+                next unless @fields;
+                my $symbol = $fields[-1];
+                
+                # Remove @version suffix - equivalent to sed -e"s/@.*$//"
+                $symbol =~ s/\@.*$//;
+                
+                # Store in hash for uniqueness (equivalent to sort | uniq)
+                $symbols{$symbol} = 1;
+        }
+        close($OBJFH);
+        waitpid($pid, 0);
+        
+        # Check each unique symbol (sorted for consistency)
+        foreach my $sym (sort keys %symbols)
+        {
+                if (index($exps, $sym . "\n") < 0) {
+                    print "Symbol $sym not in the allowed platform symbols list\n";
                     exit 1;
                 }
         }
-        close($OBJFH);
         exit 0;
     }
