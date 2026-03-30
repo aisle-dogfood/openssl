@@ -20,6 +20,7 @@
 #include <openssl/opensslconf.h>
 #include <openssl/hmac.h>
 #include <openssl/core_names.h>
+#include "internal/thread_once.h"
 #include "hmac_local.h"
 
 int HMAC_Init_ex(HMAC_CTX *ctx, const void *key, int len,
@@ -245,19 +246,48 @@ int HMAC_CTX_copy(HMAC_CTX *dctx, HMAC_CTX *sctx)
     return 0;
 }
 
+static CRYPTO_ONCE hmac_init = CRYPTO_ONCE_STATIC_INIT;
+static CRYPTO_THREAD_LOCAL hmac_local_md;
+
+static void hmac_local_md_free(void *md)
+{
+    OPENSSL_free(md);
+}
+
+DEFINE_RUN_ONCE_STATIC(hmac_do_init)
+{
+    return CRYPTO_THREAD_init_local(&hmac_local_md, hmac_local_md_free);
+}
+
 unsigned char *HMAC(const EVP_MD *evp_md, const void *key, int key_len,
                     const unsigned char *data, size_t data_len,
                     unsigned char *md, unsigned int *md_len)
 {
-    static unsigned char static_md[EVP_MAX_MD_SIZE];
+    unsigned char *local_md = md;
     int size = EVP_MD_get_size(evp_md);
     size_t temp_md_len = 0;
     unsigned char *ret = NULL;
 
+    if (md == NULL) {
+        if (!RUN_ONCE(&hmac_init, hmac_do_init))
+            return NULL;
+
+        local_md = CRYPTO_THREAD_get_local(&hmac_local_md);
+        if (local_md == NULL) {
+            local_md = OPENSSL_malloc(EVP_MAX_MD_SIZE);
+            if (local_md == NULL)
+                return NULL;
+            if (!CRYPTO_THREAD_set_local(&hmac_local_md, local_md)) {
+                OPENSSL_free(local_md);
+                return NULL;
+            }
+        }
+    }
+
     if (size > 0) {
         ret = EVP_Q_mac(NULL, "HMAC", NULL, EVP_MD_get0_name(evp_md), NULL,
                         key, key_len, data, data_len,
-                        md == NULL ? static_md : md, size, &temp_md_len);
+                        local_md, size, &temp_md_len);
         if (md_len != NULL)
             *md_len = (unsigned int)temp_md_len;
     }
