@@ -868,10 +868,6 @@ static int validate_url(const char *url)
     if (url[0] == '/')
         return 0;
     
-    /* Check for null bytes */
-    if (strlen(url) != strcspn(url, "\0"))
-        return 0;
-    
     /* Only allow alphanumeric characters, dots, hyphens, underscores, and forward slashes */
     for (p = url; *p != '\0'; p++) {
         if (!(((*p >= 'a' && *p <= 'z') || (*p >= 'A' && *p <= 'Z') ||
