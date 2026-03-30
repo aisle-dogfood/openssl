@@ -629,6 +629,12 @@ bn_sub_words:
  * results not from the shorter code, but from elimination of
  * multicycle none-pairable 'rd %y,%rd' instructions.
  *
+ * Note: The original 'bcs,a %xcc,.+8; add c_3,t_2,c_3' pattern
+ * created data-dependent timing side-channels. It has been replaced
+ * with constant-time 'movcs %xcc,t_2,c_3; nop' for cryptographic
+ * safety, using conditional move instructions that execute in
+ * constant time regardless of operand values.
+ *
  *							Andy.
  */
 
@@ -683,13 +689,13 @@ bn_mul_comba8:
 	mulx	a_0,b_1,t_1	!mul_add_c(a[0],b[1],c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3		!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(2),a_2
 	mulx	a_1,b_0,t_1	!=!mul_add_c(a[1],b[0],c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12	!=
 	stuw	t_1,rp(1)	!r[1]=c2;
 	or	c_12,c_3,c_12
@@ -697,18 +703,18 @@ bn_mul_comba8:
 	mulx	a_2,b_0,t_1	!mul_add_c(a[2],b[0],c3,c1,c2);
 	addcc	c_12,t_1,c_12	!=
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	bp(2),b_2	!=
 	mulx	a_1,b_1,t_1	!mul_add_c(a[1],b[1],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	lduw	bp(3),b_3
 	mulx	a_0,b_2,t_1	!mul_add_c(a[0],b[2],c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(2)	!r[2]=c3;
 	or	c_12,c_3,c_12	!=
@@ -716,22 +722,22 @@ bn_mul_comba8:
 	mulx	a_0,b_3,t_1	!mul_add_c(a[0],b[3],c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_1,b_2,t_1	!=!mul_add_c(a[1],b[2],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	lduw	ap(3),a_3
 	mulx	a_2,b_1,t_1	!mul_add_c(a[2],b[1],c1,c2,c3);
 	addcc	c_12,t_1,c_12	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(4),a_4
 	mulx	a_3,b_0,t_1	!=!mul_add_c(a[3],b[0],c1,c2,c3);!=
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12	!=
 	stuw	t_1,rp(3)	!r[3]=c1;
 	or	c_12,c_3,c_12
@@ -739,26 +745,26 @@ bn_mul_comba8:
 	mulx	a_4,b_0,t_1	!mul_add_c(a[4],b[0],c2,c3,c1);
 	addcc	c_12,t_1,c_12	!=
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,b_1,t_1	!=!mul_add_c(a[3],b[1],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_2,b_2,t_1	!=!mul_add_c(a[2],b[2],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	bp(4),b_4	!=
 	mulx	a_1,b_3,t_1	!mul_add_c(a[1],b[3],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	lduw	bp(5),b_5
 	mulx	a_0,b_4,t_1	!mul_add_c(a[0],b[4],c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(4)	!r[4]=c2;
 	or	c_12,c_3,c_12	!=
@@ -766,30 +772,30 @@ bn_mul_comba8:
 	mulx	a_0,b_5,t_1	!mul_add_c(a[0],b[5],c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_1,b_4,t_1	!mul_add_c(a[1],b[4],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_2,b_3,t_1	!mul_add_c(a[2],b[3],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_3,b_2,t_1	!mul_add_c(a[3],b[2],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	lduw	ap(5),a_5
 	mulx	a_4,b_1,t_1	!mul_add_c(a[4],b[1],c3,c1,c2);
 	addcc	c_12,t_1,c_12	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(6),a_6
 	mulx	a_5,b_0,t_1	!=!mul_add_c(a[5],b[0],c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12	!=
 	stuw	t_1,rp(5)	!r[5]=c3;
 	or	c_12,c_3,c_12
@@ -797,34 +803,34 @@ bn_mul_comba8:
 	mulx	a_6,b_0,t_1	!mul_add_c(a[6],b[0],c1,c2,c3);
 	addcc	c_12,t_1,c_12	!=
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_5,b_1,t_1	!=!mul_add_c(a[5],b[1],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_4,b_2,t_1	!=!mul_add_c(a[4],b[2],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,b_3,t_1	!=!mul_add_c(a[3],b[3],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_2,b_4,t_1	!=!mul_add_c(a[2],b[4],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	bp(6),b_6	!=
 	mulx	a_1,b_5,t_1	!mul_add_c(a[1],b[5],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	lduw	bp(7),b_7
 	mulx	a_0,b_6,t_1	!mul_add_c(a[0],b[6],c1,c2,c3);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(6)	!r[6]=c1;
 	or	c_12,c_3,c_12	!=
@@ -832,37 +838,37 @@ bn_mul_comba8:
 	mulx	a_0,b_7,t_1	!mul_add_c(a[0],b[7],c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_1,b_6,t_1	!mul_add_c(a[1],b[6],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_2,b_5,t_1	!mul_add_c(a[2],b[5],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_3,b_4,t_1	!mul_add_c(a[3],b[4],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_4,b_3,t_1	!mul_add_c(a[4],b[3],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_5,b_2,t_1	!mul_add_c(a[5],b[2],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	lduw	ap(7),a_7
 	mulx	a_6,b_1,t_1	!=!mul_add_c(a[6],b[1],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_7,b_0,t_1	!=!mul_add_c(a[7],b[0],c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12	!=
 	stuw	t_1,rp(7)	!r[7]=c2;
 	or	c_12,c_3,c_12
@@ -870,32 +876,32 @@ bn_mul_comba8:
 	mulx	a_7,b_1,t_1	!=!mul_add_c(a[7],b[1],c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_6,b_2,t_1	!mul_add_c(a[6],b[2],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_5,b_3,t_1	!mul_add_c(a[5],b[3],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_4,b_4,t_1	!mul_add_c(a[4],b[4],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_3,b_5,t_1	!mul_add_c(a[3],b[5],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_2,b_6,t_1	!mul_add_c(a[2],b[6],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_1,b_7,t_1	!mul_add_c(a[1],b[7],c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(8)	!r[8]=c3;
 	or	c_12,c_3,c_12
@@ -903,28 +909,28 @@ bn_mul_comba8:
 	mulx	a_2,b_7,t_1	!=!mul_add_c(a[2],b[7],c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	mulx	a_3,b_6,t_1	!mul_add_c(a[3],b[6],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_4,b_5,t_1	!mul_add_c(a[4],b[5],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_5,b_4,t_1	!mul_add_c(a[5],b[4],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_6,b_3,t_1	!mul_add_c(a[6],b[3],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_7,b_2,t_1	!mul_add_c(a[7],b[2],c1,c2,c3);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(9)	!r[9]=c1;
 	or	c_12,c_3,c_12	!=
@@ -932,24 +938,24 @@ bn_mul_comba8:
 	mulx	a_7,b_3,t_1	!mul_add_c(a[7],b[3],c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_6,b_4,t_1	!mul_add_c(a[6],b[4],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_5,b_5,t_1	!mul_add_c(a[5],b[5],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_4,b_6,t_1	!mul_add_c(a[4],b[6],c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_3,b_7,t_1	!mul_add_c(a[3],b[7],c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(10)	!r[10]=c2;
 	or	c_12,c_3,c_12	!=
@@ -957,20 +963,20 @@ bn_mul_comba8:
 	mulx	a_4,b_7,t_1	!mul_add_c(a[4],b[7],c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_5,b_6,t_1	!mul_add_c(a[5],b[6],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_6,b_5,t_1	!mul_add_c(a[6],b[5],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_7,b_4,t_1	!mul_add_c(a[7],b[4],c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(11)	!r[11]=c3;
 	or	c_12,c_3,c_12	!=
@@ -978,16 +984,16 @@ bn_mul_comba8:
 	mulx	a_7,b_5,t_1	!mul_add_c(a[7],b[5],c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_6,b_6,t_1	!mul_add_c(a[6],b[6],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_5,b_7,t_1	!mul_add_c(a[5],b[7],c1,c2,c3);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(12)	!r[12]=c1;
 	or	c_12,c_3,c_12	!=
@@ -995,12 +1001,12 @@ bn_mul_comba8:
 	mulx	a_6,b_7,t_1	!mul_add_c(a[6],b[7],c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_7,b_6,t_1	!mul_add_c(a[7],b[6],c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	st	t_1,rp(13)	!r[13]=c2;
 	or	c_12,c_3,c_12	!=
@@ -1039,13 +1045,13 @@ bn_mul_comba4:
 	mulx	a_0,b_1,t_1	!mul_add_c(a[0],b[1],c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3		!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(2),a_2
 	mulx	a_1,b_0,t_1	!=!mul_add_c(a[1],b[0],c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12	!=
 	stuw	t_1,rp(1)	!r[1]=c2;
 	or	c_12,c_3,c_12
@@ -1053,18 +1059,18 @@ bn_mul_comba4:
 	mulx	a_2,b_0,t_1	!mul_add_c(a[2],b[0],c3,c1,c2);
 	addcc	c_12,t_1,c_12	!=
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	bp(2),b_2	!=
 	mulx	a_1,b_1,t_1	!mul_add_c(a[1],b[1],c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3	!=
+	movcs	%xcc,t_2,c_3
+	nop	!=
 	lduw	bp(3),b_3
 	mulx	a_0,b_2,t_1	!mul_add_c(a[0],b[2],c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(2)	!r[2]=c3;
 	or	c_12,c_3,c_12	!=
@@ -1072,21 +1078,21 @@ bn_mul_comba4:
 	mulx	a_0,b_3,t_1	!mul_add_c(a[0],b[3],c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	mulx	a_1,b_2,t_1	!mul_add_c(a[1],b[2],c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8	!=
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3	!=
+	nop
 	lduw	ap(3),a_3
 	mulx	a_2,b_1,t_1	!mul_add_c(a[2],b[1],c1,c2,c3);
 	addcc	c_12,t_1,c_12	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,b_0,t_1	!mul_add_c(a[3],b[0],c1,c2,c3);!=
 	addcc	c_12,t_1,t_1	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(3)	!=!r[3]=c1;
 	or	c_12,c_3,c_12
@@ -1094,16 +1100,16 @@ bn_mul_comba4:
 	mulx	a_3,b_1,t_1	!mul_add_c(a[3],b[1],c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3		!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_2,b_2,t_1	!mul_add_c(a[2],b[2],c2,c3,c1);
 	addcc	c_12,t_1,c_12	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_1,b_3,t_1	!mul_add_c(a[1],b[3],c2,c3,c1);
 	addcc	c_12,t_1,t_1	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(4)	!=!r[4]=c2;
 	or	c_12,c_3,c_12
@@ -1111,12 +1117,12 @@ bn_mul_comba4:
 	mulx	a_2,b_3,t_1	!mul_add_c(a[2],b[3],c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3		!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,b_2,t_1	!mul_add_c(a[3],b[2],c3,c1,c2);
 	addcc	c_12,t_1,t_1	!=
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(5)	!=!r[5]=c3;
 	or	c_12,c_3,c_12
@@ -1150,11 +1156,11 @@ bn_sqr_comba8:
 	mulx	a_0,a_1,t_1	!=!sqr_add_c2(a,1,0,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(1)	!r[1]=c2;
 	or	c_12,c_3,c_12
@@ -1162,16 +1168,16 @@ bn_sqr_comba8:
 	mulx	a_2,a_0,t_1	!sqr_add_c2(a,2,0,c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(3),a_3
 	mulx	a_1,a_1,t_1	!sqr_add_c(a,1,c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(2)	!r[2]=c3;
 	or	c_12,c_3,c_12
@@ -1179,19 +1185,19 @@ bn_sqr_comba8:
 	mulx	a_0,a_3,t_1	!sqr_add_c2(a,3,0,c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(4),a_4
 	mulx	a_1,a_2,t_1	!sqr_add_c2(a,2,1,c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	st	t_1,rp(3)	!r[3]=c1;
 	or	c_12,c_3,c_12
@@ -1199,23 +1205,23 @@ bn_sqr_comba8:
 	mulx	a_4,a_0,t_1	!sqr_add_c2(a,4,0,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,a_1,t_1	!sqr_add_c2(a,3,1,c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(5),a_5
 	mulx	a_2,a_2,t_1	!sqr_add_c(a,2,c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(4)	!r[4]=c2;
 	or	c_12,c_3,c_12
@@ -1223,26 +1229,26 @@ bn_sqr_comba8:
 	mulx	a_0,a_5,t_1	!sqr_add_c2(a,5,0,c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_1,a_4,t_1	!sqr_add_c2(a,4,1,c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(6),a_6
 	mulx	a_2,a_3,t_1	!sqr_add_c2(a,3,2,c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(5)	!r[5]=c3;
 	or	c_12,c_3,c_12
@@ -1250,30 +1256,30 @@ bn_sqr_comba8:
 	mulx	a_6,a_0,t_1	!sqr_add_c2(a,6,0,c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_5,a_1,t_1	!sqr_add_c2(a,5,1,c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_4,a_2,t_1	!sqr_add_c2(a,4,2,c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(7),a_7
 	mulx	a_3,a_3,t_1	!=!sqr_add_c(a,3,c1,c2,c3);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(6)	!r[6]=c1;
 	or	c_12,c_3,c_12
@@ -1281,32 +1287,32 @@ bn_sqr_comba8:
 	mulx	a_0,a_7,t_1	!sqr_add_c2(a,7,0,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_1,a_6,t_1	!sqr_add_c2(a,6,1,c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_2,a_5,t_1	!sqr_add_c2(a,5,2,c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,a_4,t_1	!sqr_add_c2(a,4,3,c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(7)	!r[7]=c2;
 	or	c_12,c_3,c_12
@@ -1314,29 +1320,29 @@ bn_sqr_comba8:
 	mulx	a_7,a_1,t_1	!sqr_add_c2(a,7,1,c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_6,a_2,t_1	!sqr_add_c2(a,6,2,c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_5,a_3,t_1	!sqr_add_c2(a,5,3,c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_4,a_4,t_1	!sqr_add_c(a,4,c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(8)	!r[8]=c3;
 	or	c_12,c_3,c_12
@@ -1344,25 +1350,25 @@ bn_sqr_comba8:
 	mulx	a_2,a_7,t_1	!sqr_add_c2(a,7,2,c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_3,a_6,t_1	!sqr_add_c2(a,6,3,c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_4,a_5,t_1	!sqr_add_c2(a,5,4,c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(9)	!r[9]=c1;
 	or	c_12,c_3,c_12
@@ -1370,22 +1376,22 @@ bn_sqr_comba8:
 	mulx	a_7,a_3,t_1	!sqr_add_c2(a,7,3,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_6,a_4,t_1	!sqr_add_c2(a,6,4,c2,c3,c1);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_5,a_5,t_1	!sqr_add_c(a,5,c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(10)	!r[10]=c2;
 	or	c_12,c_3,c_12
@@ -1393,18 +1399,18 @@ bn_sqr_comba8:
 	mulx	a_4,a_7,t_1	!sqr_add_c2(a,7,4,c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_5,a_6,t_1	!sqr_add_c2(a,6,5,c3,c1,c2);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(11)	!r[11]=c3;
 	or	c_12,c_3,c_12
@@ -1412,15 +1418,15 @@ bn_sqr_comba8:
 	mulx	a_7,a_5,t_1	!sqr_add_c2(a,7,5,c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_6,a_6,t_1	!sqr_add_c(a,6,c1,c2,c3);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(12)	!r[12]=c1;
 	or	c_12,c_3,c_12
@@ -1428,11 +1434,11 @@ bn_sqr_comba8:
 	mulx	a_6,a_7,t_1	!sqr_add_c2(a,7,6,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(13)	!r[13]=c2;
 	or	c_12,c_3,c_12
@@ -1470,11 +1476,11 @@ bn_sqr_comba4:
 	mulx	a_0,a_1,t_1	!sqr_add_c2(a,1,0,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(1)	!r[1]=c2;
 	or	c_12,c_3,c_12
@@ -1482,16 +1488,16 @@ bn_sqr_comba4:
 	mulx	a_2,a_0,t_1	!sqr_add_c2(a,2,0,c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	lduw	ap(3),a_3
 	mulx	a_1,a_1,t_1	!sqr_add_c(a,1,c3,c1,c2);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(2)	!r[2]=c3;
 	or	c_12,c_3,c_12
@@ -1499,18 +1505,18 @@ bn_sqr_comba4:
 	mulx	a_0,a_3,t_1	!sqr_add_c2(a,3,0,c1,c2,c3);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_1,a_2,t_1	!sqr_add_c2(a,2,1,c1,c2,c3);
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(3)	!r[3]=c1;
 	or	c_12,c_3,c_12
@@ -1518,15 +1524,15 @@ bn_sqr_comba4:
 	mulx	a_3,a_1,t_1	!sqr_add_c2(a,3,1,c2,c3,c1);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,c_12
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	mulx	a_2,a_2,t_1	!sqr_add_c(a,2,c2,c3,c1);
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(4)	!r[4]=c2;
 	or	c_12,c_3,c_12
@@ -1534,11 +1540,11 @@ bn_sqr_comba4:
 	mulx	a_2,a_3,t_1	!sqr_add_c2(a,3,2,c3,c1,c2);
 	addcc	c_12,t_1,c_12
 	clr	c_3
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	addcc	c_12,t_1,t_1
-	bcs,a	%xcc,.+8
-	add	c_3,t_2,c_3
+	movcs	%xcc,t_2,c_3
+	nop
 	srlx	t_1,32,c_12
 	stuw	t_1,rp(5)	!r[5]=c3;
 	or	c_12,c_3,c_12
