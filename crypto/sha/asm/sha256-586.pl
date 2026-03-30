@@ -77,10 +77,24 @@ $output=pop and open STDOUT,">$output";
 
 &asm_init($ARGV[0],$ARGV[$#ARGV] eq "386");
 
+# Sanitize environment variables used in shell commands to prevent command injection
+sub sanitize_env_var {
+	my ($var_name) = @_;
+	my $value = $ENV{$var_name};
+	return undef unless defined $value;
+	# Reject if it contains shell metacharacters
+	if ($value =~ /[;&|`\$<>(){}!\[\]*?~\n\r]/) {
+		die "Error: Environment variable $var_name contains unsafe shell metacharacters\n";
+	}
+	return $value;
+}
+
+my $safe_cc = sanitize_env_var('CC');
+
 $xmm=$avx=0;
 for (@ARGV) { $xmm=1 if (/-DOPENSSL_IA32_SSE2/); }
 
-if ($xmm &&	`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+if ($xmm && defined($safe_cc) && `$safe_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 			=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.19) + ($1>=2.22);
 }
@@ -95,7 +109,7 @@ if ($xmm && !$avx && $ARGV[0] eq "win32" &&
 	$avx = ($1>=10) + ($1>=11);
 }
 
-if ($xmm && !$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
+if ($xmm && !$avx && defined($safe_cc) && `$safe_cc -v 2>&1` =~ /((?:clang|LLVM) version|based on LLVM) ([0-9]+\.[0-9]+)/) {
 	$avx = ($2>=3.0) + ($2>3.0);
 }
 

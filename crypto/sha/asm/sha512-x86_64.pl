@@ -109,6 +109,22 @@
 #	below certain limit makes no difference/sense; to conserve
 #	space SHA256 XOP code path is therefore omitted;
 
+# Sanitize environment variables used in shell commands to prevent command injection
+sub sanitize_env_var {
+	my ($var_name) = @_;
+	my $value = $ENV{$var_name};
+	return undef unless defined $value;
+	# Reject if it contains shell metacharacters
+	if ($value =~ /[;&|`\$<>(){}!\[\]*?~\n\r]/) {
+		die "Error: Environment variable $var_name contains unsafe shell metacharacters\n";
+	}
+	return $value;
+}
+
+# Sanitize CC and ASM environment variables at startup
+my $safe_cc = sanitize_env_var('CC');
+my $safe_asm = sanitize_env_var('ASM');
+
 # $output is the last argument if it looks like a file (it has an extension)
 # $flavour is the first argument if it doesn't look like a file
 $output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
@@ -121,22 +137,22 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+if (defined($safe_cc) && `$safe_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.19) + ($1>=2.22);
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
+if (!$avx && $win64 && ($flavour =~ /nasm/ || (defined($safe_asm) && $safe_asm =~ /nasm/)) &&
 	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
 	$avx = ($1>=2.09) + ($1>=2.10);
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
+if (!$avx && $win64 && ($flavour =~ /masm/ || (defined($safe_asm) && $safe_asm =~ /ml64/)) &&
 	   `ml64 2>&1` =~ /Version ([0-9]+)\./) {
 	$avx = ($1>=10) + ($1>=11);
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+if (!$avx && defined($safe_cc) && `$safe_cc -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
 	$avx = ($2>=3.0) + ($2>3.0);
 }
 

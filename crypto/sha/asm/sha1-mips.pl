@@ -79,7 +79,20 @@ if ($flavour =~ /64|n32/i) {
 #
 ######################################################################
 
-$big_endian=(`echo MIPSEB | $ENV{CC} -E -`=~/MIPSEB/)?0:1 if ($ENV{CC});
+# Sanitize environment variables used in shell commands to prevent command injection
+sub sanitize_env_var {
+	my ($var_name) = @_;
+	my $value = $ENV{$var_name};
+	return undef unless defined $value;
+	# Reject if it contains shell metacharacters
+	if ($value =~ /[;&|`\$<>(){}!\[\]*?~\n\r]/) {
+		die "Error: Environment variable $var_name contains unsafe shell metacharacters\n";
+	}
+	return $value;
+}
+
+my $safe_cc = sanitize_env_var('CC');
+$big_endian=(`echo MIPSEB | $safe_cc -E -`=~/MIPSEB/)?0:1 if (defined($safe_cc));
 
 $output and open STDOUT,">$output";
 

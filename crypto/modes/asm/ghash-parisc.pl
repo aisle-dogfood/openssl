@@ -727,7 +727,21 @@ sub assemble {
     ref($opcode) eq 'CODE' ? &$opcode($mod,$args) : "\t$mnemonic$mod\t$args";
 }
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+# Sanitize environment variables used in shell commands to prevent command injection
+sub sanitize_env_var {
+	my ($var_name) = @_;
+	my $value = $ENV{$var_name};
+	return undef unless defined $value;
+	# Reject if it contains shell metacharacters
+	if ($value =~ /[;&|`\$<>(){}!\[\]*?~\n\r]/) {
+		die "Error: Environment variable $var_name contains unsafe shell metacharacters\n";
+	}
+	return $value;
+}
+
+my $safe_cc = sanitize_env_var('CC');
+
+if (defined($safe_cc) && `$safe_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 	=~ /GNU assembler/) {
     $gnuas = 1;
 }
