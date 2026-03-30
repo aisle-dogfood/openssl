@@ -19,6 +19,8 @@ B<-h> I<server_url>
 [B<-P> I<CA_path>]
 [B<-r> I<files>]
 [B<-g> I<EGD_socket>]
+[B<-t> I<seconds>]
+[B<-T> I<seconds>]
 [I<request> ...]
 
 =head1 DESCRIPTION
@@ -118,6 +120,21 @@ See L<openssl(1)/Random State Options> for more information.
 =item B<-g> I<EGD_socket>
 
 The name of an EGD socket to get random data from. (Optional)
+
+=item B<-t> I<seconds>
+
+Specifies the connection timeout in seconds. This is the maximum time allowed
+for the connection to the timestamp server to be established. If the connection
+cannot be established within this time, the request will fail. Default is 60
+seconds. (Optional)
+
+=item B<-T> I<seconds>
+
+Specifies the total timeout in seconds. This is the maximum time allowed for
+the entire timestamp request operation, including connection establishment,
+sending the request, and receiving the response. If the operation is not
+completed within this time, the request will fail. Default is 300 seconds.
+(Optional)
 
 =item I<request> ...
 
