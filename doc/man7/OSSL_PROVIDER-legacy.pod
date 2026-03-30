@@ -64,6 +64,9 @@ Not all of these symmetric cipher algorithms are enabled by default.
 
 =item CAST, see L<EVP_CIPHER-CAST(7)>
 
+B<Note:> CAST-128 is vulnerable to cache-timing side-channel attacks.
+See L<EVP_CIPHER-CAST(7)/SECURITY CONSIDERATIONS> for details.
+
 =item DES, see L<EVP_CIPHER-DES(7)>
 
 The algorithm names are: DES_ECB, DES_CBC, DES_OFB, DES_CFB, DES_CFB1, DES_CFB8

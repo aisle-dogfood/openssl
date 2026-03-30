@@ -29,6 +29,25 @@ The following algorithms are available in the legacy provider:
 This implementation supports the parameters described in
 L<EVP_EncryptInit(3)/PARAMETERS>.
 
+=head1 SECURITY CONSIDERATIONS
+
+B<WARNING:> The CAST-128 cipher implementation is vulnerable to cache-timing
+side-channel attacks. The implementation uses S-box table lookups that are
+indexed by values derived from both the secret key and input data. These
+memory access patterns can leak information about the key through cache timing
+measurements by an attacker with sufficient access to monitor cache behavior
+(e.g., co-located processes or precise timing oracles).
+
+Applications that process sensitive data with CAST-128 should be aware of
+this limitation. The risk is particularly relevant in shared computing
+environments where attackers may observe cache behavior.
+
+For new applications, modern authenticated encryption algorithms (such as
+AES-GCM or ChaCha20-Poly1305) with constant-time implementations are strongly
+recommended instead of CAST-128. CAST-128 should only be used for legacy
+compatibility where required, and only in environments where cache-timing
+attacks are not a concern.
+
 =head1 SEE ALSO
 
 L<provider-cipher(7)>, L<OSSL_PROVIDER-legacy(7)>

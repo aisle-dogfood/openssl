@@ -16,6 +16,19 @@
 #include <openssl/cast.h>
 #include "cast_local.h"
 
+/*
+ * SECURITY WARNING: This CAST-128 implementation is vulnerable to cache-timing
+ * side-channel attacks. The E_CAST macro performs S-box table lookups indexed
+ * by values derived from secret key material and input data. These memory
+ * accesses create observable timing variations that can leak information about
+ * the key through cache timing measurements.
+ *
+ * This implementation is retained only for legacy compatibility within the
+ * legacy provider. New applications should use modern authenticated encryption
+ * algorithms (e.g., AES-GCM, ChaCha20-Poly1305) that have constant-time
+ * implementations.
+ */
+
 void CAST_encrypt(CAST_LONG *data, const CAST_KEY *key)
 {
     CAST_LONG l, r, t;

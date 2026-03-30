@@ -40,6 +40,13 @@ typedef struct cast_key_st {
 
 # endif /* OPENSSL_NO_DEPRECATED_3_0 */
 # ifndef OPENSSL_NO_DEPRECATED_3_0
+/*
+ * SECURITY WARNING: The CAST-128 implementation is vulnerable to cache-timing
+ * side-channel attacks due to secret-dependent S-box table lookups. Memory
+ * access patterns during encryption/decryption can leak key information.
+ * Use only for legacy compatibility in non-security-critical contexts.
+ * For new applications, use modern AEAD ciphers (e.g., AES-GCM, ChaCha20-Poly1305).
+ */
 OSSL_DEPRECATEDIN_3_0
 void CAST_set_key(CAST_KEY *key, int len, const unsigned char *data);
 OSSL_DEPRECATEDIN_3_0
