@@ -269,10 +269,13 @@ static int module_run(const CONF *cnf, const char *name, const char *value,
 
     md = module_find(name);
 
-    /* Module not found: try to load DSO */
-    if (!md && !(flags & CONF_MFLAGS_NO_DSO))
-        md = module_load_dso(cnf, name, value);
-
+    /*
+     * Module not found: DSO loading from configuration is now permanently
+     * disabled for security. Configuration files should only reference
+     * built-in modules (e.g., providers, ssl_conf, alg_section, oid_section,
+     * engines, etc.). This prevents arbitrary code execution via untrusted
+     * configuration files.
+     */
     if (!md) {
         if (!(flags & CONF_MFLAGS_SILENT)) {
             ERR_raise_data(ERR_LIB_CONF, CONF_R_UNKNOWN_MODULE_NAME,

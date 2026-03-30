@@ -69,6 +69,12 @@ typedef void conf_finish_func (CONF_IMODULE *md);
 # define CONF_MFLAGS_IGNORE_ERRORS       0x1
 # define CONF_MFLAGS_IGNORE_RETURN_CODES 0x2
 # define CONF_MFLAGS_SILENT              0x4
+/*
+ * CONF_MFLAGS_NO_DSO: This flag is deprecated and no longer has any effect.
+ * For security reasons, loading of DSO modules from configuration files is
+ * now permanently disabled. Configuration files should only reference built-in
+ * modules (e.g., providers, ssl_conf, alg_section, oid_section, engines, etc.).
+ */
 # define CONF_MFLAGS_NO_DSO              0x8
 # define CONF_MFLAGS_IGNORE_MISSING_FILE 0x10
 # define CONF_MFLAGS_DEFAULT_SECTION     0x20
