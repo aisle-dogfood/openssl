@@ -63,9 +63,8 @@ I<key_len> bytes long. The I<key> may also be NULL with I<key_len> being 0.
 
 It places the result in I<md> (which must have space for the output of
 the hash function, which is no more than B<EVP_MAX_MD_SIZE> bytes).
-If I<md> is NULL, the digest is placed in a static array.  The size of
-the output is placed in I<md_len>, unless it is NULL. Note: passing a NULL
-value for I<md> to use the static array is not thread safe.
+If I<md> is NULL, the digest is placed in a thread-local buffer.  The size of
+the output is placed in I<md_len>, unless it is NULL.
 
 I<evp_md> is a message digest such as EVP_sha1(), EVP_ripemd160() etc.
 HMAC does not support variable output length digests such as EVP_shake128() and
