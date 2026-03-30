@@ -367,6 +367,17 @@ CON_FUNC_RETURN tls_construct_cert_verify(SSL_CONNECTION *s, WPACKET *pkt)
     }
     if (s->version == SSL3_VERSION) {
         /*
+         * SSLv3 legacy code path using SHA-1.
+         * This code path is for legacy compatibility only and uses the weak
+         * SHA-1 hash algorithm. It must not be used in FIPS mode or modern
+         * TLS contexts. New applications should use TLS 1.2+ which uses
+         * SHA-2 or SHA-3 algorithms.
+         */
+        if (EVP_default_properties_is_fips_enabled(sctx->libctx)) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_INVALID_COMMAND);
+            goto err;
+        }
+        /*
          * Here we use EVP_DigestSignUpdate followed by EVP_DigestSignFinal
          * in order to add the EVP_CTRL_SSL3_MASTER_SECRET call between them.
          */
@@ -561,6 +572,17 @@ MSG_PROCESS_RETURN tls_process_cert_verify(SSL_CONNECTION *s, PACKET *pkt)
         }
     }
     if (s->version == SSL3_VERSION) {
+        /*
+         * SSLv3 legacy code path using SHA-1.
+         * This code path is for legacy compatibility only and uses the weak
+         * SHA-1 hash algorithm. It must not be used in FIPS mode or modern
+         * TLS contexts. New applications should use TLS 1.2+ which uses
+         * SHA-2 or SHA-3 algorithms.
+         */
+        if (EVP_default_properties_is_fips_enabled(sctx->libctx)) {
+            SSLfatal(s, SSL_AD_INTERNAL_ERROR, SSL_R_INVALID_COMMAND);
+            goto err;
+        }
         if (EVP_DigestVerifyUpdate(mctx, hdata, hdatalen) <= 0
                 || EVP_MD_CTX_ctrl(mctx, EVP_CTRL_SSL3_MASTER_SECRET,
                                    (int)s->session->master_key_length,
