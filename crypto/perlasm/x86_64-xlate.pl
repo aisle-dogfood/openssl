@@ -63,6 +63,22 @@
 
 use strict;
 
+# Sanitize environment variables used in shell commands to prevent command injection
+sub sanitize_env_var {
+	my ($var_name) = @_;
+	my $value = $ENV{$var_name};
+	return undef unless defined $value;
+	# Reject if it contains shell metacharacters
+	if ($value =~ /[;&|`\$<>(){}!\[\]*?~\n\r]/) {
+		die "Error: Environment variable $var_name contains unsafe shell metacharacters\n";
+	}
+	return $value;
+}
+
+# Sanitize CC and ASM environment variables at startup
+my $safe_cc = sanitize_env_var('CC');
+my $safe_asm = sanitize_env_var('ASM');
+
 my $flavour = shift;
 my $output  = shift;
 if ($flavour =~ /\./) { $output = $flavour; undef $flavour; }
@@ -88,14 +104,16 @@ my $nasm=0;
 my $gnuas=0;
 
 if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
-				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
-				  $prefix =~ s|\R$||; # Better chomp
+				  if (defined($safe_cc)) {
+				    $prefix=`echo __USER_LABEL_PREFIX__ | $safe_cc -E -P -`;
+				    $prefix =~ s|\R$||; # Better chomp
+				  }
 				}
 elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
 elsif ($flavour eq "masm")	{ $gas=0; $elf=0; $masm=$masmref; $win64=1; $decor="\$L\$"; }
 elsif ($flavour eq "nasm")	{ $gas=0; $elf=0; $nasm=$nasmref; $win64=1; $decor="\$L\$"; $PTR=""; }
 elsif (!$gas)
-{   if ($ENV{ASM} =~ m/nasm/ && `nasm -v` =~ m/version ([0-9]+)\.([0-9]+)/i)
+{   if (defined($safe_asm) && $safe_asm =~ m/nasm/ && `nasm -v` =~ m/version ([0-9]+)\.([0-9]+)/i)
     {	$nasm = $1 + $2*0.01; $PTR="";  }
     elsif (`ml64 2>&1` =~ m/Version ([0-9]+)\.([0-9]+)(\.([0-9]+))?/)
     {	$masm = $1 + $2*2**-16 + $4*2**-32;   }
@@ -105,17 +123,17 @@ elsif (!$gas)
     $decor="\$L\$";
 }
 # Find out if we're using GNU as
-elsif (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
+elsif (defined($safe_cc) && `$safe_cc -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
 		=~ /GNU assembler version ([2-9]\.[0-9]+)/)
 {
     $gnuas=1;
 }
-elsif (`$ENV{CC} --version 2>/dev/null`
+elsif (defined($safe_cc) && `$safe_cc --version 2>/dev/null`
 		=~ /(clang .*|Intel.*oneAPI .*)/)
 {
     $gnuas=1;
 }
-elsif (`$ENV{CC} -V 2>/dev/null`
+elsif (defined($safe_cc) && `$safe_cc -V 2>/dev/null`
 		=~ /nvc .*/)
 {
     $gnuas=1;
