@@ -64,6 +64,11 @@ IMPLEMENT_LEGACY_EVP_MD_METH(sha512_256_int, sha512_256)
 IMPLEMENT_LEGACY_EVP_MD_METH_SHA3(sha3_int, ossl_sha3, '\x06')
 IMPLEMENT_LEGACY_EVP_MD_METH_SHAKE(shake, ossl_sha3, '\x1f')
 
+/*
+ * Legacy SHA1 control function - forwards to ossl_sha1_ctrl().
+ * This is primarily used for SSLv3 support which uses weak SHA-1.
+ * See crypto/sha/sha1dgst.c for security warnings.
+ */
 static int sha1_int_ctrl(EVP_MD_CTX *ctx, int cmd, int p1, void *p2)
 {
     return ossl_sha1_ctrl(ctx != NULL ? EVP_MD_CTX_get0_md_data(ctx) : NULL,

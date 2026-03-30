@@ -25,6 +25,21 @@
 #include "sha_local.h"
 #include "crypto/sha.h"
 
+/*
+ * LEGACY SSLv3 CONTROL FUNCTION - DO NOT USE IN NEW CODE
+ *
+ * This function implements SSLv3-specific master secret handling using SHA-1,
+ * which is a WEAK cryptographic hash algorithm vulnerable to collision attacks.
+ *
+ * This code path is maintained ONLY for backward compatibility with legacy
+ * SSLv3 implementations and MUST NOT be used in:
+ * - FIPS mode
+ * - Modern TLS contexts (use TLS 1.2+ with SHA-2/SHA-3)
+ * - New protocol designs
+ *
+ * Callers should ensure this is guarded appropriately to prevent use in
+ * security-sensitive contexts.
+ */
 int ossl_sha1_ctrl(SHA_CTX *sha1, int cmd, int mslen, void *ms)
 {
     unsigned char padtmp[40];
