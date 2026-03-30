@@ -814,8 +814,10 @@ static long dgram_ctrl(BIO *b, int cmd, long num, void *ptr)
                                   ptr, &sz)) < 0) {
                 ERR_raise_data(ERR_LIB_SYS, get_last_socket_error(),
                                "calling getsockopt()");
+            } else if ((size_t)sz > sizeof(struct timeval)) {
+                /* Unexpected size from getsockopt, return error */
+                ret = -1;
             } else {
-                OPENSSL_assert((size_t)sz <= sizeof(struct timeval));
                 ret = (int)sz;
             }
 #  endif
@@ -865,8 +867,10 @@ static long dgram_ctrl(BIO *b, int cmd, long num, void *ptr)
                                   ptr, &sz)) < 0) {
                 ERR_raise_data(ERR_LIB_SYS, get_last_socket_error(),
                                "calling getsockopt()");
+            } else if ((size_t)sz > sizeof(struct timeval)) {
+                /* Unexpected size from getsockopt, return error */
+                ret = -1;
             } else {
-                OPENSSL_assert((size_t)sz <= sizeof(struct timeval));
                 ret = (int)sz;
             }
 #  endif
@@ -2082,33 +2086,15 @@ static int dgram_sctp_read(BIO *b, char *out, int outl)
                 return -1;
 
             /*
-             * Test if socket buffer can handle max record size (2^14 + 2048
-             * + 13)
-             */
-            optlen = (socklen_t) sizeof(int);
-            ret = getsockopt(b->num, SOL_SOCKET, SO_RCVBUF, &optval, &optlen);
-            if (ret >= 0)
-                OPENSSL_assert(optval >= 18445);
-
-            /*
-             * Test if SCTP doesn't partially deliver below max record size
-             * (2^14 + 2048 + 13)
-             */
-            optlen = (socklen_t) sizeof(int);
-            ret =
-                getsockopt(b->num, IPPROTO_SCTP, SCTP_PARTIAL_DELIVERY_POINT,
-                           &optval, &optlen);
-            if (ret >= 0)
-                OPENSSL_assert(optval >= 18445);
-
-            /*
-             * Partially delivered notification??? Probably a bug....
-             */
-            OPENSSL_assert(!(msg.msg_flags & MSG_NOTIFICATION));
-
-            /*
-             * Everything seems ok till now, so it's most likely a message
-             * dropped by PR-SCTP.
+             * Partial delivery can occur due to various conditions including
+             * SO_RCVBUF or SCTP_PARTIAL_DELIVERY_POINT being configured below
+             * the expected threshold (2^14 + 2048 + 13 = 18445), or partially
+             * delivered notifications. Rather than asserting (which aborts the
+             * process), treat this as a recoverable error condition.
+             *
+             * Most likely this is a message dropped by PR-SCTP or an unexpected
+             * partial delivery scenario. Zero the output buffer, mark for retry,
+             * and return error to allow graceful handling.
              */
             memset(out, 0, outl);
             BIO_set_retry_read(b);
