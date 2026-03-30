@@ -12,6 +12,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include "internal/cryptlib.h"
+#include "internal/constant_time.h"
 #include "bn_local.h"
 
 #ifndef OPENSSL_NO_EC2M
@@ -550,16 +551,22 @@ int BN_GF2m_mod_sqr(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 }
 
 /*
- * Invert a, reduce modulo p, and store the result in r. r could be a. Uses
- * Modified Almost Inverse Algorithm (Algorithm 10) from Hankerson, D.,
- * Hernandez, J.L., and Menezes, A.  "Software Implementation of Elliptic
- * Curve Cryptography Over Binary Fields".
+ * Constant-time invert a, reduce modulo p, and store the result in r.
+ * r could be a. Uses Modified Almost Inverse Algorithm (Algorithm 10) from
+ * Hankerson, D., Hernandez, J.L., and Menezes, A. "Software Implementation
+ * of Elliptic Curve Cryptography Over Binary Fields", with constant-time
+ * modifications to prevent timing side-channels.
  */
-static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
-                                   const BIGNUM *p, BN_CTX *ctx)
+static int BN_GF2m_mod_inv_ct(BIGNUM *r, const BIGNUM *a,
+                              const BIGNUM *p, BN_CTX *ctx)
 {
-    BIGNUM *b, *c = NULL, *u = NULL, *v = NULL, *tmp;
+    BIGNUM *b, *c = NULL, *u = NULL, *v = NULL;
     int ret = 0;
+    int i, j;
+    int top = p->top;
+    BN_ULONG *udp, *bdp, *vdp, *cdp;
+    BN_ULONG *u_tmp, *v_tmp, *b_tmp, *c_tmp;
+    int max_iterations;
 
     bn_check_top(a);
     bn_check_top(p);
@@ -580,137 +587,146 @@ static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
 
     if (!BN_copy(v, p))
         goto err;
-# if 0
-    if (!BN_one(b))
+
+    /* Allocate temporary storage for constant-time swaps */
+    u_tmp = OPENSSL_malloc(top * sizeof(BN_ULONG));
+    v_tmp = OPENSSL_malloc(top * sizeof(BN_ULONG));
+    b_tmp = OPENSSL_malloc(top * sizeof(BN_ULONG));
+    c_tmp = OPENSSL_malloc(top * sizeof(BN_ULONG));
+    if (u_tmp == NULL || v_tmp == NULL || b_tmp == NULL || c_tmp == NULL) {
+        OPENSSL_free(u_tmp);
+        OPENSSL_free(v_tmp);
+        OPENSSL_free(b_tmp);
+        OPENSSL_free(c_tmp);
         goto err;
-
-    while (1) {
-        while (!BN_is_odd(u)) {
-            if (BN_is_zero(u))
-                goto err;
-            if (!BN_rshift1(u, u))
-                goto err;
-            if (BN_is_odd(b)) {
-                if (!BN_GF2m_add(b, b, p))
-                    goto err;
-            }
-            if (!BN_rshift1(b, b))
-                goto err;
-        }
-
-        if (BN_abs_is_word(u, 1))
-            break;
-
-        if (BN_num_bits(u) < BN_num_bits(v)) {
-            tmp = u;
-            u = v;
-            v = tmp;
-            tmp = b;
-            b = c;
-            c = tmp;
-        }
-
-        if (!BN_GF2m_add(u, u, v))
-            goto err;
-        if (!BN_GF2m_add(b, b, c))
-            goto err;
     }
-# else
-    {
-        int i;
-        int ubits = BN_num_bits(u);
-        int vbits = BN_num_bits(v); /* v is copy of p */
-        int top = p->top;
-        BN_ULONG *udp, *bdp, *vdp, *cdp;
 
-        if (!bn_wexpand(u, top))
-            goto err;
-        udp = u->d;
-        for (i = u->top; i < top; i++)
-            udp[i] = 0;
-        u->top = top;
-        if (!bn_wexpand(b, top))
-          goto err;
-        bdp = b->d;
-        bdp[0] = 1;
-        for (i = 1; i < top; i++)
-            bdp[i] = 0;
-        b->top = top;
-        if (!bn_wexpand(c, top))
-          goto err;
-        cdp = c->d;
-        for (i = 0; i < top; i++)
-            cdp[i] = 0;
-        c->top = top;
-        vdp = v->d;             /* It pays off to "cache" *->d pointers,
-                                 * because it allows optimizer to be more
-                                 * aggressive. But we don't have to "cache"
-                                 * p->d, because *p is declared 'const'... */
-        while (1) {
-            while (ubits && !(udp[0] & 1)) {
-                BN_ULONG u0, u1, b0, b1, mask;
+    /* Initialize arrays */
+    if (!bn_wexpand(u, top))
+        goto err_free;
+    udp = u->d;
+    for (i = u->top; i < top; i++)
+        udp[i] = 0;
+    u->top = top;
+    
+    if (!bn_wexpand(b, top))
+        goto err_free;
+    bdp = b->d;
+    bdp[0] = 1;
+    for (i = 1; i < top; i++)
+        bdp[i] = 0;
+    b->top = top;
+    
+    if (!bn_wexpand(c, top))
+        goto err_free;
+    cdp = c->d;
+    for (i = 0; i < top; i++)
+        cdp[i] = 0;
+    c->top = top;
+    
+    vdp = v->d;
 
-                u0 = udp[0];
-                b0 = bdp[0];
-                mask = (BN_ULONG)0 - (b0 & 1);
-                b0 ^= p->d[0] & mask;
-                for (i = 0; i < top - 1; i++) {
-                    u1 = udp[i + 1];
-                    udp[i] = ((u0 >> 1) | (u1 << (BN_BITS2 - 1))) & BN_MASK2;
-                    u0 = u1;
-                    b1 = bdp[i + 1] ^ (p->d[i + 1] & mask);
-                    bdp[i] = ((b0 >> 1) | (b1 << (BN_BITS2 - 1))) & BN_MASK2;
-                    b0 = b1;
-                }
-                udp[i] = u0 >> 1;
-                bdp[i] = b0 >> 1;
-                ubits--;
-            }
+    /* Maximum iterations is 2 * field_bits to ensure termination */
+    max_iterations = 2 * BN_num_bits(v);
 
-            if (ubits <= BN_BITS2) {
-                if (udp[0] == 0) /* poly was reducible */
-                    goto err;
-                if (udp[0] == 1)
-                    break;
-            }
+    /* Main loop - run for fixed number of iterations */
+    for (j = 0; j < max_iterations; j++) {
+        BN_ULONG u_is_even, should_swap;
+        BN_ULONG u0, u1, b0, b1, mask;
 
-            if (ubits < vbits) {
-                i = ubits;
-                ubits = vbits;
-                vbits = i;
-                tmp = u;
-                u = v;
-                v = tmp;
-                tmp = b;
-                b = c;
-                c = tmp;
-                udp = vdp;
-                vdp = v->d;
-                bdp = cdp;
-                cdp = c->d;
-            }
-            for (i = 0; i < top; i++) {
-                udp[i] ^= vdp[i];
-                bdp[i] ^= cdp[i];
-            }
-            if (ubits == vbits) {
-                BN_ULONG ul;
-                int utop = (ubits - 1) / BN_BITS2;
+        /* Check if u is even (constant-time) */
+        u_is_even = constant_time_is_zero_bn(udp[0] & 1);
+        
+        /* Perform shift operation (always executed, result conditionally used) */
+        u0 = udp[0];
+        b0 = bdp[0];
+        mask = (BN_ULONG)0 - (b0 & 1);
+        b0 ^= p->d[0] & mask;
+        
+        for (i = 0; i < top - 1; i++) {
+            u1 = udp[i + 1];
+            u_tmp[i] = ((u0 >> 1) | (u1 << (BN_BITS2 - 1))) & BN_MASK2;
+            u0 = u1;
+            b1 = bdp[i + 1] ^ (p->d[i + 1] & mask);
+            b_tmp[i] = ((b0 >> 1) | (b1 << (BN_BITS2 - 1))) & BN_MASK2;
+            b0 = b1;
+        }
+        u_tmp[i] = u0 >> 1;
+        b_tmp[i] = b0 >> 1;
 
-                while ((ul = udp[utop]) == 0 && utop)
-                    utop--;
-                ubits = utop * BN_BITS2 + BN_num_bits_word(ul);
+        /* Conditionally apply shift based on whether u is even */
+        for (i = 0; i < top; i++) {
+            udp[i] = constant_time_select_bn(u_is_even, u_tmp[i], udp[i]);
+            bdp[i] = constant_time_select_bn(u_is_even, b_tmp[i], bdp[i]);
+        }
+
+        /*
+         * Determine if swap is needed by comparing u and v in constant-time.
+         * We scan from most significant word down to find which is larger.
+         * This replaces the variable-time bit-count comparison.
+         */
+        should_swap = 0;
+        {
+            BN_ULONG decided = 0;  /* Whether we've found a difference */
+            int k;
+            
+            /* Scan from high to low words */
+            for (k = top - 1; k >= 0; k--) {
+                BN_ULONG u_word = udp[k];
+                BN_ULONG v_word = vdp[k];
+                
+                /* Check if v > u for this word (constant-time) */
+                BN_ULONG v_gt_u = constant_time_lt_bn(u_word, v_word);
+                
+                /* Only update should_swap if we haven't decided yet */
+                BN_ULONG not_decided = ~decided;
+                should_swap |= v_gt_u & not_decided;
+                
+                /* Mark as decided if words differ */
+                BN_ULONG words_differ = ~constant_time_eq_bn(u_word, v_word);
+                decided |= words_differ;
             }
         }
-        bn_correct_top(b);
+
+        /* Prepare swapped values */
+        for (i = 0; i < top; i++) {
+            u_tmp[i] = vdp[i];
+            v_tmp[i] = udp[i];
+            b_tmp[i] = cdp[i];
+            c_tmp[i] = bdp[i];
+        }
+
+        /* Conditionally swap */
+        for (i = 0; i < top; i++) {
+            BN_ULONG u_new = constant_time_select_bn(should_swap, u_tmp[i], udp[i]);
+            BN_ULONG v_new = constant_time_select_bn(should_swap, v_tmp[i], vdp[i]);
+            BN_ULONG b_new = constant_time_select_bn(should_swap, b_tmp[i], bdp[i]);
+            BN_ULONG c_new = constant_time_select_bn(should_swap, c_tmp[i], cdp[i]);
+            udp[i] = u_new;
+            vdp[i] = v_new;
+            bdp[i] = b_new;
+            cdp[i] = c_new;
+        }
+
+        /* XOR step: u ^= v, b ^= c */
+        for (i = 0; i < top; i++) {
+            udp[i] ^= vdp[i];
+            bdp[i] ^= cdp[i];
+        }
     }
-# endif
+
+    bn_correct_top(b);
 
     if (!BN_copy(r, b))
-        goto err;
+        goto err_free;
     bn_check_top(r);
     ret = 1;
 
+err_free:
+    OPENSSL_free(u_tmp);
+    OPENSSL_free(v_tmp);
+    OPENSSL_free(b_tmp);
+    OPENSSL_free(c_tmp);
  err:
 # ifdef BN_DEBUG
     /* BN_CTX_end would complain about the expanded form */
@@ -723,48 +739,23 @@ static int BN_GF2m_mod_inv_vartime(BIGNUM *r, const BIGNUM *a,
 }
 
 /*-
- * Wrapper for BN_GF2m_mod_inv_vartime that blinds the input before calling.
- * This is not constant time.
- * But it does eliminate first order deduction on the input.
+ * Constant-time inversion in GF(2^m).
+ * This implementation uses constant-time operations to prevent timing
+ * side-channels.
  */
 int BN_GF2m_mod_inv(BIGNUM *r, const BIGNUM *a, const BIGNUM *p, BN_CTX *ctx)
 {
-    BIGNUM *b = NULL;
     int ret = 0;
     int numbits;
-
-    BN_CTX_start(ctx);
-    if ((b = BN_CTX_get(ctx)) == NULL)
-        goto err;
 
     /* Fail on a non-sensical input p value */
     numbits = BN_num_bits(p);
     if (numbits <= 1)
-        goto err;
+        return 0;
 
-    /* generate blinding value */
-    do {
-        if (!BN_priv_rand_ex(b, numbits - 1,
-                             BN_RAND_TOP_ANY, BN_RAND_BOTTOM_ANY, 0, ctx))
-            goto err;
-    } while (BN_is_zero(b));
+    /* Call constant-time inversion directly */
+    ret = BN_GF2m_mod_inv_ct(r, a, p, ctx);
 
-    /* r := a * b */
-    if (!BN_GF2m_mod_mul(r, a, b, p, ctx))
-        goto err;
-
-    /* r := 1/(a * b) */
-    if (!BN_GF2m_mod_inv_vartime(r, r, p, ctx))
-        goto err;
-
-    /* r := b/(a * b) = 1/a */
-    if (!BN_GF2m_mod_mul(r, r, b, p, ctx))
-        goto err;
-
-    ret = 1;
-
- err:
-    BN_CTX_end(ctx);
     return ret;
 }
 
