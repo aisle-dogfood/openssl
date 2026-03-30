@@ -1726,7 +1726,8 @@ if (!$disabled{asm} && !$predefined_C{__MACH__} && $^O ne 'VMS' && !$predefined_
         push @{$config{cflags}}, "-Wa,--noexecstack", "-Qunused-arguments";
     } else {
         my $cc = $config{CROSS_COMPILE}.$config{CC};
-        open(PIPE, "$cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
+        my $escaped_cc = shell_escape_command($cc);
+        open(PIPE, "$escaped_cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
         while(<PIPE>) {
             if (m/--noexecstack/) {
                 push @{$config{cflags}}, "-Wa,--noexecstack";
@@ -1836,13 +1837,14 @@ unless ($disabled{devcryptoeng}) {
 unless ($disabled{ktls}) {
     $config{ktls}="";
     my $cc = $config{CROSS_COMPILE}.$config{CC};
+    my $escaped_cc = shell_escape_command($cc);
     if ($target =~ m/^linux/) {
-        system("printf '#include <sys/types.h>\n#include <linux/tls.h>' | $cc -E - >/dev/null 2>&1");
+        system("printf '#include <sys/types.h>\n#include <linux/tls.h>' | $escaped_cc -E - >/dev/null 2>&1");
         if ($? != 0) {
             disable('too-old-kernel', 'ktls');
         }
     } elsif ($target =~ m/^BSD/) {
-        system("printf '#include <sys/types.h>\n#include <sys/ktls.h>' | $cc -E - >/dev/null 2>&1");
+        system("printf '#include <sys/types.h>\n#include <sys/ktls.h>' | $escaped_cc -E - >/dev/null 2>&1");
         if ($? != 0) {
             disable('too-old-freebsd', 'ktls');
         }
@@ -3387,6 +3389,24 @@ sub usage
         exit(1);
         }
 
+sub shell_escape_command {
+    my $cmd = shift;
+    
+    # Split the command into tokens (compiler executable and any pre-existing args)
+    # We need to escape each token separately to prevent shell injection
+    my @tokens = split(/\s+/, $cmd);
+    my @escaped;
+    
+    foreach my $token (@tokens) {
+        # Escape single quotes by replacing ' with '\''
+        # Then wrap the entire token in single quotes
+        $token =~ s/'/'\\''/g;
+        push @escaped, "'$token'";
+    }
+    
+    return join(' ', @escaped);
+}
+
 sub compiler_predefined {
     state %predefined;
     my $cc = shift;
@@ -3401,7 +3421,8 @@ sub compiler_predefined {
         $predefined{$cc} = {};
 
         # collect compiler pre-defines from gcc or gcc-alike...
-        open(PIPE, "$cc -dM -E -x c /dev/null 2>&1 |");
+        my $escaped_cc = shell_escape_command($cc);
+        open(PIPE, "$escaped_cc -dM -E -x c /dev/null 2>&1 |");
         while (my $l = <PIPE>) {
             $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
             $predefined{$cc}->{$1} = $2 // '';
