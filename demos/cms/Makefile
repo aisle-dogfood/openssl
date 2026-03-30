@@ -4,6 +4,9 @@
 # cms_enc demo:
 #
 #    LD_LIBRARY_PATH=../.. ./cms_enc
+#
+# Before building or running tests, generate the required certificates:
+#    make setup
 
 TESTS = cms_comp \
         cms_ddec \
@@ -21,6 +24,11 @@ LDLIBS  = -lcrypto
 
 all: $(TESTS)
 
+setup:
+	@echo "Generating test certificates and keys..."
+	@chmod +x setup.sh
+	@./setup.sh
+
 cms_comp: cms_comp.o
 cms_ddec: cms_ddec.o
 cms_dec: cms_dec.o
@@ -37,9 +45,19 @@ $(TESTS):
 clean:
 	$(RM) $(TESTS) *.o
 
+clean-certs:
+	@echo "Removing generated certificates and keys..."
+	$(RM) signer.pem signer2.pem cakey.pem cacert.pem cacert.srl
+
 test: all
+	@if [ ! -f signer.pem ] || [ ! -f signer2.pem ]; then \
+		echo "ERROR: Test certificates not found. Run 'make setup' first."; \
+		exit 1; \
+	fi
 	@echo "\nCMS tests:"
 	LD_LIBRARY_PATH=../.. ./cms_enc
 	LD_LIBRARY_PATH=../.. ./cms_dec
 	LD_LIBRARY_PATH=../.. ./cms_sign2
 	LD_LIBRARY_PATH=../.. ./cms_ver
+
+.PHONY: all setup clean clean-certs test
