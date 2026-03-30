@@ -75,27 +75,53 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate) or
 die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
+sub safe_execute {
+	my @cmd = @_;
+	my $output = '';
+	# Use safe list form of open to avoid shell injection
+	if (open(my $fh, "-|", @cmd)) {
+		local $/;
+		$output = <$fh>;
+		close($fh);
+	}
+	return $output;
 }
 
-if (!$avx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	   `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
-	$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
-	$avx += 2 if ($1==2.11 && $2>=8);
+if (defined($ENV{CC})) {
+	# Use safe list form to avoid shell injection
+	my $cc_output = safe_execute($ENV{CC}, '-Wa,-v', '-c', '-o', '/dev/null', '-x', 'assembler', '/dev/null');
+	if ($cc_output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+		$avx = ($1>=2.19) + ($1>=2.22) + ($1>=2.25) + ($1>=2.26);
+	}
 }
 
-if (!$avx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	   `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$avx = ($1>=10) + ($1>=12);
+if (!$avx && $win64 && ($flavour =~ /nasm/ || (defined($ENV{ASM}) && $ENV{ASM} =~ /nasm/))) {
+	my $nasm_output = safe_execute('nasm', '-v');
+	if ($nasm_output =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
+		$avx = ($1>=2.09) + ($1>=2.10) + 2 * ($1>=2.12);
+		$avx += 2 if ($1==2.11 && $2>=8);
+	}
 }
 
-if (!$avx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
-	$avx = ($2>=3.0) + ($2>3.0);
+if (!$avx && $win64 && ($flavour =~ /masm/ || (defined($ENV{ASM}) && $ENV{ASM} =~ /ml64/))) {
+	my $ml64_output = safe_execute('ml64');
+	if ($ml64_output =~ /Version ([0-9]+)\./) {
+		$avx = ($1>=10) + ($1>=12);
+	}
 }
 
-open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
+if (!$avx && defined($ENV{CC})) {
+	my $cc_version = safe_execute($ENV{CC}, '-v');
+	if ($cc_version =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+\.[0-9]+)/) {
+		$avx = ($2>=3.0) + ($2>3.0);
+	}
+}
+
+# Use list form of open to avoid shell injection
+my @cmd = ($^X, $xlate);
+push @cmd, $flavour if defined($flavour);
+push @cmd, $output if defined($output);
+open OUT,"|-", @cmd
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
