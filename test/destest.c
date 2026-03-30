@@ -21,6 +21,7 @@
 
 #ifndef OPENSSL_NO_DES
 # include <openssl/des.h>
+# include <openssl/provider.h>
 
 /* In case any platform doesn't use unsigned int for its checksums */
 # define TEST_cs_eq  TEST_uint_eq
@@ -725,7 +726,12 @@ static int test_des_key_wrap(int idx)
     int clen, clen_upd, clen_fin, plen, plen_upd, plen_fin, expect, bs, i;
     EVP_CIPHER *cipher = NULL;
     EVP_CIPHER_CTX *ctx = NULL;
+    OSSL_PROVIDER *legacy_prov = NULL;
     int res = 0;
+
+    /* DES3-WRAP is now in the legacy provider */
+    if (!TEST_ptr(legacy_prov = OSSL_PROVIDER_load(NULL, "legacy")))
+        goto err;
 
     /* Some sanity checks and cipher loading */
     if (!TEST_size_t_le(in_bytes, sizeof(in))
@@ -779,6 +785,7 @@ static int test_des_key_wrap(int idx)
  err:
     EVP_CIPHER_free(cipher);
     EVP_CIPHER_CTX_free(ctx);
+    OSSL_PROVIDER_unload(legacy_prov);
     return res;
 }
 

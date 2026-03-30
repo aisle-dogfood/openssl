@@ -1795,11 +1795,12 @@ static int test_kdf_get_kdf(void)
 #if !defined(OPENSSL_NO_CMS) && !defined(OPENSSL_NO_DES)
 static int test_kdf_x942_asn1(void)
 {
-    int ret;
+    int ret = 0;
     EVP_KDF_CTX *kctx = NULL;
     OSSL_PARAM params[4], *p = params;
     const char *cek_alg = SN_id_smime_alg_CMS3DESwrap;
     unsigned char out[24];
+    OSSL_PROVIDER *legacy_prov = NULL;
     /* RFC2631 Section 2.1.6 Test data */
     static unsigned char z[] = {
         0x00,0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08,0x09,0x0a,0x0b,0x0c,0x0d,
@@ -1810,6 +1811,13 @@ static int test_kdf_x942_asn1(void)
         0x4d,0x90,0x52,0xa3,0x97,0x88,0x32,0x46,
         0xb6,0x7f,0x5f,0x1e,0xf6,0x3e,0xb5,0xfb
     };
+
+    /*
+     * DES3-WRAP is now in the legacy provider due to its use of SHA-1
+     * for integrity checking, which is not FIPS-approved.
+     */
+    if (!TEST_ptr(legacy_prov = OSSL_PROVIDER_load(NULL, "legacy")))
+        goto err;
 
     *p++ = OSSL_PARAM_construct_utf8_string(OSSL_KDF_PARAM_DIGEST,
                                             (char *)"sha1", 0);
@@ -1824,7 +1832,9 @@ static int test_kdf_x942_asn1(void)
         && TEST_int_gt(EVP_KDF_derive(kctx, out, sizeof(out), params), 0)
         && TEST_mem_eq(out, sizeof(out), expected, sizeof(expected));
 
+err:
     EVP_KDF_CTX_free(kctx);
+    OSSL_PROVIDER_unload(legacy_prov);
     return ret;
 }
 #endif /* OPENSSL_NO_CMS */

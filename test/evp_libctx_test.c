@@ -399,7 +399,11 @@ static int test_cipher_reinit(int test_id)
                   || EVP_CIPHER_is_a(cipher, "RC4-40")
                   || EVP_CIPHER_is_a(cipher, "RC4-HMAC-MD5");
 
-    /* DES3-WRAP uses random every update - so it will give a different value */
+    /*
+     * DES3-WRAP uses random every update - so it will give a different value.
+     * Note: DES3-WRAP is now in the legacy provider due to its use of SHA-1
+     * for integrity checking, which is not FIPS-approved.
+     */
     diff = EVP_CIPHER_is_a(cipher, "DES3-WRAP");
     if (!TEST_true(EVP_EncryptInit_ex(ctx, cipher, NULL, key, iv))
         || !TEST_true(EVP_EncryptUpdate(ctx, out1, &out1_len, in, sizeof(in)))
