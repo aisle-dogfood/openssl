@@ -40,6 +40,27 @@
  */
 
 /*
+ * SECURITY NOTE - Cache Timing Resistance:
+ *
+ * This C implementation now uses constant-time S-box lookups to mitigate
+ * cache-timing side-channel attacks. Each S-box lookup accesses all 256
+ * table entries and uses masking to select the correct value, ensuring
+ * memory access patterns do not depend on secret key material.
+ *
+ * Assembly implementations (x86, x86_64) still use conventional table
+ * lookups and are NOT constant-time. They may leak information via cache
+ * timing in hostile multi-tenant environments. The SPARC T4 implementation
+ * uses hardware crypto instructions and should be constant-time.
+ *
+ * To ensure constant-time operation on x86/x86_64, build OpenSSL with
+ * assembly optimizations disabled (Configure no-asm).
+ *
+ * Performance impact: Constant-time lookups are significantly slower
+ * (~20-50x) than direct table access, but provide protection against
+ * cache-timing attacks essential for security-critical applications.
+ */
+
+/*
  * Camellia low level APIs are deprecated for public use, but still ok for
  * internal use.
  */
@@ -47,6 +68,7 @@
 
 #include <openssl/camellia.h>
 #include "cmll_local.h"
+#include "internal/constant_time.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -242,30 +264,47 @@ static const u32 SIGMA[] = {
     0x54ff53a5, 0xf1d36f1c, 0x10e527fa, 0xde682d1d, 0xb05688c2, 0xb3e6c1fd
 };
 
+/*
+ * Constant-time S-box lookup to mitigate cache-timing attacks.
+ * Accesses all 256 table entries and uses constant_time_select to pick
+ * the correct value based on the index, preventing secret-dependent
+ * memory access patterns.
+ */
+static ossl_inline u32 sbox_lookup_ct(const u32 *sbox, u8 index)
+{
+    u32 result = 0;
+    unsigned int i;
+
+    for (i = 0; i < 256; i++) {
+        u32 mask = constant_time_eq(i, index);
+        result |= sbox[i] & mask;
+    }
+    return result;
+}
+
 /* The phi algorithm given in C.2.7 of the Camellia spec document. */
 /*
- * This version does not attempt to minimize amount of temporary
- * variables, but instead explicitly exposes algorithm's parallelism.
- * It is therefore most appropriate for platforms with not less than
- * ~16 registers. For platforms with less registers [well, x86 to be
- * specific] assembler version should be/is provided anyway...
+ * This version uses constant-time S-box lookups to prevent cache-timing
+ * side-channel attacks. The lookups scan all 256 entries and use masking
+ * to select the correct value, ensuring memory access patterns are
+ * independent of secret key material.
  */
 #define Camellia_Feistel(_s0,_s1,_s2,_s3,_key) do {\
         register u32 _t0,_t1,_t2,_t3;\
 \
         _t0  = _s0 ^ (_key)[0];\
-        _t3  = SBOX4_4404[_t0&0xff];\
+        _t3  = sbox_lookup_ct(SBOX4_4404, _t0 & 0xff);\
         _t1  = _s1 ^ (_key)[1];\
-        _t3 ^= SBOX3_3033[(_t0 >> 8)&0xff];\
-        _t2  = SBOX1_1110[_t1&0xff];\
-        _t3 ^= SBOX2_0222[(_t0 >> 16)&0xff];\
-        _t2 ^= SBOX4_4404[(_t1 >> 8)&0xff];\
-        _t3 ^= SBOX1_1110[(_t0 >> 24)];\
+        _t3 ^= sbox_lookup_ct(SBOX3_3033, (_t0 >> 8) & 0xff);\
+        _t2  = sbox_lookup_ct(SBOX1_1110, _t1 & 0xff);\
+        _t3 ^= sbox_lookup_ct(SBOX2_0222, (_t0 >> 16) & 0xff);\
+        _t2 ^= sbox_lookup_ct(SBOX4_4404, (_t1 >> 8) & 0xff);\
+        _t3 ^= sbox_lookup_ct(SBOX1_1110, (_t0 >> 24));\
         _t2 ^= _t3;\
         _t3  = RightRotate(_t3,8);\
-        _t2 ^= SBOX3_3033[(_t1 >> 16)&0xff];\
+        _t2 ^= sbox_lookup_ct(SBOX3_3033, (_t1 >> 16) & 0xff);\
         _s3 ^= _t3;\
-        _t2 ^= SBOX2_0222[(_t1 >> 24)];\
+        _t2 ^= sbox_lookup_ct(SBOX2_0222, (_t1 >> 24));\
         _s2 ^= _t2; \
         _s3 ^= _t2;\
 } while(0)

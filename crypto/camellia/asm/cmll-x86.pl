@@ -42,6 +42,15 @@
 # private _x86_* interface, and are ~30-40% better than with compiler
 # generated cmll_cbc.o, and reach ~80-90% of x86_64 performance on
 # same CPU (where applicable).
+#
+# SECURITY NOTE: This implementation performs S-box table lookups using
+# indices derived from secret key material. While S-box data and key schedule
+# are positioned to optimize cache associativity (reducing but not eliminating
+# timing variation), this code is NOT constant-time and may leak information
+# via cache timing side-channels in hostile multi-tenant environments.
+# Applications requiring protection against cache-timing attacks should build
+# OpenSSL with assembly disabled (Configure no-asm) to use the constant-time
+# C implementation, which scans all S-box entries at significant performance cost.
 
 $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 push(@INC,"${dir}","${dir}../../perlasm");
