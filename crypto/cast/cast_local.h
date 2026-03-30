@@ -80,6 +80,19 @@
 #define C_2     6L
 #define C_3     2L              /* left shift */
 
+/*
+ * SECURITY WARNING: The E_CAST macro performs S-box table lookups with indices
+ * derived from secret key material and input data (via the 't' variable).
+ * This creates a cache-timing side-channel vulnerability where memory access
+ * patterns can leak information about the key. All three variants of E_CAST
+ * (CAST_PTR, CAST_PTR2, and the default) suffer from this issue.
+ *
+ * This is a fundamental limitation of table-based implementations. Mitigation
+ * would require either constant-time table access (e.g., bitslicing) or
+ * avoiding table lookups entirely, which would significantly change the
+ * implementation.
+ */
+
 /* The rotate has an extra 16 added to it to help the x86 asm */
 #if defined(CAST_PTR)
 # define E_CAST(n,key,L,R,OP1,OP2,OP3) \
