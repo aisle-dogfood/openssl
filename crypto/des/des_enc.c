@@ -8,6 +8,16 @@
  */
 
 /*
+ * SECURITY WARNING: This implementation uses table-based S-box lookups
+ * (DES_SPtrans in spr.h) indexed by secret-dependent data, creating a
+ * cache-timing side-channel vulnerability. Memory access patterns depend
+ * on key material and can leak information through cache timing attacks.
+ * 
+ * DES is a legacy cipher confined to the legacy provider and excluded from
+ * FIPS. Use constant-time ciphers (AES, ChaCha20) for new applications.
+ */
+
+/*
  * DES low level APIs are deprecated for public use, but still ok for internal
  * use.
  */

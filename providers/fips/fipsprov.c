@@ -356,10 +356,13 @@ static const OSSL_ALGORITHM_CAPABLE fips_ciphers[] = {
          ossl_cipher_capable_aes_cbc_hmac_sha256),
     ALGC(PROV_NAMES_AES_256_CBC_HMAC_SHA256, ossl_aes256cbc_hmac_sha256_functions,
          ossl_cipher_capable_aes_cbc_hmac_sha256),
-#ifndef OPENSSL_NO_DES
-    ALG(PROV_NAMES_DES_EDE3_ECB, ossl_tdes_ede3_ecb_functions),
-    ALG(PROV_NAMES_DES_EDE3_CBC, ossl_tdes_ede3_cbc_functions),
-#endif  /* OPENSSL_NO_DES */
+    /*
+     * DES/3DES removed from FIPS provider due to cache-timing side-channel
+     * vulnerability in table-based S-box lookups. DES uses secret-dependent
+     * memory access patterns that can leak key material through cache timing.
+     * Use AES or ChaCha20 for FIPS-approved encryption.
+     * DES remains available in the legacy provider for backward compatibility.
+     */
     { { NULL, NULL, NULL }, NULL }
 };
 static OSSL_ALGORITHM exported_fips_ciphers[OSSL_NELEM(fips_ciphers)];

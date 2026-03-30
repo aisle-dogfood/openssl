@@ -6,6 +6,12 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
+# SECURITY WARNING: This implementation uses table-based S-box lookups
+# (DES_SPtrans) indexed by secret-dependent data, creating a cache-timing
+# side-channel vulnerability. Memory access patterns depend on key material.
+# DES is confined to the legacy provider and excluded from FIPS.
+# Use constant-time ciphers (AES, ChaCha20) for new applications.
+
 # The inner loop instruction sequence and the IP/FP modifications are from
 # Svend Olaf Mikkelsen.
 

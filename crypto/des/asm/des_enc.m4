@@ -7,6 +7,15 @@
 !
 !  To expand the m4 macros: m4 -B 8192 des_enc.m4 > des_enc.S
 !
+!  SECURITY WARNING: This implementation uses table-based S-box lookups
+!  (DES_SPtrans) indexed by secret-dependent data, creating a cache-timing
+!  side-channel vulnerability. Memory access patterns depend on key material
+!  and can leak information through cache timing attacks.
+!
+!  DES is a legacy cipher and should NOT be used in security-sensitive contexts.
+!  This implementation is confined to the legacy provider and excluded from FIPS.
+!  Use constant-time ciphers (AES, ChaCha20) for new applications.
+!
 !  Global registers 1 to 5 are used. This is the same as done by the
 !  cc compiler. The UltraSPARC load/store little endian feature is used.
 !
