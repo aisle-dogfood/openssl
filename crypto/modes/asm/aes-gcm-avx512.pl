@@ -47,28 +47,53 @@ $dir = $1;
   or ($xlate = "${dir}../../perlasm/x86_64-xlate.pl" and -f $xlate)
   or die "can't locate x86_64-xlate.pl";
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1` =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-  $avx512vaes = ($1 >= 2.30);
+if (defined $ENV{CC}) {
+  use IPC::Cmd;
+  my $cc_cmd = $ENV{CC};
+  my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+    IPC::Cmd::run(command => [$cc_cmd, '-Wa,-v', '-c', '-o', '/dev/null', '-x', 'assembler', '/dev/null'],
+                  verbose => 0);
+  if ($success) {
+    my $output = join('', @$full_buf);
+    if ($output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+      $avx512vaes = ($1 >= 2.30);
+    }
+  }
 }
 
 if (!$avx512vaes
   && $win64
-  && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/)
-  && `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/)
+  && ($flavour =~ /nasm/ || (defined $ENV{ASM} && $ENV{ASM} =~ /nasm/)))
 {
-  $avx512vaes = ($1 == 2.13 && $2 >= 3) + ($1 >= 2.14);
+  use IPC::Cmd;
+  my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+    IPC::Cmd::run(command => ['nasm', '-v'], verbose => 0);
+  if ($success) {
+    my $output = join('', @$full_buf);
+    if ($output =~ /NASM version ([2-9]\.[0-9]+)(?:\.([0-9]+))?/) {
+      $avx512vaes = ($1 == 2.13 && $2 >= 3) + ($1 >= 2.14);
+    }
+  }
 }
 
-if (!$avx512vaes && `$ENV{CC} -v 2>&1`
-    =~ /(Apple)?\s*((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)\.([0-9]+)?/) {
-    my $ver = $3 + $4/100.0 + $5/10000.0; # 3.1.0->3.01, 3.10.1->3.1001
-    if ($1) {
-        # Apple conditions, they use a different version series, see
-        # https://en.wikipedia.org/wiki/Xcode#Xcode_7.0_-_10.x_(since_Free_On-Device_Development)_2
-        # clang 7.0.0 is Apple clang 10.0.1
-        $avx512vaes = ($ver>=10.0001)
-    } else {
-        $avx512vaes = ($ver>=7.0);
+if (!$avx512vaes && defined $ENV{CC}) {
+    use IPC::Cmd;
+    my $cc_cmd = $ENV{CC};
+    my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+      IPC::Cmd::run(command => [$cc_cmd, '-v'], verbose => 0);
+    if ($success) {
+      my $output = join('', @$full_buf);
+      if ($output =~ /(Apple)?\s*((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)\.([0-9]+)?/) {
+        my $ver = $3 + $4/100.0 + $5/10000.0; # 3.1.0->3.01, 3.10.1->3.1001
+        if ($1) {
+            # Apple conditions, they use a different version series, see
+            # https://en.wikipedia.org/wiki/Xcode#Xcode_7.0_-_10.x_(since_Free_On-Device_Development)_2
+            # clang 7.0.0 is Apple clang 10.0.1
+            $avx512vaes = ($ver>=10.0001)
+        } else {
+            $avx512vaes = ($ver>=7.0);
+        }
+      }
     }
 }
 

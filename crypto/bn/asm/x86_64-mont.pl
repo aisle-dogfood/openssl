@@ -62,24 +62,56 @@ open OUT,"| \"$^X\" \"$xlate\" $flavour \"$output\""
     or die "can't call $xlate: $!";
 *STDOUT=*OUT;
 
-if (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/) {
-	$addx = ($1>=2.23);
+if (defined $ENV{CC}) {
+	use IPC::Cmd;
+	my $cc_cmd = $ENV{CC};
+	my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+		IPC::Cmd::run(command => [$cc_cmd, '-Wa,-v', '-c', '-o', '/dev/null', '-x', 'assembler', '/dev/null'],
+		              verbose => 0);
+	if ($success) {
+		my $output = join('', @$full_buf);
+		if ($output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+			$addx = ($1>=2.23);
+		}
+	}
 }
 
-if (!$addx && $win64 && ($flavour =~ /nasm/ || $ENV{ASM} =~ /nasm/) &&
-	    `nasm -v 2>&1` =~ /NASM version ([2-9]\.[0-9]+)/) {
-	$addx = ($1>=2.10);
+if (!$addx && $win64 && ($flavour =~ /nasm/ || (defined $ENV{ASM} && $ENV{ASM} =~ /nasm/))) {
+	use IPC::Cmd;
+	my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+		IPC::Cmd::run(command => ['nasm', '-v'], verbose => 0);
+	if ($success) {
+		my $output = join('', @$full_buf);
+		if ($output =~ /NASM version ([2-9]\.[0-9]+)/) {
+			$addx = ($1>=2.10);
+		}
+	}
 }
 
-if (!$addx && $win64 && ($flavour =~ /masm/ || $ENV{ASM} =~ /ml64/) &&
-	    `ml64 2>&1` =~ /Version ([0-9]+)\./) {
-	$addx = ($1>=12);
+if (!$addx && $win64 && ($flavour =~ /masm/ || (defined $ENV{ASM} && $ENV{ASM} =~ /ml64/))) {
+	use IPC::Cmd;
+	my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+		IPC::Cmd::run(command => ['ml64'], verbose => 0);
+	if ($success || $stderr_buf) {
+		my $output = join('', @$full_buf, @$stderr_buf);
+		if ($output =~ /Version ([0-9]+)\./) {
+			$addx = ($1>=12);
+		}
+	}
 }
 
-if (!$addx && `$ENV{CC} -v 2>&1` =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
-	my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
-	$addx = ($ver>=3.03);
+if (!$addx && defined $ENV{CC}) {
+	use IPC::Cmd;
+	my $cc_cmd = $ENV{CC};
+	my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+		IPC::Cmd::run(command => [$cc_cmd, '-v'], verbose => 0);
+	if ($success) {
+		my $output = join('', @$full_buf);
+		if ($output =~ /((?:clang|LLVM) version|.*based on LLVM) ([0-9]+)\.([0-9]+)/) {
+			my $ver = $2 + $3/100.0;	# 3.1->3.01, 3.10->3.10
+			$addx = ($ver>=3.03);
+		}
+	}
 }
 
 # int bn_mul_mont(

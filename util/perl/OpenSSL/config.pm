@@ -20,6 +20,7 @@ use IPC::Cmd;
 use POSIX;
 use Config;
 use Carp;
+use Text::ParseWords;
 
 # These control our behavior.
 my $DRYRUN;
@@ -52,15 +53,23 @@ my @c_compilers = qw(clang gcc cc);
 my @cc_version =
     (
      clang => sub {
-         return undef unless IPC::Cmd::can_run("$CROSS_COMPILE$CC");
-         my $v = `$CROSS_COMPILE$CC -v 2>&1`;
+         my $cc_cmd = "$CROSS_COMPILE$CC";
+         return undef unless IPC::Cmd::can_run($cc_cmd);
+         my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+             IPC::Cmd::run(command => [$cc_cmd, '-v'], verbose => 0);
+         return undef unless $success;
+         my $v = join('', @$full_buf);
          $v =~ m/(?:(?:clang|LLVM) version|.*based on LLVM)\s+([0-9]+\.[0-9]+)/;
          return $1;
      },
      gnu => sub {
-         return undef unless IPC::Cmd::can_run("$CROSS_COMPILE$CC");
+         my $cc_cmd = "$CROSS_COMPILE$CC";
+         return undef unless IPC::Cmd::can_run($cc_cmd);
          my $nul = File::Spec->devnull();
-         my $v = `$CROSS_COMPILE$CC -dumpversion 2> $nul`;
+         my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+             IPC::Cmd::run(command => [$cc_cmd, '-dumpversion'], verbose => 0);
+         return undef unless $success;
+         my $v = join('', @$stdout_buf);
          # Strip off whatever prefix egcs prepends the number with.
          # Hopefully, this will work for any future prefixes as well.
          $v =~ s/^[a-zA-Z]*\-//;
@@ -180,11 +189,38 @@ my $guess_patterns = [
     [ sub { -d '/usr/apollo' },     'whatever-apollo-whatever' ],
 ];
 
+# Shell-quote a single argument for safe shell execution
+sub shell_quote_arg {
+    my ($arg) = @_;
+    # If the argument contains shell metacharacters, quote it
+    if ($arg =~ /[^\w\/\.\-\=]/) {
+        $arg =~ s/'/'\\''/g;  # Escape single quotes
+        return "'$arg'";
+    }
+    return $arg;
+}
+
 # Run a command, return true if exit zero else false.
 # Multiple args are glued together into a pipeline.
 # Name comes from OpenSSL tests, often written as "ok(run(...."
+# Uses shell-safe execution by properly quoting arguments.
 sub okrun {
-    my $command = join(' | ', @_);
+    # Shell-quote each pipeline component to prevent injection
+    my @safe_commands;
+    foreach my $cmd_str (@_) {
+        # Parse the command string into tokens using shellwords
+        # which handles quotes and escapes properly
+        my @tokens = Text::ParseWords::shellwords($cmd_str);
+        next unless @tokens;
+        
+        # Re-quote tokens safely for shell execution
+        my $safe_cmd = join(' ', map { shell_quote_arg($_) } @tokens);
+        push @safe_commands, $safe_cmd;
+    }
+    
+    return 0 unless @safe_commands;
+    
+    my $command = join(' | ', @safe_commands);
     my $status = system($command) >> 8;
     return $status == 0;
 }
