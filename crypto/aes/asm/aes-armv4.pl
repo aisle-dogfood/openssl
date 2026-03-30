@@ -15,6 +15,20 @@
 # ====================================================================
 
 # AES for ARMv4
+#
+# SECURITY WARNING: This implementation is DEPRECATED and should NOT be used
+# in security-sensitive contexts due to cache-timing side-channel vulnerabilities.
+#
+# This code performs secret-dependent T-table lookups (lines 329-443) which
+# create observable memory access patterns susceptible to cache-timing attacks.
+# Attackers with sufficient access can potentially recover encryption keys.
+#
+# RECOMMENDATION: Use constant-time implementations instead:
+# - Hardware AES instructions (AESE/AESMC on ARMv8+) 
+# - Bitsliced implementations (BSAES/VPAES on ARMv7+ NEON)
+# - Constant-time C implementation (OPENSSL_AES_CONST_TIME)
+#
+# This file is no longer compiled by default for ARMv4 targets.
 
 # January 2007.
 #
