@@ -8,6 +8,21 @@
  */
 
 /*
+ * SECURITY WARNING: This implementation uses SHA-1 for integrity checking
+ * (ICV), which is cryptographically weak and NOT FIPS-approved.
+ *
+ * This 3DES key wrap implementation is provided ONLY for legacy compatibility
+ * with existing systems and MUST NOT be used in new applications.
+ *
+ * For new implementations, use FIPS-approved key wrapping algorithms:
+ *   - AES-KW (AES Key Wrap, RFC 3394)
+ *   - AES-KWP (AES Key Wrap with Padding, RFC 5649)
+ *
+ * This cipher is available only through the legacy provider, not the default
+ * or FIPS providers.
+ */
+
+/*
  * DES and SHA-1 low level APIs are deprecated for public use, but still ok for
  * internal use.
  */
@@ -18,7 +33,6 @@
 #include <openssl/proverr.h>
 #include "cipher_tdes_default.h"
 #include "crypto/evp.h"
-#include "crypto/sha.h"
 #include "prov/implementations.h"
 #include "prov/providercommon.h"
 
@@ -64,7 +78,8 @@ static int des_ede3_unwrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
     /* Decrypt again using new IV */
     ctx->hw->cipher(ctx, out, out, inl - 16);
     ctx->hw->cipher(ctx, icv, icv, 8);
-    if (ossl_sha1(out, inl - 16, sha1tmp) /* Work out hash of first portion */
+    /* Work out hash of first portion using deprecated SHA1 API */
+    if (SHA1(out, inl - 16, sha1tmp) != NULL
             && CRYPTO_memcmp(sha1tmp, icv, 8) == 0)
         rv = inl - 16;
     OPENSSL_cleanse(icv, 8);
@@ -90,8 +105,8 @@ static int des_ede3_wrap(PROV_CIPHER_CTX *ctx, unsigned char *out,
 
     /* Copy input to output buffer + 8 so we have space for IV */
     memmove(out + ivlen, in, inl);
-    /* Work out ICV */
-    if (!ossl_sha1(in, inl, sha1tmp))
+    /* Work out ICV using deprecated SHA1 API */
+    if (SHA1(in, inl, sha1tmp) == NULL)
         return 0;
     memcpy(out + inl + ivlen, sha1tmp, icvlen);
     OPENSSL_cleanse(sha1tmp, SHA_DIGEST_LENGTH);

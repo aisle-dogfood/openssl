@@ -169,7 +169,8 @@ const OPTIONS cms_options[] = {
     {"aes128-wrap", OPT_AES128_WRAP, '-', "Use AES128 to wrap key"},
     {"aes192-wrap", OPT_AES192_WRAP, '-', "Use AES192 to wrap key"},
     {"aes256-wrap", OPT_AES256_WRAP, '-', "Use AES256 to wrap key"},
-    {"des3-wrap", OPT_3DES_WRAP, '-', "Use 3DES-EDE to wrap key"},
+    {"des3-wrap", OPT_3DES_WRAP, '-',
+     "Use 3DES-EDE to wrap key (legacy, requires legacy provider)"},
     {"debug_decrypt", OPT_DEBUG_DECRYPT, '-',
      "Disable MMA protection, return error if no recipient found (see doc)"},
 

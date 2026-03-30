@@ -157,6 +157,13 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
 #endif /* OPENSSL_NO_RC5 */
 #ifndef OPENSSL_NO_DES
     ALG(PROV_NAMES_DESX_CBC, ossl_tdes_desx_cbc_functions),
+    /*
+     * DES3-WRAP uses SHA-1 for integrity checking (ICV), which is not
+     * FIPS-approved. This algorithm is provided only for legacy compatibility
+     * and should not be used in new systems. Consider modern alternatives
+     * such as AES-KW (RFC 3394) or AES-KWP (RFC 5649).
+     */
+    ALG(PROV_NAMES_DES3_WRAP, ossl_tdes_wrap_cbc_functions),
 #ifdef OPENSSL_ENABLE_WEAK_DES_CIPHERS
     /* Single DES ciphers are disabled by default due to inadequate encryption strength */
     ALG(PROV_NAMES_DES_ECB, ossl_des_ecb_functions),
