@@ -647,6 +647,7 @@ static int cryptodev_select_cipher_cb(const char *str, int len, void *usr)
     return 1;
 }
 
+#ifdef ENGINE_DEVCRYPTO_DEBUG
 static void dump_cipher_info(void)
 {
     size_t i;
@@ -680,6 +681,7 @@ static void dump_cipher_info(void)
     }
     fprintf(stderr, "\n");
 }
+#endif
 
 /*
  * We only support digests if the cryptodev implementation supports multiple
@@ -1077,6 +1079,7 @@ static int cryptodev_select_digest_cb(const char *str, int len, void *usr)
     return 1;
 }
 
+#ifdef ENGINE_DEVCRYPTO_DEBUG
 static void dump_digest_info(void)
 {
     size_t i;
@@ -1113,6 +1116,7 @@ static void dump_digest_info(void)
     }
     fprintf(stderr, "\n");
 }
+#endif
 
 #endif
 
@@ -1152,10 +1156,12 @@ static const ENGINE_CMD_DEFN devcrypto_cmds[] = {
     ENGINE_CMD_FLAG_STRING},
 #endif
 
+#ifdef ENGINE_DEVCRYPTO_DEBUG
    {DEVCRYPTO_CMD_DUMP_INFO,
     "DUMP_INFO",
     "dump info about each algorithm to stderr; use 'openssl engine -pre DUMP_INFO devcrypto'",
     ENGINE_CMD_FLAG_NO_INPUT},
+#endif
 
    {0, NULL, NULL, 0}
 };
@@ -1225,12 +1231,14 @@ static int devcrypto_ctrl(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
         return 1;
 #endif /* IMPLEMENT_DIGEST */
 
+#ifdef ENGINE_DEVCRYPTO_DEBUG
     case DEVCRYPTO_CMD_DUMP_INFO:
         dump_cipher_info();
 #ifdef IMPLEMENT_DIGEST
         dump_digest_info();
 #endif
         return 1;
+#endif
 
     default:
         break;
