@@ -1,6 +1,12 @@
 Build and Install
 =================
 
+> **SECURITY WARNING FOR PACKAGERS:** The `demos/` and `test/` directories
+> contain hard-coded private keys that are publicly known and checked into
+> version control. These MUST be excluded from production packages. See
+> `PACKAGING-EXCLUSIONS.txt` for required exclusion patterns and use
+> `util/check-hardcoded-keys.sh` to validate packages.
+
 This document describes installation on all supported operating
 systems: the Unix/Linux family (including macOS), OpenVMS,
 and Windows.

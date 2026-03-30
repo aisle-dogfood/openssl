@@ -3,6 +3,28 @@ OpenSSL Demonstration Applications
 This folder contains source code that demonstrates the proper use of the OpenSSL
 library API.
 
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! SECURITY WARNING: HARD-CODED PRIVATE KEYS - FOR DEMONSTRATION ONLY       !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!                                                                           !!
+!! This directory contains HARD-CODED PRIVATE KEYS that are publicly known  !!
+!! and checked into version control. These keys are for LOCAL TESTING and   !!
+!! DEMONSTRATION purposes ONLY.                                             !!
+!!                                                                           !!
+!! NEVER use these keys or certificates in production environments.         !!
+!! Using these credentials in production constitutes CWE-321 (Use of        !!
+!! Hard-coded Credentials), a CRITICAL security vulnerability.              !!
+!!                                                                           !!
+!! FOR PACKAGERS: Exclude the entire demos/ directory from production       !!
+!! packages and installations. These materials are for development only.    !!
+!!                                                                           !!
+!! See individual SECURITY.md files in subdirectories for specific details. !!
+!!                                                                           !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+For production use, always generate keys dynamically at runtime using proper
+key management practices.
+
 Note: Makefiles are provided in the demo subfolders to demonstrate how to build
 them, but are not frequently used.  Configure openssl with enable-demos to build
 them automatically through the perl based build system

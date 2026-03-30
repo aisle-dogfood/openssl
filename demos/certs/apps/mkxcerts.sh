@@ -2,6 +2,14 @@
 
 # Create certificates using various algorithms to test multi-certificate
 # functionality.
+#
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# SECURITY WARNING: This script generates certificates with EMBEDDED
+# PRIVATE KEYS for demonstration/testing purposes only.
+#
+# NEVER use these generated certificates in production!
+# See SECURITY.md for details.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 opensslcmd() {
     LD_LIBRARY_PATH=../../.. ../../../apps/openssl $@

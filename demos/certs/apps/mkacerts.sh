@@ -1,6 +1,17 @@
 #!/bin/sh
 
 # Recreate the demo certificates in the apps directory.
+#
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# SECURITY WARNING: This script uses HARD-CODED PRIVATE KEYS that are
+# publicly known and checked into version control.
+#
+# These keys (ckey.pem, skey.pem, skey2.pem, rootkey.pem, intkey.pem)
+# are FOR DEMONSTRATION AND TESTING ONLY.
+#
+# NEVER use these keys or the certificates they generate in production!
+# See SECURITY.md for details.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 opensslcmd() {
     LD_LIBRARY_PATH=../../.. ../../../apps/openssl $@

@@ -1,5 +1,13 @@
 #!/bin/sh
 
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# SECURITY WARNING: This script generates certificates and private keys
+# for demonstration/testing purposes only.
+#
+# NEVER use these generated keys or certificates in production!
+# See README.txt and SECURITY.md for details.
+# !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 opensslcmd() {
     LD_LIBRARY_PATH=../.. ../../apps/openssl "$@"
 }

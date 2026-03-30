@@ -1,3 +1,9 @@
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!! SECURITY WARNING: This directory contains HARD-CODED PRIVATE KEYS   !!
+!! These are publicly known and MUST NEVER be used in production!      !!
+!! See apps/SECURITY.md for critical security information.             !!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 There is often a need to generate test certificates automatically using
 a script. This is often a cause for confusion which can result in incorrect
 CA certificates, obsolete V1 certificates or duplicate serial numbers.
