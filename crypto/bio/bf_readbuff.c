@@ -20,6 +20,12 @@
 #include "internal/cryptlib.h"
 
 #define DEFAULT_BUFFER_SIZE     4096
+/*
+ * Maximum buffer size to prevent unbounded memory growth.
+ * Set to 64 MB which is generous for legitimate use cases
+ * (PEM files, certificates, decoder operations) but prevents DoS.
+ */
+#define MAX_BUFFER_SIZE         (64 * 1024 * 1024)
 
 static int readbuffer_write(BIO *h, const char *buf, int num);
 static int readbuffer_read(BIO *h, char *buf, int size);
@@ -91,6 +97,12 @@ static int readbuffer_resize(BIO_F_BUFFER_CTX *ctx, int sz)
     /* Figure out how many blocks are required */
     sz += (ctx->ibuf_off + DEFAULT_BUFFER_SIZE - 1);
     sz = DEFAULT_BUFFER_SIZE * (sz / DEFAULT_BUFFER_SIZE);
+
+    /* Check if requested size exceeds maximum allowed buffer size */
+    if (sz > MAX_BUFFER_SIZE) {
+        ERR_raise(ERR_LIB_BIO, BIO_R_LENGTH_TOO_LONG);
+        return 0;
+    }
 
     /* Resize if the buffer is not big enough */
     if (sz > ctx->ibuf_size) {
