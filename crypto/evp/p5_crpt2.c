@@ -62,20 +62,15 @@ int ossl_pkcs5_pbkdf2_hmac_ex(const char *pass, int passlen,
 
     EVP_KDF_CTX_free(kctx);
 
+    /*
+     * Note: Sensitive data (password, salt, derived key) is not traced
+     * to prevent leakage if tracing is inadvertently enabled in production.
+     * Only non-sensitive metadata is logged.
+     */
     OSSL_TRACE_BEGIN(PKCS5V2) {
-        BIO_printf(trc_out, "Password:\n");
-        BIO_hex_string(trc_out,
-                       0, passlen, pass, passlen);
-        BIO_printf(trc_out, "\n");
-        BIO_printf(trc_out, "Salt:\n");
-        BIO_hex_string(trc_out,
-                       0, saltlen, salt, saltlen);
-        BIO_printf(trc_out, "\n");
-        BIO_printf(trc_out, "Iteration count %d\n", iter);
-        BIO_printf(trc_out, "Key:\n");
-        BIO_hex_string(trc_out,
-                       0, keylen, out, keylen);
-        BIO_printf(trc_out, "\n");
+        BIO_printf(trc_out, "PKCS5v2 PBKDF2: Iteration count %d\n", iter);
+        BIO_printf(trc_out, "Password length: %d, Salt length: %d, Key length: %d\n",
+                   passlen, saltlen, keylen);
     } OSSL_TRACE_END(PKCS5V2);
     return rv;
 }

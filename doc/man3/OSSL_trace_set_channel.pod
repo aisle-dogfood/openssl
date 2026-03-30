@@ -167,9 +167,19 @@ monitored with a line of trace output generated for each change.
 
 Traces PKCS#5 v2 key generation.
 
+B<Security Note:> This trace category should only be enabled in controlled
+debugging environments. It logs non-sensitive metadata (iteration count and
+data lengths) but does not include passwords, salts, or derived keys to
+prevent accidental leakage in production systems.
+
 =item B<OSSL_TRACE_CATEGORY_PKCS12_KEYGEN>
 
 Traces PKCS#12 key generation.
+
+B<Security Note:> This trace category should only be enabled in controlled
+debugging environments. It logs non-sensitive metadata (ID, iteration count,
+and data lengths) but does not include passwords, salts, or derived keys to
+prevent accidental leakage in production systems.
 
 =item B<OSSL_TRACE_CATEGORY_PKCS12_DECRYPT>
 
