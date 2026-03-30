@@ -253,10 +253,9 @@ int WHIRLPOOL_Final(unsigned char *md, WHIRLPOOL_CTX *c)
 unsigned char *WHIRLPOOL(const void *inp, size_t bytes, unsigned char *md)
 {
     WHIRLPOOL_CTX ctx;
-    static unsigned char m[WHIRLPOOL_DIGEST_LENGTH];
 
     if (md == NULL)
-        md = m;
+        return NULL;
     WHIRLPOOL_Init(&ctx);
     WHIRLPOOL_Update(&ctx, inp, bytes);
     WHIRLPOOL_Final(md, &ctx);
