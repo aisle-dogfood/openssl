@@ -1726,7 +1726,16 @@ if (!$disabled{asm} && !$predefined_C{__MACH__} && $^O ne 'VMS' && !$predefined_
         push @{$config{cflags}}, "-Wa,--noexecstack", "-Qunused-arguments";
     } else {
         my $cc = $config{CROSS_COMPILE}.$config{CC};
-        open(PIPE, "$cc -Wa,--help -c -o null.$$.o -x assembler /dev/null 2>&1 |");
+        my $pid = open(PIPE, "-|");
+        if (!defined $pid) {
+            die "Failed to fork: $!";
+        } elsif ($pid == 0) {
+            # Child process: redirect stderr to stdout and exec
+            open(STDERR, ">&STDOUT") or die "Can't dup stdout: $!";
+            exec { $cc } $cc, "-Wa,--help", "-c", "-o", "null.$$.o", "-x", "assembler", "/dev/null"
+                or die "Failed to exec $cc: $!";
+        }
+        # Parent process: read from pipe
         while(<PIPE>) {
             if (m/--noexecstack/) {
                 push @{$config{cflags}}, "-Wa,--noexecstack";
@@ -1837,12 +1846,34 @@ unless ($disabled{ktls}) {
     $config{ktls}="";
     my $cc = $config{CROSS_COMPILE}.$config{CC};
     if ($target =~ m/^linux/) {
-        system("printf '#include <sys/types.h>\n#include <linux/tls.h>' | $cc -E - >/dev/null 2>&1");
+        my $pid = fork();
+        if (!defined $pid) {
+            die "Failed to fork: $!";
+        } elsif ($pid == 0) {
+            # Child process
+            open(STDOUT, ">", "/dev/null") or die "Can't redirect stdout: $!";
+            open(STDERR, ">&STDOUT") or die "Can't dup stdout: $!";
+            open(STDIN, "<", \('#include <sys/types.h>' . "\n" . '#include <linux/tls.h>'))
+                or die "Can't open string as file: $!";
+            exec { $cc } $cc, "-E", "-" or die "Failed to exec $cc: $!";
+        }
+        waitpid($pid, 0);
         if ($? != 0) {
             disable('too-old-kernel', 'ktls');
         }
     } elsif ($target =~ m/^BSD/) {
-        system("printf '#include <sys/types.h>\n#include <sys/ktls.h>' | $cc -E - >/dev/null 2>&1");
+        my $pid = fork();
+        if (!defined $pid) {
+            die "Failed to fork: $!";
+        } elsif ($pid == 0) {
+            # Child process
+            open(STDOUT, ">", "/dev/null") or die "Can't redirect stdout: $!";
+            open(STDERR, ">&STDOUT") or die "Can't dup stdout: $!";
+            open(STDIN, "<", \('#include <sys/types.h>' . "\n" . '#include <sys/ktls.h>'))
+                or die "Can't open string as file: $!";
+            exec { $cc } $cc, "-E", "-" or die "Failed to exec $cc: $!";
+        }
+        waitpid($pid, 0);
         if ($? != 0) {
             disable('too-old-freebsd', 'ktls');
         }
@@ -3401,7 +3432,16 @@ sub compiler_predefined {
         $predefined{$cc} = {};
 
         # collect compiler pre-defines from gcc or gcc-alike...
-        open(PIPE, "$cc -dM -E -x c /dev/null 2>&1 |");
+        my $pid = open(PIPE, "-|");
+        if (!defined $pid) {
+            die "Failed to fork: $!";
+        } elsif ($pid == 0) {
+            # Child process: redirect stderr to stdout and exec
+            open(STDERR, ">&STDOUT") or die "Can't dup stdout: $!";
+            exec { $cc } $cc, "-dM", "-E", "-x", "c", "/dev/null"
+                or die "Failed to exec $cc: $!";
+        }
+        # Parent process: read from pipe
         while (my $l = <PIPE>) {
             $l =~ m/^#define\s+(\w+(?:\(\w+\))?)(?:\s+(.+))?/ or last;
             $predefined{$cc}->{$1} = $2 // '';
