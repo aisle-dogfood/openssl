@@ -1006,6 +1006,8 @@ unroll8_eor3_aes_gcm_enc_128_kernel:
 .L128_enc_tail:								@ TAIL
 
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes remain
+	b.lt	.L128_enc_blocks_less_than_1				@ if < 16 bytes, skip to partial block handler
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - load plaintext
 
 	mov	$t1.16b, $rk10
@@ -2097,7 +2099,8 @@ unroll8_eor3_aes_gcm_dec_128_kernel:
 
 	mov	$t1.16b, $rk10
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
-
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes remain
+	b.lt	.L128_dec_blocks_less_than_1				@ if < 16 bytes, skip to partial block handler
 	cmp	$main_end_input_ptr, #112
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
@@ -3324,7 +3327,8 @@ unroll8_eor3_aes_gcm_enc_192_kernel:
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
         ext     $h5.16b, $h5.16b, $h5.16b, #8
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
-
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes remain
+	b.lt	.L192_enc_blocks_less_than_1				@ if < 16 bytes, skip to partial block handler
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - l3ad plaintext
 
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8k | h7k
@@ -4482,7 +4486,8 @@ unroll8_eor3_aes_gcm_dec_192_kernel:
 .L192_dec_tail:								@ TAIL
 
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr 	@ main_end_input_ptr is number of bytes left to process
-
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes remain
+	b.lt	.L192_dec_blocks_less_than_1				@ if < 16 bytes, skip to partial block handler
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
         ext     $h5.16b, $h5.16b, $h5.16b, #8
 	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
@@ -5771,7 +5776,8 @@ unroll8_eor3_aes_gcm_enc_256_kernel:
 	ldp	$h78kq, $h8q, [$current_tag, #192]			@ load h8l | h8h
         ext     $h8.16b, $h8.16b, $h8.16b, #8
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr		@ main_end_input_ptr is number of bytes left to process
-
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes remain
+	b.lt	.L256_enc_blocks_less_than_1				@ if < 16 bytes, skip to partial block handler
 	ldr	$ctr_t0q, [$input_ptr], #16				@ AES block 8k+8 - load plaintext
 
 	ldp	$h5q, $h56kq, [$current_tag, #128]			@ load h5l | h5h
@@ -7001,6 +7007,8 @@ unroll8_eor3_aes_gcm_dec_256_kernel:
 
 	ext	$t0.16b, $acc_lb, $acc_lb, #8				@ prepare final partial tag
 	sub	$main_end_input_ptr, $end_input_ptr, $input_ptr		@ main_end_input_ptr is number of bytes left to process
+	cmp	$main_end_input_ptr, #16				@ check if at least 16 bytes remain
+	b.lt	.L256_dec_blocks_less_than_1				@ if < 16 bytes, skip to partial block handler
 	cmp	$main_end_input_ptr, #112
 
 	ldr	$res1q, [$input_ptr], #16				@ AES block 8k+8 - load ciphertext
