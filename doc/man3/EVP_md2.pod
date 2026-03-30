@@ -14,7 +14,9 @@ EVP_md2
 =head1 DESCRIPTION
 
 MD2 is a cryptographic hash function standardized in RFC 1319 and designed by
-Ronald Rivest. This implementation is only available with the legacy provider.
+Ronald Rivest. B<MD2 is permanently disabled due to cryptographic weaknesses
+(CWE-327/CWE-328) and should not be used.> This implementation is only available
+with the legacy provider when explicitly enabled at compile time.
 
 =over 4
 
