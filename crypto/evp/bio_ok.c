@@ -435,13 +435,12 @@ static int sig_out(BIO *b)
     EVP_MD_CTX *md;
     const EVP_MD *digest;
     int md_size;
-    void *md_data;
+    unsigned char seed[EVP_MAX_MD_SIZE];
 
     ctx = BIO_get_data(b);
     md = ctx->md;
     digest = EVP_MD_CTX_get0_md(md);
     md_size = EVP_MD_get_size(digest);
-    md_data = EVP_MD_CTX_get0_md_data(md);
 
     if (md_size <= 0)
         goto berr;
@@ -451,15 +450,19 @@ static int sig_out(BIO *b)
     if (!EVP_DigestInit_ex(md, digest, NULL))
         goto berr;
     /*
-     * FIXME: there's absolutely no guarantee this makes any sense at all,
-     * particularly now EVP_MD_CTX has been restructured.
+     * Generate random seed and use it to create a unique digest state.
+     * This avoids direct manipulation of EVP_MD_CTX internals and works
+     * correctly with provider-backed digest implementations.
      */
-    if (RAND_bytes(md_data, md_size) <= 0)
+    if (RAND_bytes(seed, md_size) <= 0)
         goto berr;
-    memcpy(&(ctx->buf[ctx->buf_len]), md_data, md_size);
+    memcpy(&(ctx->buf[ctx->buf_len]), seed, md_size);
     longswap(&(ctx->buf[ctx->buf_len]), md_size);
     ctx->buf_len += md_size;
 
+    /* Hash the seed followed by the well-known text */
+    if (!EVP_DigestUpdate(md, seed, md_size))
+        goto berr;
     if (!EVP_DigestUpdate(md, WELLKNOWN, strlen(WELLKNOWN)))
         goto berr;
     if (!EVP_DigestFinal_ex(md, &(ctx->buf[ctx->buf_len]), NULL))
@@ -478,10 +481,10 @@ static int sig_in(BIO *b)
     BIO_OK_CTX *ctx;
     EVP_MD_CTX *md;
     unsigned char tmp[EVP_MAX_MD_SIZE];
+    unsigned char seed[EVP_MAX_MD_SIZE];
     int ret = 0;
     const EVP_MD *digest;
     int md_size;
-    void *md_data;
 
     ctx = BIO_get_data(b);
     if ((md = ctx->md) == NULL)
@@ -489,17 +492,24 @@ static int sig_in(BIO *b)
     digest = EVP_MD_CTX_get0_md(md);
     if ((md_size = EVP_MD_get_size(digest)) <= 0)
         goto berr;
-    md_data = EVP_MD_CTX_get0_md_data(md);
 
     if ((int)(ctx->buf_len - ctx->buf_off) < 2 * md_size)
         return 1;
 
     if (!EVP_DigestInit_ex(md, digest, NULL))
         goto berr;
-    memcpy(md_data, &(ctx->buf[ctx->buf_off]), md_size);
-    longswap(md_data, md_size);
+    /*
+     * Extract the seed from the input stream and use it properly via
+     * EVP_DigestUpdate instead of directly manipulating md_data.
+     * This works correctly with provider-backed digest implementations.
+     */
+    memcpy(seed, &(ctx->buf[ctx->buf_off]), md_size);
+    longswap(seed, md_size);
     ctx->buf_off += md_size;
 
+    /* Hash the seed followed by the well-known text */
+    if (!EVP_DigestUpdate(md, seed, md_size))
+        goto berr;
     if (!EVP_DigestUpdate(md, WELLKNOWN, strlen(WELLKNOWN)))
         goto berr;
     if (!EVP_DigestFinal_ex(md, tmp, NULL))
