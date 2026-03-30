@@ -15,6 +15,13 @@ The Makefile in this directory can be used to build the demo on \*nix-style
 systems.  You will need the `nghttp3` library and header file.  On
 Ubuntu, these can be obtained by installing the package `libnghttp3-dev`.
 
+**Security Note for Automated Builds**: When building with `enable-h3demo`, the
+build system uses `gen_nghttp3.pl` to automatically fetch and build a pinned
+version of nghttp3. This is intended for **demo and development purposes only**.
+The script pins to a specific version tag to minimize supply chain risks.
+For production use, install nghttp3 from trusted distribution packages or
+vendor a verified release instead of relying on automated git clones.
+
 Running the Demo
 ----------------
 
