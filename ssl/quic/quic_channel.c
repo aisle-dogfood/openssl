@@ -1810,16 +1810,14 @@ static int ch_on_transport_params(const unsigned char *params,
         if (got_active_conn_id_limit)
             QLOG_U64("active_connection_id_limit", ch->rx_active_conn_id_limit);
         if (got_stateless_reset_token)
-            QLOG_BIN("stateless_reset_token", stateless_reset_token_p,
-                     QUIC_STATELESS_RESET_TOKEN_LEN);
+            QLOG_STR("stateless_reset_token", "<redacted>");
         if (got_preferred_addr) {
             QLOG_BEGIN("preferred_addr")
                 QLOG_U64("port_v4", pfa.ipv4_port);
                 QLOG_U64("port_v6", pfa.ipv6_port);
                 QLOG_BIN("ip_v4", pfa.ipv4, sizeof(pfa.ipv4));
                 QLOG_BIN("ip_v6", pfa.ipv6, sizeof(pfa.ipv6));
-                QLOG_BIN("stateless_reset_token", pfa.stateless_reset.token,
-                         sizeof(pfa.stateless_reset.token));
+                QLOG_STR("stateless_reset_token", "<redacted>");
                 QLOG_CID("connection_id", &pfa.cid);
             QLOG_END()
         }
