@@ -244,9 +244,6 @@ static int cms_kek_cipher(unsigned char **pout, size_t *poutlen,
     if (!rv)
         OPENSSL_free(out);
     EVP_CIPHER_CTX_reset(kari->ctx);
-    /* FIXME: WHY IS kari->pctx freed here?  /RL */
-    EVP_PKEY_CTX_free(kari->pctx);
-    kari->pctx = NULL;
     return rv;
 }
 
