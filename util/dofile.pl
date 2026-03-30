@@ -40,14 +40,19 @@ my @autowarntext = (
         . (scalar(@ARGV) > 0 ? " from " .join(", ", @ARGV) : "")
 );
 
-if (defined($opts{s})) {
-    local $/ = undef;
-    open VARS, $opts{s} or die "Couldn't open $opts{s}, $!";
-    my $contents = <VARS>;
-    close VARS;
-    eval $contents;
-    die $@ if $@;
-}
+# The -s option was never implemented in getopt() above (only 'oi' are parsed),
+# making the following code unreachable. Removed to eliminate dead code with
+# unsafe eval() that could pose a security risk if the option were ever enabled.
+# Historical code removed:
+#   if (defined($opts{s})) {
+#       local $/ = undef;
+#       open VARS, $opts{s} or die "Couldn't open $opts{s}, $!";
+#       my $contents = <VARS>;
+#       close VARS;
+#       eval $contents;
+#       die $@ if $@;
+#   }
+
 die "Must have input files"
    if defined($opts{i}) and scalar(@ARGV) == 0;
 

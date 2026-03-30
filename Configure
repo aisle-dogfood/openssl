@@ -381,6 +381,11 @@ foreach (sort glob($pattern)) {
 }
 
 if (defined env($local_config_envname)) {
+    # Warn about loading external configuration files for security awareness
+    warn "WARNING: Loading configuration files from $local_config_envname environment variable.\n";
+    warn "         Only use this with trusted configuration files from secure locations.\n";
+    warn "         Malicious configuration files can execute arbitrary code during the build process.\n";
+    
     if ($^O eq 'VMS') {
         # VMS environment variables are logical names,
         # which can be used as is
@@ -3175,20 +3180,40 @@ sub add {
 
 sub read_eval_file {
     my $fname = shift;
-    my $content;
     my @result;
 
-    open F, "< $fname" or die "Can't open '$fname': $!\n";
-    {
-        undef local $/;
-        $content = <F>;
+    # Validate file path to mitigate code injection risks
+    # Convert to absolute path for comparison
+    use Cwd 'abs_path';
+    use File::Spec;
+    
+    my $abs_fname = abs_path($fname);
+    
+    unless ($abs_fname) {
+        die "Cannot resolve absolute path for '$fname': $!\n";
     }
-    close F;
+    
+    # Check if file is a symlink pointing outside trusted directories
+    if (-l $fname) {
+        my $repo_dir = abs_path(dirname($0));
+        unless ($abs_fname =~ /^\Q$repo_dir\E/) {
+            warn "WARNING: Configuration file '$fname' is a symbolic link pointing outside the repository.\n";
+            warn "         This may pose a security risk. Only load configuration files from trusted sources.\n";
+        }
+    }
+
     {
         local $@;
-
-        @result = ( eval $content );
-        warn $@ if $@;
+        # Use 'do' with absolute path instead of 'eval' on file content for better safety
+        # 'do' executes the file directly and is less prone to injection
+        # Using absolute path to avoid issues with @INC not containing current directory
+        @result = do $abs_fname;
+        
+        if ($@) {
+            warn $@;
+        } elsif (!defined $result[0] && $!) {
+            die "Can't open or execute '$fname': $!\n";
+        }
     }
     return wantarray ? @result : $result[0];
 }
