@@ -14,6 +14,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h> /* for memcpy() and strcmp() */
+#include <errno.h>
+#ifndef OPENSSL_NO_POSIX_IO
+# include <sys/types.h>
+# include <sys/stat.h>
+# include <fcntl.h>
+#endif
 #include "apps.h"
 #include <openssl/core_names.h>
 #include <openssl/params.h>
@@ -1633,11 +1639,86 @@ int set_keylog_file(SSL_CTX *ctx, const char *keylog_file)
      * Furthermore, this preserves existing keylog files which is useful when
      * the tool is run multiple times.
      */
+#ifndef OPENSSL_NO_POSIX_IO
+    {
+        int fd;
+        FILE *fp = NULL;
+        struct stat st;
+        int mode = O_WRONLY | O_APPEND;
+
+# ifdef O_CREAT
+        mode |= O_CREAT;
+# endif
+
+        /*
+         * Open/create the keylog file with restrictive permissions (0600).
+         * This ensures that newly created files are only readable/writable
+         * by the owner, preventing exposure of TLS secrets to other users.
+         */
+        fd = open(keylog_file, mode, 0600);
+        if (fd < 0) {
+            BIO_printf(bio_err, "Error opening keylog file %s: %s\n",
+                       keylog_file, strerror(errno));
+            return 1;
+        }
+
+        /*
+         * Check permissions of the opened file. If the file already existed
+         * with overly permissive permissions, fail to prevent secret exposure.
+         */
+        if (fstat(fd, &st) < 0) {
+            BIO_printf(bio_err, "Error checking keylog file %s: %s\n",
+                       keylog_file, strerror(errno));
+            close(fd);
+            return 1;
+        }
+
+        /*
+         * Verify that the file has restrictive permissions (owner-only access).
+         * Reject files that are group or world readable/writable.
+         */
+        if ((st.st_mode & (S_IRWXG | S_IRWXO)) != 0) {
+            BIO_printf(bio_err,
+                       "Error: keylog file %s has insecure permissions %04o\n"
+                       "Keylog files contain TLS secrets and must be readable/writable by owner only.\n"
+                       "Please set permissions to 0600 (e.g., 'chmod 0600 %s')\n",
+                       keylog_file, (unsigned int)(st.st_mode & 0777), keylog_file);
+            close(fd);
+            return 1;
+        }
+
+        fp = fdopen(fd, "a");
+        if (fp == NULL) {
+            BIO_printf(bio_err, "Error opening keylog file %s: %s\n",
+                       keylog_file, strerror(errno));
+            close(fd);
+            return 1;
+        }
+
+        bio_keylog = BIO_new_fp(fp, BIO_CLOSE);
+        if (bio_keylog == NULL) {
+            BIO_printf(bio_err, "Error creating BIO for keylog file %s\n",
+                       keylog_file);
+            fclose(fp);
+            return 1;
+        }
+    }
+#else   /* OPENSSL_NO_POSIX_IO */
+    /*
+     * Fallback for systems without POSIX I/O. Permission checks cannot
+     * be enforced on these platforms. Users should manually ensure the
+     * keylog file has restrictive permissions.
+     */
     bio_keylog = BIO_new_file(keylog_file, "a");
     if (bio_keylog == NULL) {
         BIO_printf(bio_err, "Error writing keylog file %s\n", keylog_file);
         return 1;
     }
+    BIO_printf(bio_err,
+               "Warning: Unable to enforce restrictive permissions on keylog file.\n"
+               "Please ensure %s is readable/writable by owner only.\n",
+               keylog_file);
+#endif  /* OPENSSL_NO_POSIX_IO */
 
     /* Write a header for seekable, empty files (this excludes pipes). */
     if (BIO_tell(bio_keylog) == 0) {
