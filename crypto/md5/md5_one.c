@@ -25,10 +25,9 @@
 unsigned char *MD5(const unsigned char *d, size_t n, unsigned char *md)
 {
     MD5_CTX c;
-    static unsigned char m[MD5_DIGEST_LENGTH];
 
     if (md == NULL)
-        md = m;
+        return NULL;
     if (!MD5_Init(&c))
         return NULL;
 #ifndef CHARSET_EBCDIC
