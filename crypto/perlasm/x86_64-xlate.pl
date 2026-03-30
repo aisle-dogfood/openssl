@@ -88,37 +88,80 @@ my $nasm=0;
 my $gnuas=0;
 
 if    ($flavour eq "mingw64")	{ $gas=1; $elf=0; $win64=1;
-				  $prefix=`echo __USER_LABEL_PREFIX__ | $ENV{CC} -E -P -`;
+				  use IPC::Cmd;
+				  my $cc_cmd = $ENV{CC} || 'cc';
+				  my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+				      IPC::Cmd::run(command => [$cc_cmd, '-E', '-P', '-'], 
+				                    buffer => \"echo __USER_LABEL_PREFIX__\n", verbose => 0);
+				  $prefix = $success ? join('', @$stdout_buf) : '';
 				  $prefix =~ s|\R$||; # Better chomp
 				}
 elsif ($flavour eq "macosx")	{ $gas=1; $elf=0; $prefix="_"; $decor="L\$"; }
 elsif ($flavour eq "masm")	{ $gas=0; $elf=0; $masm=$masmref; $win64=1; $decor="\$L\$"; }
 elsif ($flavour eq "nasm")	{ $gas=0; $elf=0; $nasm=$nasmref; $win64=1; $decor="\$L\$"; $PTR=""; }
 elsif (!$gas)
-{   if ($ENV{ASM} =~ m/nasm/ && `nasm -v` =~ m/version ([0-9]+)\.([0-9]+)/i)
-    {	$nasm = $1 + $2*0.01; $PTR="";  }
-    elsif (`ml64 2>&1` =~ m/Version ([0-9]+)\.([0-9]+)(\.([0-9]+))?/)
-    {	$masm = $1 + $2*2**-16 + $4*2**-32;   }
+{   use IPC::Cmd;
+    if ($ENV{ASM} =~ m/nasm/) {
+        my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+            IPC::Cmd::run(command => ['nasm', '-v'], verbose => 0);
+        if ($success) {
+            my $output = join('', @$full_buf);
+            if ($output =~ m/version ([0-9]+)\.([0-9]+)/i) {
+                $nasm = $1 + $2*0.01; $PTR="";
+            }
+        }
+    }
+    if (!$nasm) {
+        my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+            IPC::Cmd::run(command => ['ml64'], verbose => 0);
+        if ($success || $stderr_buf) {
+            my $output = join('', @$full_buf, @$stderr_buf);
+            if ($output =~ m/Version ([0-9]+)\.([0-9]+)(\.([0-9]+))?/) {
+                $masm = $1 + $2*2**-16 + ($4||0)*2**-32;
+            }
+        }
+    }
     die "no assembler found on %PATH%" if (!($nasm || $masm));
     $win64=1;
     $elf=0;
     $decor="\$L\$";
 }
 # Find out if we're using GNU as
-elsif (`$ENV{CC} -Wa,-v -c -o /dev/null -x assembler /dev/null 2>&1`
-		=~ /GNU assembler version ([2-9]\.[0-9]+)/)
+elsif (defined $ENV{CC})
 {
-    $gnuas=1;
-}
-elsif (`$ENV{CC} --version 2>/dev/null`
-		=~ /(clang .*|Intel.*oneAPI .*)/)
-{
-    $gnuas=1;
-}
-elsif (`$ENV{CC} -V 2>/dev/null`
-		=~ /nvc .*/)
-{
-    $gnuas=1;
+    use IPC::Cmd;
+    my $cc_cmd = $ENV{CC};
+    my ($success, $error_message, $full_buf, $stdout_buf, $stderr_buf) =
+        IPC::Cmd::run(command => [$cc_cmd, '-Wa,-v', '-c', '-o', '/dev/null', '-x', 'assembler', '/dev/null'],
+                      verbose => 0);
+    if ($success) {
+        my $output = join('', @$full_buf);
+        if ($output =~ /GNU assembler version ([2-9]\.[0-9]+)/) {
+            $gnuas=1;
+        }
+    }
+    
+    if (!$gnuas) {
+        my ($success2, $error_message2, $full_buf2, $stdout_buf2, $stderr_buf2) =
+            IPC::Cmd::run(command => [$cc_cmd, '--version'], verbose => 0);
+        if ($success2) {
+            my $output = join('', @$full_buf2);
+            if ($output =~ /(clang .*|Intel.*oneAPI .*)/) {
+                $gnuas=1;
+            }
+        }
+    }
+    
+    if (!$gnuas) {
+        my ($success3, $error_message3, $full_buf3, $stdout_buf3, $stderr_buf3) =
+            IPC::Cmd::run(command => [$cc_cmd, '-V'], verbose => 0);
+        if ($success3) {
+            my $output = join('', @$full_buf3);
+            if ($output =~ /nvc .*/) {
+                $gnuas=1;
+            }
+        }
+    }
 }
 
 my $cet_property;
