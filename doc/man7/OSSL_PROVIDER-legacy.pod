@@ -42,7 +42,7 @@ The OpenSSL legacy provider supports these operations and algorithms:
 
 =item MD2, see L<EVP_MD-MD2(7)>
 
-Disabled by default. Use I<enable-md2> config option to enable.
+Permanently disabled due to cryptographic weaknesses (CWE-327/CWE-328).
 
 =item MD4, see L<EVP_MD-MD4(7)>
 

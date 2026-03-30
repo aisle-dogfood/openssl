@@ -491,7 +491,6 @@ my @disablables = (
     "legacy",
     "loadereng",
     "makedepend",
-    "md2",
     "md4",
     "mdc2",
     "ml-dsa",
@@ -580,6 +579,7 @@ my %deprecated_disablables = (
     "ripemd" => "rmd160",
     "ui" => "ui-console",
     "heartbeats" => undef,
+    "md2" => undef,             # Permanently disabled due to cryptographic weaknesses
     );
 
 # All of the following are disabled by default:
@@ -605,7 +605,6 @@ our %disabled = ( # "what"         => "comment"
                   "pie"                 => "default",
                   "jitter"              => "default",
                   "ktls"                => "default",
-                  "md2"                 => "default",
                   "msan"                => "default",
                   "rc5"                 => "default",
                   "sctp"                => "default",
@@ -1447,6 +1446,8 @@ foreach my $feature (@{$target{enable}}) {
 $disabled{uplink} = 'no uplink_arch' unless (defined $target{uplink_arch});
 # If asm_arch isn't defined, disable asm
 $disabled{asm} = 'no asm_arch' unless (defined $target{asm_arch});
+# MD2 is permanently disabled due to cryptographic weaknesses (CWE-327/CWE-328)
+$disabled{md2} = 'weak hash function';
 
 disable();                      # Run a cascade now
 

@@ -8,10 +8,13 @@ EVP_MD-MD2 - The MD2 EVP_MD implementation
 
 Support for computing MD2 digests through the B<EVP_MD> API.
 
+B<MD2 is permanently disabled due to cryptographic weaknesses (CWE-327/CWE-328)
+and should not be used.>
+
 =head2 Identity
 
-This implementation is only available with the legacy provider, and is
-identified with the name "MD2".
+This implementation is only available with the legacy provider when explicitly
+enabled at compile time, and is identified with the name "MD2".
 
 =head2 Gettable Parameters
 

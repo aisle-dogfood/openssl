@@ -885,7 +885,7 @@ Disable HTTP support.
 
 Don't build the legacy provider.
 
-Disabling this also disables the legacy algorithms: MD2 (already disabled by default).
+Disabling this also disables the legacy algorithms: MD2 (permanently disabled due to cryptographic weaknesses).
 
 ### no-makedepend
 
