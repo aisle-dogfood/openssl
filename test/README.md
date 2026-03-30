@@ -1,6 +1,11 @@
 Using OpenSSL Tests
 ===================
 
+> **SECURITY WARNING:** This directory contains HARD-CODED PRIVATE KEYS used as
+> test fixtures. These keys are publicly known and MUST NEVER be used in production
+> or included in production packages. They are for automated testing only.
+> See `SECURITY.md` files in test data directories for details.
+
 After a successful build, and before installing, the libraries should be tested.
 Run:
 

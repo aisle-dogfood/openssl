@@ -9,6 +9,11 @@ Welcome to the OpenSSL Project
 ![Quic Interop](https://github.com/openssl/openssl/actions/workflows/run_quic_interop.yml/badge.svg)
 ![Daily checks](https://github.com/openssl/openssl/actions/workflows/run-checker-daily.yml/badge.svg)
 
+> **⚠️ IMPORTANT FOR PACKAGERS:** The `demos/` and `test/` directories contain
+> hard-coded private keys for testing/demonstration only. **These MUST be excluded
+> from production packages.** See [`SECURITY-HARDCODED-KEYS.md`](SECURITY-HARDCODED-KEYS.md)
+> and [`PACKAGING-EXCLUSIONS.txt`](PACKAGING-EXCLUSIONS.txt).
+
 OpenSSL is a robust, commercial-grade, full-featured Open Source Toolkit
 for the TLS (formerly SSL), DTLS and QUIC protocols.
 
