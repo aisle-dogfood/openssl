@@ -156,6 +156,12 @@ static const OSSL_ALGORITHM legacy_ciphers[] = {
     ALG(PROV_NAMES_RC5_CFB, ossl_rc5128cfb64_functions),
 #endif /* OPENSSL_NO_RC5 */
 #ifndef OPENSSL_NO_DES
+    /*
+     * DES implementations use table-based S-box lookups indexed by secret-dependent
+     * data, creating cache-timing side-channel vulnerabilities. DES is confined to
+     * this legacy provider and excluded from FIPS. Use AES or ChaCha20 for new
+     * applications requiring security.
+     */
     ALG(PROV_NAMES_DESX_CBC, ossl_tdes_desx_cbc_functions),
 #ifdef OPENSSL_ENABLE_WEAK_DES_CIPHERS
     /* Single DES ciphers are disabled by default due to inadequate encryption strength */

@@ -285,6 +285,12 @@ static const OSSL_ALGORITHM_CAPABLE deflt_ciphers[] = {
     ALG(PROV_NAMES_CAMELLIA_128_CTR, ossl_camellia128ctr_functions),
 #endif /* OPENSSL_NO_CAMELLIA */
 #ifndef OPENSSL_NO_DES
+    /*
+     * DES/3DES implementations use table-based S-box lookups indexed by
+     * secret-dependent data, creating cache-timing side-channel vulnerabilities.
+     * DES is excluded from FIPS provider. Use AES or ChaCha20 for security-sensitive
+     * applications.
+     */
     ALG(PROV_NAMES_DES_EDE3_ECB, ossl_tdes_ede3_ecb_functions),
     ALG(PROV_NAMES_DES_EDE3_CBC, ossl_tdes_ede3_cbc_functions),
     ALG(PROV_NAMES_DES_EDE3_OFB, ossl_tdes_ede3_ofb_functions),
