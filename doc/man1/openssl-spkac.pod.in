@@ -54,7 +54,7 @@ default.
 =item B<-digest> I<digest>
 
 Use the specified I<digest> to sign a created SPKAC file.
-The default digest algorithm is MD5.
+The default digest algorithm is SHA256.
 
 =item B<-key> I<filename>|I<uri>
 

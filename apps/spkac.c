@@ -46,7 +46,7 @@ const OPTIONS spkac_options[] = {
     {"spkac", OPT_SPKAC, 's', "Alternative SPKAC name"},
 
     OPT_SECTION("Output"),
-    {"digest", OPT_DIGEST, 's', "Sign new SPKAC with the specified digest (default: MD5)" },
+    {"digest", OPT_DIGEST, 's', "Sign new SPKAC with the specified digest (default: SHA256)" },
     {"out", OPT_OUT, '>', "Output file"},
     {"noout", OPT_NOOUT, '-', "Don't print SPKAC"},
     {"pubkey", OPT_PUBKEY, '-', "Output public key"},
@@ -67,7 +67,7 @@ int spkac_main(int argc, char **argv)
     char *infile = NULL, *outfile = NULL, *passinarg = NULL, *passin = NULL;
     char *spkstr = NULL, *prog;
     const char *spkac = "SPKAC", *spksect = "default";
-    const char *digest = "MD5";
+    const char *digest = "SHA256";
     EVP_MD *md = NULL;
     int i, ret = 1, verify = 0, noout = 0, pubkey = 0;
     int keyformat = FORMAT_UNDEF;
