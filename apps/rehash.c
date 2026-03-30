@@ -513,7 +513,7 @@ const OPTIONS rehash_options[] = {
 int rehash_main(int argc, char **argv)
 {
     const char *env, *prog;
-    char *e, *m;
+    char *e, *m, *saveptr;
     int errs = 0;
     OPTION_CHOICE o;
     enum Hash h = HASH_NEW;
@@ -568,7 +568,7 @@ int rehash_main(int argc, char **argv)
             errs = 1;
             goto end;
         }
-        for (e = strtok(m, lsc); e != NULL; e = strtok(NULL, lsc))
+        for (e = strtok_r(m, lsc, &saveptr); e != NULL; e = strtok_r(NULL, lsc, &saveptr))
             errs += do_dir(e, h);
         OPENSSL_free(m);
     } else {
