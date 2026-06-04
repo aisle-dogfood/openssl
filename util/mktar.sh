@@ -6,10 +6,122 @@
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
 
-HERE=`dirname $0`
+HERE=$(dirname "$0")
+VERSION_FILE="$HERE/../VERSION.dat"
 
-# Get all version data as shell variables
-. $HERE/../VERSION.dat
+version_data_error () {
+    echo >&2 "Invalid VERSION.dat: $1"
+    exit 1
+}
+
+load_version_data () {
+    MAJOR=
+    MINOR=
+    PATCH=
+    PRE_RELEASE_TAG=
+    BUILD_METADATA=
+    RELEASE_DATE=
+    SHLIB_VERSION=
+
+    seen_major=
+    seen_minor=
+    seen_patch=
+    seen_pre_release_tag=
+    seen_build_metadata=
+    seen_release_date=
+    seen_shlib_version=
+
+    [ -r "$VERSION_FILE" ] || version_data_error "cannot read $VERSION_FILE"
+
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            ''|'#'*)
+                continue
+                ;;
+            MAJOR=*)
+                [ -z "$seen_major" ] || version_data_error "duplicate key 'MAJOR'"
+                value=${line#MAJOR=}
+                case "$value" in
+                    ''|*[!0-9]*) version_data_error "invalid value for 'MAJOR'" ;;
+                esac
+                MAJOR=$value
+                seen_major=1
+                ;;
+            MINOR=*)
+                [ -z "$seen_minor" ] || version_data_error "duplicate key 'MINOR'"
+                value=${line#MINOR=}
+                case "$value" in
+                    ''|*[!0-9]*) version_data_error "invalid value for 'MINOR'" ;;
+                esac
+                MINOR=$value
+                seen_minor=1
+                ;;
+            PATCH=*)
+                [ -z "$seen_patch" ] || version_data_error "duplicate key 'PATCH'"
+                value=${line#PATCH=}
+                case "$value" in
+                    ''|*[!0-9]*) version_data_error "invalid value for 'PATCH'" ;;
+                esac
+                PATCH=$value
+                seen_patch=1
+                ;;
+            PRE_RELEASE_TAG=*)
+                [ -z "$seen_pre_release_tag" ] || version_data_error "duplicate key 'PRE_RELEASE_TAG'"
+                value=${line#PRE_RELEASE_TAG=}
+                case "$value" in
+                    *[![:alnum:].-]*) version_data_error "invalid value for 'PRE_RELEASE_TAG'" ;;
+                esac
+                PRE_RELEASE_TAG=$value
+                seen_pre_release_tag=1
+                ;;
+            BUILD_METADATA=*)
+                [ -z "$seen_build_metadata" ] || version_data_error "duplicate key 'BUILD_METADATA'"
+                value=${line#BUILD_METADATA=}
+                case "$value" in
+                    *[![:alnum:].-]*) version_data_error "invalid value for 'BUILD_METADATA'" ;;
+                esac
+                BUILD_METADATA=$value
+                seen_build_metadata=1
+                ;;
+            RELEASE_DATE=*)
+                [ -z "$seen_release_date" ] || version_data_error "duplicate key 'RELEASE_DATE'"
+                value=${line#RELEASE_DATE=}
+                case "$value" in
+                    \"*\")
+                        value=${value#\"}
+                        value=${value%\"}
+                        case "$value" in
+                            *[![:alnum:] ]*) version_data_error "invalid value for 'RELEASE_DATE'" ;;
+                        esac
+                        RELEASE_DATE=$value
+                        ;;
+                    *)
+                        version_data_error "invalid value for 'RELEASE_DATE'"
+                        ;;
+                esac
+                seen_release_date=1
+                ;;
+            SHLIB_VERSION=*)
+                [ -z "$seen_shlib_version" ] || version_data_error "duplicate key 'SHLIB_VERSION'"
+                value=${line#SHLIB_VERSION=}
+                case "$value" in
+                    ''|*[!0-9]*) version_data_error "invalid value for 'SHLIB_VERSION'" ;;
+                esac
+                SHLIB_VERSION=$value
+                seen_shlib_version=1
+                ;;
+            *)
+                version_data_error "unexpected line '$line'"
+                ;;
+        esac
+    done < "$VERSION_FILE"
+
+    [ -n "$seen_major" ] || version_data_error "missing key 'MAJOR'"
+    [ -n "$seen_minor" ] || version_data_error "missing key 'MINOR'"
+    [ -n "$seen_patch" ] || version_data_error "missing key 'PATCH'"
+}
+
+load_version_data
 
 if [ -n "$PRE_RELEASE_TAG" ]; then PRE_RELEASE_TAG=-$PRE_RELEASE_TAG; fi
 if [ -n "$BUILD_METADATA" ]; then BUILD_METADATA=+$BUILD_METADATA; fi
