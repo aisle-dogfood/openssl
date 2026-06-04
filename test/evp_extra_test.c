@@ -6406,6 +6406,128 @@ static int test_aes_gcm_ivlen_change_cve_2023_5363(void)
                            gcm_ct, sizeof(gcm_ct), gcm_tag, sizeof(gcm_tag));
 }
 
+static int aes_ccm_encrypt_with_order(int params_first, int set_ivlen,
+                                      size_t ccm_ivlen,
+                                      int set_taglen, size_t ccm_taglen,
+                                      const unsigned char *ccm_iv,
+                                      unsigned char *outbuf, size_t *outbuf_len,
+                                      unsigned char *outtag)
+{
+    static const unsigned char ccm_key[] = {
+        0x33, 0x70, 0xd4, 0xee, 0xaa, 0x11, 0x4b, 0x70,
+        0xc7, 0x12, 0xa7, 0x43, 0xe1, 0x92, 0x16, 0xbb,
+    };
+    static const unsigned char ccm_aad[] = {
+        0x20, 0xc1, 0x4f, 0x7a, 0x3f, 0x52, 0x60, 0x19,
+    };
+    static const unsigned char ccm_pt[] = {
+        0x93, 0x16, 0x56, 0x4a, 0xf0, 0x7a, 0x6d, 0x21,
+        0x6d, 0x63, 0x6a, 0xb0, 0x0e, 0x2a, 0xbf, 0xb8,
+    };
+    int ret = 0;
+    int outlen, tmplen;
+    EVP_CIPHER_CTX *ctx = NULL;
+    EVP_CIPHER *cipher = NULL;
+    OSSL_PARAM params[3] = { OSSL_PARAM_END, OSSL_PARAM_END, OSSL_PARAM_END };
+    size_t params_n = 0;
+
+    if (set_ivlen)
+        params[params_n++] =
+            OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_AEAD_IVLEN,
+                                        &ccm_ivlen);
+    if (set_taglen)
+        params[params_n++] =
+            OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG,
+                                              NULL, ccm_taglen);
+    params[params_n] = OSSL_PARAM_construct_end();
+
+    if (!TEST_ptr(ctx = EVP_CIPHER_CTX_new())
+            || !TEST_ptr(cipher = EVP_CIPHER_fetch(testctx, "AES-128-CCM",
+                                                   testpropq)))
+        goto err;
+
+    if (params_first) {
+        if (!TEST_true(EVP_EncryptInit_ex2(ctx, cipher, NULL, NULL, params))
+                || !TEST_true(EVP_EncryptInit_ex2(ctx, NULL, ccm_key, ccm_iv,
+                                                 NULL)))
+            goto err;
+    } else {
+        if (!TEST_true(EVP_EncryptInit_ex2(ctx, cipher, ccm_key, NULL, NULL))
+                || !TEST_true(EVP_CIPHER_CTX_set_params(ctx, params))
+                || !TEST_true(EVP_EncryptInit_ex2(ctx, NULL, NULL, ccm_iv,
+                                                 NULL)))
+            goto err;
+    }
+
+    if (!TEST_true(EVP_EncryptUpdate(ctx, NULL, &outlen, NULL,
+                                     sizeof(ccm_pt)))
+            || !TEST_true(EVP_EncryptUpdate(ctx, NULL, &outlen,
+                                            ccm_aad, sizeof(ccm_aad)))
+            || !TEST_true(EVP_EncryptUpdate(ctx, outbuf, &outlen,
+                                            ccm_pt, sizeof(ccm_pt))))
+        goto err;
+    *outbuf_len = outlen;
+
+    if (!TEST_true(EVP_EncryptFinal_ex(ctx, outbuf + *outbuf_len, &tmplen)))
+        goto err;
+    *outbuf_len += tmplen;
+
+    params[0] = OSSL_PARAM_construct_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG,
+                                                  outtag, ccm_taglen);
+    params[1] = OSSL_PARAM_construct_end();
+    if (!TEST_true(EVP_CIPHER_CTX_get_params(ctx, params)))
+        goto err;
+
+    ret = 1;
+err:
+    EVP_CIPHER_CTX_free(ctx);
+    EVP_CIPHER_free(cipher);
+    return ret;
+}
+
+static int test_aes_ccm_ivlen_change_after_setkey(void)
+{
+    static const unsigned char ccm_iv[] = {
+        0x67, 0xc6, 0x69, 0x73, 0x51, 0xff, 0x4a,
+        0xec, 0x29, 0xcd, 0xba, 0xab, 0xf2,
+    };
+    unsigned char refbuf[32];
+    unsigned char outbuf[32];
+    unsigned char reftag[12];
+    unsigned char outtag[12];
+    size_t refbuf_len = 0;
+    size_t outbuf_len = 0;
+
+    return aes_ccm_encrypt_with_order(1, 1, sizeof(ccm_iv), 0, sizeof(outtag),
+                                      ccm_iv, refbuf, &refbuf_len, reftag)
+        && aes_ccm_encrypt_with_order(0, 1, sizeof(ccm_iv), 0, sizeof(outtag),
+                                      ccm_iv, outbuf, &outbuf_len, outtag)
+        && TEST_size_t_eq(outbuf_len, refbuf_len)
+        && TEST_mem_eq(outbuf, outbuf_len, refbuf, refbuf_len)
+        && TEST_mem_eq(outtag, sizeof(outtag), reftag, sizeof(reftag));
+}
+
+static int test_aes_ccm_taglen_change_after_setkey(void)
+{
+    static const unsigned char ccm_iv[] = {
+        0x4b, 0x49, 0x1e, 0xb6, 0x0b, 0xea, 0x2a,
+    };
+    unsigned char refbuf[32];
+    unsigned char outbuf[32];
+    unsigned char reftag[16];
+    unsigned char outtag[16];
+    size_t refbuf_len = 0;
+    size_t outbuf_len = 0;
+
+    return aes_ccm_encrypt_with_order(1, 0, sizeof(ccm_iv), 1, sizeof(outtag),
+                                      ccm_iv, refbuf, &refbuf_len, reftag)
+        && aes_ccm_encrypt_with_order(0, 0, sizeof(ccm_iv), 1, sizeof(outtag),
+                                      ccm_iv, outbuf, &outbuf_len, outtag)
+        && TEST_size_t_eq(outbuf_len, refbuf_len)
+        && TEST_mem_eq(outbuf, outbuf_len, refbuf, refbuf_len)
+        && TEST_mem_eq(outtag, sizeof(outtag), reftag, sizeof(reftag));
+}
+
 #ifndef OPENSSL_NO_RC4
 static int rc4_encrypt(const unsigned char *rc4_key, size_t rc4_key_s,
                        const unsigned char *rc4_pt, size_t rc4_pt_s,
@@ -6930,6 +7052,8 @@ int setup_tests(void)
 
     /* Test cases for CVE-2023-5363 */
     ADD_TEST(test_aes_gcm_ivlen_change_cve_2023_5363);
+    ADD_TEST(test_aes_ccm_ivlen_change_after_setkey);
+    ADD_TEST(test_aes_ccm_taglen_change_after_setkey);
 #ifndef OPENSSL_NO_RC4
     ADD_TEST(test_aes_rc4_keylen_change_cve_2023_5363);
 #endif
