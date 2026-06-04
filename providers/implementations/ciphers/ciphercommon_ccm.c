@@ -65,11 +65,23 @@ static size_t ccm_get_ivlen(PROV_CCM_CTX *ctx)
     return 15 - ctx->l;
 }
 
+static void ccm_reinit(PROV_CCM_CTX *ctx)
+{
+    if (!ctx->key_set)
+        return;
+
+    CRYPTO_ccm128_init(&ctx->ccm_ctx, ctx->m, ctx->l,
+                       ctx->ccm_ctx.key, ctx->ccm_ctx.block);
+}
+
 int ossl_ccm_set_ctx_params(void *vctx, const OSSL_PARAM params[])
 {
     PROV_CCM_CTX *ctx = (PROV_CCM_CTX *)vctx;
     const OSSL_PARAM *p;
     size_t sz;
+    int m_updated = 0;
+    int l_updated = 0;
+    int tag_provided = 0;
 
     if (ossl_param_is_empty(params))
         return 1;
@@ -92,8 +104,12 @@ int ossl_ccm_set_ctx_params(void *vctx, const OSSL_PARAM params[])
             }
             memcpy(ctx->buf, p->data, p->data_size);
             ctx->tag_set = 1;
+            tag_provided = 1;
         }
-        ctx->m = p->data_size;
+        if (ctx->m != p->data_size) {
+            ctx->m = p->data_size;
+            m_updated = 1;
+        }
     }
 
     p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_AEAD_IVLEN);
@@ -111,8 +127,17 @@ int ossl_ccm_set_ctx_params(void *vctx, const OSSL_PARAM params[])
         }
         if (ctx->l != ivlen) {
             ctx->l = ivlen;
-            ctx->iv_set = 0;
+            l_updated = 1;
         }
+    }
+
+    if (m_updated || l_updated) {
+        if (l_updated)
+            ctx->iv_set = 0;
+        ctx->len_set = 0;
+        if (m_updated && !tag_provided)
+            ctx->tag_set = 0;
+        ccm_reinit(ctx);
     }
 
     p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_AEAD_TLS1_AAD);
@@ -233,6 +258,9 @@ static int ccm_init(void *vctx, const unsigned char *key, size_t keylen,
 
     ctx->enc = enc;
 
+    if (!ossl_ccm_set_ctx_params(ctx, params))
+        return 0;
+
     if (iv != NULL) {
         if (ivlen != ccm_get_ivlen(ctx)) {
             ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_IV_LENGTH);
@@ -249,7 +277,7 @@ static int ccm_init(void *vctx, const unsigned char *key, size_t keylen,
         if (!ctx->hw->setkey(ctx, key, keylen))
             return 0;
     }
-    return ossl_ccm_set_ctx_params(ctx, params);
+    return 1;
 }
 
 int ossl_ccm_einit(void *vctx, const unsigned char *key, size_t keylen,
