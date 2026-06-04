@@ -20,6 +20,10 @@
 #endif
 #include "prov/providercommon.h"
 #include "prov/provider_util.h"
+#include "prov/names.h"
+#ifdef FIPS_MODULE
+# include "internal/cryptlib.h"
+#endif
 
 void ossl_prov_cipher_reset(PROV_CIPHER *pc)
 {
@@ -293,6 +297,25 @@ int ossl_prov_set_macctx(EVP_MAC_CTX *macctx,
 
 }
 
+#ifdef FIPS_MODULE
+static const char ossl_prov_fips_default_properties[] = "provider=fips,fips=yes";
+
+static const char *ossl_prov_mac_name_to_internal(const char *macname)
+{
+    if (macname == NULL)
+        return NULL;
+    if (OPENSSL_strcasecmp(macname, OSSL_MAC_NAME_HMAC) == 0)
+        return PROV_NAMES_HMAC_INTERNAL;
+    if (OPENSSL_strcasecmp(macname, OSSL_MAC_NAME_KMAC128) == 0
+            || OPENSSL_strcasecmp(macname, "KMAC-128") == 0)
+        return PROV_NAMES_KMAC_128_INTERNAL;
+    if (OPENSSL_strcasecmp(macname, OSSL_MAC_NAME_KMAC256) == 0
+            || OPENSSL_strcasecmp(macname, "KMAC-256") == 0)
+        return PROV_NAMES_KMAC_256_INTERNAL;
+    return macname;
+}
+#endif
+
 int ossl_prov_macctx_load_from_params(EVP_MAC_CTX **macctx,
                                       const OSSL_PARAM params[],
                                       const char *macname,
@@ -315,10 +338,19 @@ int ossl_prov_macctx_load_from_params(EVP_MAC_CTX **macctx,
             return 0;
         properties = p->data;
     }
+#ifdef FIPS_MODULE
+    properties = ossl_prov_fips_default_properties;
+#endif
 
     /* If we got a new mac name, we make a new EVP_MAC_CTX */
     if (macname != NULL) {
-        EVP_MAC *mac = EVP_MAC_fetch(libctx, macname, properties);
+        EVP_MAC *mac = EVP_MAC_fetch(libctx,
+#ifdef FIPS_MODULE
+                                     ossl_prov_mac_name_to_internal(macname),
+#else
+                                     macname,
+#endif
+                                     properties);
 
         EVP_MAC_CTX_free(*macctx);
         *macctx = mac == NULL ? NULL : EVP_MAC_CTX_new(mac);
