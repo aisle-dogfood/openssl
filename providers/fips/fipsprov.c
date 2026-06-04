@@ -379,9 +379,12 @@ static const OSSL_ALGORITHM fips_macs_internal[] = {
 #ifndef OPENSSL_NO_CMAC
     { PROV_NAMES_CMAC, FIPS_DEFAULT_PROPERTIES, ossl_cmac_functions },
 #endif
-    { PROV_NAMES_HMAC, FIPS_DEFAULT_PROPERTIES, ossl_hmac_internal_functions },
-    { PROV_NAMES_KMAC_128, FIPS_DEFAULT_PROPERTIES, ossl_kmac128_internal_functions },
-    { PROV_NAMES_KMAC_256, FIPS_DEFAULT_PROPERTIES, ossl_kmac256_internal_functions },
+    { PROV_NAMES_HMAC_INTERNAL, FIPS_DEFAULT_PROPERTIES,
+      ossl_hmac_internal_functions },
+    { PROV_NAMES_KMAC_128_INTERNAL, FIPS_DEFAULT_PROPERTIES,
+      ossl_kmac128_internal_functions },
+    { PROV_NAMES_KMAC_256_INTERNAL, FIPS_DEFAULT_PROPERTIES,
+      ossl_kmac256_internal_functions },
     { NULL, NULL, NULL }
 };
 

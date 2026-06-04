@@ -51,6 +51,7 @@
 #include "prov/implementations.h"
 #include "prov/provider_util.h"
 #include "prov/securitycheck.h"
+#include "prov/names.h"
 #include "internal/params.h"
 
 typedef struct {
@@ -74,6 +75,33 @@ typedef struct {
 
 /* KMAC uses a Customisation string of 'KDF' */
 static const unsigned char kmac_custom_str[] = { 0x4B, 0x44, 0x46 };
+
+static int sskdf_mac_is_hmac(const EVP_MAC *mac)
+{
+    return EVP_MAC_is_a(mac, OSSL_MAC_NAME_HMAC)
+#ifdef FIPS_MODULE
+        || EVP_MAC_is_a(mac, PROV_NAMES_HMAC_INTERNAL)
+#endif
+        ;
+}
+
+static int sskdf_mac_is_kmac128(const EVP_MAC *mac)
+{
+    return EVP_MAC_is_a(mac, OSSL_MAC_NAME_KMAC128)
+#ifdef FIPS_MODULE
+        || EVP_MAC_is_a(mac, PROV_NAMES_KMAC_128_INTERNAL)
+#endif
+        ;
+}
+
+static int sskdf_mac_is_kmac256(const EVP_MAC *mac)
+{
+    return EVP_MAC_is_a(mac, OSSL_MAC_NAME_KMAC256)
+#ifdef FIPS_MODULE
+        || EVP_MAC_is_a(mac, PROV_NAMES_KMAC_256_INTERNAL)
+#endif
+        ;
+}
 
 static OSSL_FUNC_kdf_newctx_fn sskdf_new;
 static OSSL_FUNC_kdf_dupctx_fn sskdf_dup;
@@ -433,7 +461,7 @@ static int sskdf_derive(void *vctx, unsigned char *key, size_t keylen,
         int default_salt_len;
         EVP_MAC *mac = EVP_MAC_CTX_get0_mac(ctx->macctx);
 
-        if (EVP_MAC_is_a(mac, OSSL_MAC_NAME_HMAC)) {
+        if (sskdf_mac_is_hmac(mac)) {
             /* H(x) = HMAC(x, salt, hash) */
             if (md == NULL) {
                 ERR_raise(ERR_LIB_PROV, PROV_R_MISSING_MESSAGE_DIGEST);
@@ -446,7 +474,7 @@ static int sskdf_derive(void *vctx, unsigned char *key, size_t keylen,
             /* H(x) = KMACzzz(x, salt, custom) */
             custom = kmac_custom_str;
             custom_len = sizeof(kmac_custom_str);
-            if (EVP_MAC_is_a(mac, OSSL_MAC_NAME_KMAC128))
+            if (sskdf_mac_is_kmac128(mac))
                 default_salt_len = SSKDF_KMAC128_DEFAULT_SALT_SIZE;
             else
                 default_salt_len = SSKDF_KMAC256_DEFAULT_SALT_SIZE;
@@ -564,10 +592,8 @@ static int sskdf_common_set_ctx_params(KDF_SSKDF *ctx, const OSSL_PARAM params[]
                                            NULL, NULL, NULL, libctx))
         return 0;
     if (ctx->macctx != NULL) {
-         if (EVP_MAC_is_a(EVP_MAC_CTX_get0_mac(ctx->macctx),
-                          OSSL_MAC_NAME_KMAC128)
-             || EVP_MAC_is_a(EVP_MAC_CTX_get0_mac(ctx->macctx),
-                             OSSL_MAC_NAME_KMAC256)) {
+         if (sskdf_mac_is_kmac128(EVP_MAC_CTX_get0_mac(ctx->macctx))
+             || sskdf_mac_is_kmac256(EVP_MAC_CTX_get0_mac(ctx->macctx))) {
              ctx->is_kmac = 1;
          }
     }

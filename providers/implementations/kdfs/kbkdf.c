@@ -44,6 +44,7 @@
 #include "prov/provider_util.h"
 #include "prov/providercommon.h"
 #include "prov/securitycheck.h"
+#include "prov/names.h"
 #include "internal/e_os.h"
 #include "internal/params.h"
 
@@ -75,6 +76,33 @@ typedef struct {
     int use_separator;
     OSSL_FIPS_IND_DECLARE
 } KBKDF;
+
+static int kbkdf_mac_is_hmac(const EVP_MAC *mac)
+{
+    return EVP_MAC_is_a(mac, OSSL_MAC_NAME_HMAC)
+#ifdef FIPS_MODULE
+        || EVP_MAC_is_a(mac, PROV_NAMES_HMAC_INTERNAL)
+#endif
+        ;
+}
+
+static int kbkdf_mac_is_kmac128(const EVP_MAC *mac)
+{
+    return EVP_MAC_is_a(mac, OSSL_MAC_NAME_KMAC128)
+#ifdef FIPS_MODULE
+        || EVP_MAC_is_a(mac, PROV_NAMES_KMAC_128_INTERNAL)
+#endif
+        ;
+}
+
+static int kbkdf_mac_is_kmac256(const EVP_MAC *mac)
+{
+    return EVP_MAC_is_a(mac, OSSL_MAC_NAME_KMAC256)
+#ifdef FIPS_MODULE
+        || EVP_MAC_is_a(mac, PROV_NAMES_KMAC_256_INTERNAL)
+#endif
+        ;
+}
 
 /* Definitions needed for typechecking. */
 static OSSL_FUNC_kdf_newctx_fn kbkdf_new;
@@ -381,13 +409,10 @@ static int kbkdf_set_ctx_params(void *vctx, const OSSL_PARAM params[])
         return 0;
     if (ctx->ctx_init != NULL) {
         ctx->is_kmac = 0;
-        if (EVP_MAC_is_a(EVP_MAC_CTX_get0_mac(ctx->ctx_init),
-                         OSSL_MAC_NAME_KMAC128)
-            || EVP_MAC_is_a(EVP_MAC_CTX_get0_mac(ctx->ctx_init),
-                            OSSL_MAC_NAME_KMAC256)) {
+        if (kbkdf_mac_is_kmac128(EVP_MAC_CTX_get0_mac(ctx->ctx_init))
+            || kbkdf_mac_is_kmac256(EVP_MAC_CTX_get0_mac(ctx->ctx_init))) {
             ctx->is_kmac = 1;
-        } else if (!EVP_MAC_is_a(EVP_MAC_CTX_get0_mac(ctx->ctx_init),
-                                 OSSL_MAC_NAME_HMAC)
+        } else if (!kbkdf_mac_is_hmac(EVP_MAC_CTX_get0_mac(ctx->ctx_init))
                    && !EVP_MAC_is_a(EVP_MAC_CTX_get0_mac(ctx->ctx_init),
                                     OSSL_MAC_NAME_CMAC)) {
             ERR_raise(ERR_LIB_PROV, PROV_R_INVALID_MAC);
