@@ -344,6 +344,43 @@ static int set_private_key(void)
 }
 
 /*
+ * Tests hardening applied by EC_KEY_oct2priv to deserialized private keys.
+ */
+static int oct2priv_hardening_test(void)
+{
+    static const unsigned char priv[] = { 0x01 };
+    EC_KEY *key = NULL;
+    const BIGNUM *order = NULL;
+    const BIGNUM *priv_key = NULL;
+    int fixed_top;
+    int testresult = 0;
+
+    if (!TEST_ptr(key = EC_KEY_new_by_curve_name(NID_secp224r1)))
+        goto err;
+
+    order = EC_GROUP_get0_order(key->group);
+    if (!TEST_ptr(order))
+        goto err;
+    fixed_top = bn_get_top(order) + 2;
+
+    if (!TEST_int_eq(EC_KEY_oct2priv(key, priv, sizeof(priv)), 1))
+        goto err;
+
+    priv_key = EC_KEY_get0_private_key(key);
+    if (!TEST_ptr(priv_key)
+            || !TEST_true(BN_is_word(priv_key, 1))
+            || !TEST_true(BN_get_flags(priv_key, BN_FLG_CONSTTIME))
+            || !TEST_int_ge(bn_get_dmax(priv_key), fixed_top))
+        goto err;
+
+    testresult = 1;
+
+ err:
+    EC_KEY_free(key);
+    return testresult;
+}
+
+/*
  * Tests behavior of the decoded_from_explicit_params flag and API
  */
 static int decoded_flag_test(void)
@@ -564,6 +601,7 @@ int setup_tests(void)
     ADD_TEST(underflow_test);
 #endif
     ADD_TEST(set_private_key);
+    ADD_TEST(oct2priv_hardening_test);
     ADD_TEST(decoded_flag_test);
     ADD_ALL_TESTS(ecpkparams_i2d2i_test, crv_len);
     ADD_TEST(named_group_creation_test);

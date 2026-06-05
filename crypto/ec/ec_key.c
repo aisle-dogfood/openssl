@@ -1046,6 +1046,17 @@ int EC_KEY_oct2priv(EC_KEY *eckey, const unsigned char *buf, size_t len)
 int ossl_ec_key_simple_oct2priv(EC_KEY *eckey, const unsigned char *buf,
                                 size_t len)
 {
+    int fixed_top;
+    const BIGNUM *order = NULL;
+
+    /*
+     * To operate in constant time, we need the group order as the fixed
+     * public size of the private scalar.
+     */
+    order = EC_GROUP_get0_order(eckey->group);
+    if (order == NULL || BN_is_zero(order))
+        return 0; /* This should never happen */
+
     if (eckey->priv_key == NULL)
         eckey->priv_key = BN_secure_new();
     if (eckey->priv_key == NULL) {
@@ -1056,6 +1067,15 @@ int ossl_ec_key_simple_oct2priv(EC_KEY *eckey, const unsigned char *buf,
         ERR_raise(ERR_LIB_EC, ERR_R_BN_LIB);
         return 0;
     }
+
+    BN_set_flags(eckey->priv_key, BN_FLG_CONSTTIME);
+
+    fixed_top = bn_get_top(order) + 2;
+    if (bn_wexpand(eckey->priv_key, fixed_top) == NULL) {
+        ERR_raise(ERR_LIB_EC, ERR_R_BN_LIB);
+        return 0;
+    }
+
     eckey->dirty_cnt++;
     return 1;
 }
